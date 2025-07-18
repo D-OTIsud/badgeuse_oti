@@ -170,9 +170,19 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
       </div>
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
       {success && <SuccessPopup message={success} onClose={() => setSuccess(null)} />}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 18, flex: 1, justifyContent: 'center',
-      }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 18,
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'start',
+          width: '100%',
+          maxWidth: 900,
+          margin: '0 auto',
+        }}
+      >
         {filteredUsers.map((user) => (
           <div
             key={user.id}
@@ -180,9 +190,9 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
               border: '1px solid #e0e0e0',
               borderRadius: 14,
               padding: 14,
-              minWidth: 140,
-              maxWidth: 170,
-              height: 170,
+              minWidth: 0,
+              maxWidth: 220,
+              height: 180,
               boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
               cursor: 'pointer',
               background: '#fff',
