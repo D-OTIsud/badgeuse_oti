@@ -6,7 +6,7 @@ interface BadgeFormProps {
   utilisateur: Utilisateur;
   badgeId: string;
   heure: Date;
-  onBack: () => void;
+  onBack: (message?: string) => void;
 }
 
 const splitCode = (code: string) => {
@@ -85,8 +85,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
-        onBack();
-      }, 0); // Fermer immédiatement
+        onBack(`Bonne journée ${utilisateur.prenom} !`);
+      }, 0); // Fermer immédiatement et afficher le popup global
       setCode('');
     } else {
       setError("Erreur : badge non enregistré. Vérifiez le code ou contactez l'administrateur.");

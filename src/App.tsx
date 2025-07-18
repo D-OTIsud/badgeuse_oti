@@ -20,10 +20,34 @@ export type BadgeageContext = {
   heure: Date;
 };
 
+const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
+  <div style={{
+    position: 'fixed',
+    top: 32,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#43a047',
+    color: '#fff',
+    padding: '18px 32px',
+    borderRadius: 12,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+    zIndex: 1000,
+    fontSize: 20,
+    fontWeight: 600,
+    letterSpacing: 1,
+    minWidth: 220,
+    textAlign: 'center',
+  }}>
+    {message}
+    <button onClick={onClose} style={{ marginLeft: 24, background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>×</button>
+  </div>
+);
+
 function App() {
   const [badgeageCtx, setBadgeageCtx] = useState<BadgeageContext | null>(null);
   const [loading, setLoading] = useState(false);
   const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSelectUser = async (user: Utilisateur) => {
     setLoading(true);
@@ -61,14 +85,20 @@ function App() {
     setLoading(false);
   };
 
-  const handleBack = () => {
+  // Nouvelle version : onBack peut recevoir un message de succès
+  const handleBack = (successMsg?: string) => {
     setBadgeageCtx(null);
     setWebhookError(null);
+    if (successMsg) {
+      setSuccessMessage(successMsg);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
   };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
       <Header />
+      {successMessage && <SuccessPopup message={successMessage} onClose={() => setSuccessMessage(null)} />}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
         {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
         {webhookError && <div style={{ color: 'red', marginBottom: 16 }}>{webhookError}</div>}
