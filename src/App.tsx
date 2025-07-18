@@ -9,7 +9,7 @@ export type Utilisateur = {
   prenom: string;
   service?: string;
   email: string;
-  statut?: string | null;
+  status?: string | null;
   avatar?: string | null;
 };
 

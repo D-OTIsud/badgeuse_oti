@@ -26,7 +26,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
       setLoading(true);
       const { data, error } = await supabase
         .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, service, email, statut, avatar')
+        .select('id, nom, prenom, service, email, status, avatar')
         .eq('actif', true)
         .order('nom', { ascending: true });
       if (!error && data) setUsers(data);
@@ -63,7 +63,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
             // Chercher l'utilisateur
             const { data: usersFound, error: userError } = await supabase
               .from('appbadge_utilisateurs')
-              .select('id, nom, prenom, service, email, statut, avatar')
+              .select('id, nom, prenom, service, email, status, avatar')
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
@@ -108,7 +108,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
             <div style={{ fontWeight: 'bold', fontSize: 18 }}>{user.prenom} {user.nom}</div>
             <div style={{ color: '#555' }}>{user.service}</div>
             <div style={{ fontSize: 12, color: '#888' }}>{user.email}</div>
-            <div style={{ marginTop: 8, fontSize: 13, color: '#1976d2' }}>{user.statut || 'Non badgé'}</div>
+            <div style={{ marginTop: 8, fontSize: 13, color: '#1976d2' }}>{user.status || 'Non badgé'}</div>
           </div>
         ))}
       </div>
