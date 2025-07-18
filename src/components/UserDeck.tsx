@@ -16,6 +16,11 @@ type Props = {
   onSelect: (user: Utilisateur) => void;
 };
 
+const isNfcSupported = () => {
+  // @ts-ignore
+  return typeof window !== 'undefined' && 'NDEFReader' in window;
+};
+
 const UserDeck: React.FC<Props> = ({ onSelect }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +44,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
 
   // NFC listener auto (background, silencieux)
   useEffect(() => {
-    // Only run on browsers with NFC support
-    // @ts-ignore
-    if (!('NDEFReader' in window)) return;
+    if (!isNfcSupported()) return;
     const NDEFReader = (window as any).NDEFReader;
     const controller = new AbortController();
     nfcAbortRef.current = controller;
@@ -50,8 +53,14 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
         const ndef = new NDEFReader();
         await ndef.scan({ signal: controller.signal });
         ndef.onreading = async (event: any) => {
-          const uid = event.serialNumber || (event.target && event.target.serialNumber);
-          if (!uid) return;
+          // DEBUG: log complet de l'event
+          console.log('NFC event:', event);
+          let uid = event.serialNumber || (event.target && event.target.serialNumber);
+          if (!uid) {
+            setNfcMessage('Tag scanné, mais aucun numéro de série (UID) trouvé.');
+            return;
+          }
+          setNfcMessage('Tag scanné. Numéro de série : ' + uid);
           const { data: badges, error: badgeError } = await supabase
             .from('appbadge_badges')
             .select('utilisateur_id')
@@ -66,6 +75,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
+              setNfcMessage(null);
               onSelect(usersFound[0]);
             }
           }
@@ -82,8 +92,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
 
   // NFC explicite (bouton)
   const handleNfcClick = async () => {
-    // @ts-ignore
-    if (!('NDEFReader' in window)) {
+    if (!isNfcSupported()) {
       setNfcMessage("NFC non supporté sur ce navigateur.");
       return;
     }
@@ -95,9 +104,14 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
       const ndef = new NDEFReader();
       await ndef.scan({ signal: controller.signal });
       ndef.onreading = async (event: any) => {
-        setNfcMessage(null);
-        const uid = event.serialNumber || (event.target && event.target.serialNumber);
-        if (!uid) return;
+        // DEBUG: log complet de l'event
+        console.log('NFC event:', event);
+        let uid = event.serialNumber || (event.target && event.target.serialNumber);
+        if (!uid) {
+          setNfcMessage('Tag scanné, mais aucun numéro de série (UID) trouvé.');
+          return;
+        }
+        setNfcMessage('Tag scanné. Numéro de série : ' + uid);
         const { data: badges, error: badgeError } = await supabase
           .from('appbadge_badges')
           .select('utilisateur_id')
@@ -112,6 +126,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
             .eq('id', utilisateur_id)
             .limit(1);
           if (!userError && usersFound && usersFound.length > 0) {
+            setNfcMessage(null);
             onSelect(usersFound[0]);
           }
         }
@@ -142,14 +157,16 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
           onChange={e => setSearch(e.target.value)}
           style={{ fontSize: 18, padding: 8, borderRadius: 6, border: '1px solid #ccc', flex: 1 }}
         />
-        <button
-          type="button"
-          onClick={handleNfcClick}
-          style={{ padding: 8, borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
-        >
-          <NfcLogo />
-          NFC
-        </button>
+        {isNfcSupported() && (
+          <button
+            type="button"
+            onClick={handleNfcClick}
+            style={{ padding: 8, borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <NfcLogo />
+            NFC
+          </button>
+        )}
       </div>
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, flex: 1 }}>
