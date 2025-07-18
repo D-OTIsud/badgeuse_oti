@@ -99,11 +99,30 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
+              // Récupérer la position GPS
+              let latitude: number | null = null;
+              let longitude: number | null = null;
+              try {
+                await new Promise<void>((resolve) => {
+                  if (!('geolocation' in navigator)) return resolve();
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                      latitude = pos.coords.latitude;
+                      longitude = pos.coords.longitude;
+                      resolve();
+                    },
+                    () => resolve(),
+                    { enableHighAccuracy: true, timeout: 7000 }
+                  );
+                });
+              } catch {}
               // Insérer la ligne dans appbadge_badgeages
               const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
                 utilisateur_id,
                 code: numero_badge,
                 type_action: 'entrée',
+                latitude,
+                longitude,
               });
               if (!insertError) {
                 setSuccess(`Badge enregistré pour ${usersFound[0].prenom} ${usersFound[0].nom}`);
