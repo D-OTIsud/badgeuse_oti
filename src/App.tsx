@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import UserDeck from './components/UserDeck';
 import BadgeForm from './components/BadgeForm';
+import Header from './components/Header';
 import { supabase } from './supabaseClient';
 
 export type Utilisateur = {
@@ -40,22 +41,7 @@ function App() {
       return;
     }
     const badgeId = badges[0].id;
-    // Appel webhook
-    try {
-      const resp = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          utilisateur_id: user.id,
-          badge_id: badgeId,
-          user_email: user.email,
-        }),
-      });
-      if (!resp.ok) throw new Error('Erreur webhook');
-      setBadgeageCtx({ utilisateur: user, badgeId, heure: new Date() });
-    } catch (e) {
-      setWebhookError("Erreur lors de l'appel au webhook. Veuillez réessayer.");
-    }
+    setBadgeageCtx({ utilisateur: user, badgeId, heure: new Date() });
     setLoading(false);
   };
 
@@ -65,20 +51,22 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
-      <h1>Badgeuse OTI</h1>
-      {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
-      {webhookError && <div style={{ color: 'red', marginBottom: 16 }}>{webhookError}</div>}
-      {badgeageCtx ? (
-        <BadgeForm
-          utilisateur={badgeageCtx.utilisateur}
-          badgeId={badgeageCtx.badgeId}
-          heure={badgeageCtx.heure}
-          onBack={handleBack}
-        />
-      ) : (
-        <UserDeck onSelect={handleSelectUser} />
-      )}
+    <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
+      <Header />
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+        {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
+        {webhookError && <div style={{ color: 'red', marginBottom: 16 }}>{webhookError}</div>}
+        {badgeageCtx ? (
+          <BadgeForm
+            utilisateur={badgeageCtx.utilisateur}
+            badgeId={badgeageCtx.badgeId}
+            heure={badgeageCtx.heure}
+            onBack={handleBack}
+          />
+        ) : (
+          <UserDeck onSelect={handleSelectUser} />
+        )}
+      </div>
     </div>
   );
 }

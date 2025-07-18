@@ -21,11 +21,35 @@ const isNfcSupported = () => {
   return typeof window !== 'undefined' && 'NDEFReader' in window;
 };
 
+const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
+  <div style={{
+    position: 'fixed',
+    top: 32,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#43a047',
+    color: '#fff',
+    padding: '18px 32px',
+    borderRadius: 12,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+    zIndex: 1000,
+    fontSize: 20,
+    fontWeight: 600,
+    letterSpacing: 1,
+    minWidth: 220,
+    textAlign: 'center',
+  }}>
+    {message}
+    <button onClick={onClose} style={{ marginLeft: 24, background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>×</button>
+  </div>
+);
+
 const UserDeck: React.FC<Props> = ({ onSelect }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [nfcMessage, setNfcMessage] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const nfcAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -53,31 +77,44 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
         const ndef = new NDEFReader();
         await ndef.scan({ signal: controller.signal });
         ndef.onreading = async (event: any) => {
-          // DEBUG: log complet de l'event
-          console.log('NFC event:', event);
           let uid = event.serialNumber || (event.target && event.target.serialNumber);
           if (!uid) {
             setNfcMessage('Tag scanné, mais aucun numéro de série (UID) trouvé.');
             return;
           }
           setNfcMessage('Tag scanné. Numéro de série : ' + uid);
+          // Chercher le badge actif avec ce uid_tag
           const { data: badges, error: badgeError } = await supabase
             .from('appbadge_badges')
-            .select('utilisateur_id')
+            .select('utilisateur_id, numero_badge')
             .eq('uid_tag', uid)
             .eq('actif', true)
             .limit(1);
           if (!badgeError && badges && badges.length > 0) {
-            const utilisateur_id = badges[0].utilisateur_id;
+            const { utilisateur_id, numero_badge } = badges[0];
+            // Chercher l'utilisateur
             const { data: usersFound, error: userError } = await supabase
               .from('appbadge_utilisateurs')
               .select('id, nom, prenom, service, email, status, avatar')
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
-              setNfcMessage(null);
-              onSelect(usersFound[0]);
+              // Insérer la ligne dans appbadge_badgeages
+              const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
+                utilisateur_id,
+                code: numero_badge,
+                type_action: 'entrée',
+              });
+              if (!insertError) {
+                setSuccess(`Badge enregistré pour ${usersFound[0].prenom} ${usersFound[0].nom}`);
+                setTimeout(() => setSuccess(null), 3000);
+                setNfcMessage(null);
+              } else {
+                setNfcMessage("Erreur lors de l'enregistrement du badge.");
+              }
             }
+          } else {
+            setNfcMessage("Aucun badge actif trouvé pour ce tag.");
           }
         };
       } catch (e) {
@@ -88,53 +125,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
     return () => {
       controller.abort();
     };
-  }, [onSelect]);
-
-  // NFC explicite (bouton)
-  const handleNfcClick = async () => {
-    if (!isNfcSupported()) {
-      setNfcMessage("NFC non supporté sur ce navigateur.");
-      return;
-    }
-    setNfcMessage('Approchez un badge NFC...');
-    const NDEFReader = (window as any).NDEFReader;
-    const controller = new AbortController();
-    nfcAbortRef.current = controller;
-    try {
-      const ndef = new NDEFReader();
-      await ndef.scan({ signal: controller.signal });
-      ndef.onreading = async (event: any) => {
-        // DEBUG: log complet de l'event
-        console.log('NFC event:', event);
-        let uid = event.serialNumber || (event.target && event.target.serialNumber);
-        if (!uid) {
-          setNfcMessage('Tag scanné, mais aucun numéro de série (UID) trouvé.');
-          return;
-        }
-        setNfcMessage('Tag scanné. Numéro de série : ' + uid);
-        const { data: badges, error: badgeError } = await supabase
-          .from('appbadge_badges')
-          .select('utilisateur_id')
-          .eq('uid_tag', uid)
-          .eq('actif', true)
-          .limit(1);
-        if (!badgeError && badges && badges.length > 0) {
-          const utilisateur_id = badges[0].utilisateur_id;
-          const { data: usersFound, error: userError } = await supabase
-            .from('appbadge_utilisateurs')
-            .select('id, nom, prenom, service, email, status, avatar')
-            .eq('id', utilisateur_id)
-            .limit(1);
-          if (!userError && usersFound && usersFound.length > 0) {
-            setNfcMessage(null);
-            onSelect(usersFound[0]);
-          }
-        }
-      };
-    } catch (e) {
-      setNfcMessage("Erreur lors de l'accès au NFC : " + (e as Error).message);
-    }
-  };
+  }, []);
 
   // Filtrage utilisateurs
   const filteredUsers = users.filter(user => {
@@ -157,42 +148,42 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
           onChange={e => setSearch(e.target.value)}
           style={{ fontSize: 18, padding: 8, borderRadius: 6, border: '1px solid #ccc', flex: 1 }}
         />
-        {isNfcSupported() && (
-          <button
-            type="button"
-            onClick={handleNfcClick}
-            style={{ padding: 8, borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <NfcLogo />
-            NFC
-          </button>
-        )}
       </div>
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, flex: 1 }}>
+      {success && <SuccessPopup message={success} onClose={() => setSuccess(null)} />}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 24, flex: 1, justifyContent: 'center',
+      }}>
         {filteredUsers.map((user) => (
           <div
             key={user.id}
             style={{
-              border: '1px solid #ccc',
-              borderRadius: 8,
-              padding: 16,
-              minWidth: 180,
+              border: '1px solid #e0e0e0',
+              borderRadius: 18,
+              padding: 20,
+              minWidth: 200,
+              maxWidth: 240,
+              height: 260,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
               cursor: 'pointer',
-              background: '#f9f9f9',
+              background: '#fff',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              transition: 'box-shadow 0.2s',
+              marginBottom: 16,
             }}
             onClick={() => onSelect(user)}
+            onMouseOver={e => (e.currentTarget.style.boxShadow = '0 8px 32px rgba(25,118,210,0.12)')}
+            onMouseOut={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)')}
           >
             {user.avatar && (
-              <img src={user.avatar} alt="avatar" style={{ width: 64, height: 64, borderRadius: '50%', marginBottom: 8 }} />
+              <img src={user.avatar} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', marginBottom: 12, objectFit: 'cover', border: '2px solid #1976d2' }} />
             )}
-            <div style={{ fontWeight: 'bold', fontSize: 18 }}>{user.prenom} {user.nom}</div>
-            <div style={{ color: '#555' }}>{user.service}</div>
-            <div style={{ fontSize: 12, color: '#888' }}>{user.email}</div>
-            <div style={{ marginTop: 8, fontSize: 13, color: '#1976d2' }}>{user.status || 'Non badgé'}</div>
+            <div style={{ fontWeight: 'bold', fontSize: 20, marginBottom: 4 }}>{user.prenom} {user.nom}</div>
+            <div style={{ color: '#555', fontSize: 15, marginBottom: 2 }}>{user.service}</div>
+            <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>{user.email}</div>
+            <div style={{ marginTop: 10, fontSize: 15, color: '#1976d2', fontWeight: 500 }}>{user.status || 'Non badgé'}</div>
           </div>
         ))}
       </div>
