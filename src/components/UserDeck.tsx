@@ -171,38 +171,38 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
       {success && <SuccessPopup message={success} onClose={() => setSuccess(null)} />}
       <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 24, flex: 1, justifyContent: 'center',
+        display: 'flex', flexWrap: 'wrap', gap: 18, flex: 1, justifyContent: 'center',
       }}>
         {filteredUsers.map((user) => (
           <div
             key={user.id}
             style={{
               border: '1px solid #e0e0e0',
-              borderRadius: 18,
-              padding: 20,
-              minWidth: 200,
-              maxWidth: 240,
-              height: 260,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              borderRadius: 14,
+              padding: 14,
+              minWidth: 140,
+              maxWidth: 170,
+              height: 170,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
               cursor: 'pointer',
               background: '#fff',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               transition: 'box-shadow 0.2s',
-              marginBottom: 16,
+              marginBottom: 12,
             }}
             onClick={() => onSelect(user)}
-            onMouseOver={e => (e.currentTarget.style.boxShadow = '0 8px 32px rgba(25,118,210,0.12)')}
-            onMouseOut={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)')}
+            onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
+            onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
             {user.avatar && (
-              <img src={user.avatar} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', marginBottom: 12, objectFit: 'cover', border: '2px solid #1976d2' }} />
+              <img src={user.avatar} alt="avatar" style={{ width: 44, height: 44, borderRadius: '50%', marginBottom: 8, objectFit: 'cover', border: '1.5px solid #1976d2' }} />
             )}
-            <div style={{ fontWeight: 'bold', fontSize: 20, marginBottom: 4 }}>{user.prenom} {user.nom}</div>
-            <div style={{ color: '#555', fontSize: 15, marginBottom: 2 }}>{user.service}</div>
-            <div style={{ fontSize: 13, color: '#888', marginBottom: 2 }}>{user.email}</div>
-            <div style={{ marginTop: 10, fontSize: 15, color: '#1976d2', fontWeight: 500 }}>{user.status || 'Non badgé'}</div>
+            <div style={{ fontWeight: 'bold', fontSize: 15, marginBottom: 2, textAlign: 'center' }}>{user.prenom} {user.nom}</div>
+            <div style={{ color: '#555', fontSize: 12, marginBottom: 1, textAlign: 'center' }}>{user.service}</div>
+            <div style={{ fontSize: 11, color: '#888', marginBottom: 1, textAlign: 'center' }}>{user.email}</div>
+            <div style={{ marginTop: 6, fontSize: 12, color: '#1976d2', fontWeight: 500, textAlign: 'center' }}>{user.status || 'Non badgé'}</div>
           </div>
         ))}
       </div>

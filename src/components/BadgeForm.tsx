@@ -15,6 +15,29 @@ const splitCode = (code: string) => {
   return arr;
 };
 
+const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
+  <div style={{
+    position: 'fixed',
+    top: 32,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#43a047',
+    color: '#fff',
+    padding: '18px 32px',
+    borderRadius: 12,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+    zIndex: 1000,
+    fontSize: 20,
+    fontWeight: 600,
+    letterSpacing: 1,
+    minWidth: 220,
+    textAlign: 'center',
+  }}>
+    {message}
+    <button onClick={onClose} style={{ marginLeft: 24, background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>×</button>
+  </div>
+);
+
 const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack }) => {
   const [code, setCode] = useState('');
   const [commentaire, setCommentaire] = useState('');
@@ -24,6 +47,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [longitude, setLongitude] = useState<number | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   React.useEffect(() => {
     if (!('geolocation' in navigator)) {
@@ -58,12 +82,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       commentaire: commentaire || null,
     });
     if (!insertError) {
-      setMessage(`Bonne journée ${utilisateur.prenom} !`);
-      setCode('');
+      setShowSuccess(true);
       setTimeout(() => {
-        setMessage(null);
+        setShowSuccess(false);
         onBack();
       }, 3000);
+      setCode('');
     } else {
       setError("Erreur : badge non enregistré. Vérifiez le code ou contactez l'administrateur.");
     }
@@ -85,6 +109,9 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       alignItems: 'center',
       fontFamily: 'Segoe UI, Arial, sans-serif',
     }}>
+      {showSuccess && (
+        <SuccessPopup message={`Bonne journée ${utilisateur.prenom} !`} onClose={() => { setShowSuccess(false); onBack(); }} />
+      )}
       <button type="button" onClick={onBack} style={{ marginBottom: 16, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer' }}>
         ← Retour
       </button>
@@ -159,7 +186,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       {geoError && (
         <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>
       )}
-      {message && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'green' }}>{message}</div>}
+      {message && !showSuccess && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'green' }}>{message}</div>}
       {error && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'red' }}>{error}</div>}
     </form>
   );
