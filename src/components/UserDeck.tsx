@@ -159,14 +159,38 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <input
-          type="text"
-          placeholder="Rechercher par nom ou prénom..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ fontSize: 18, padding: 8, borderRadius: 6, border: '1px solid #ccc', flex: 1 }}
-        />
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 700 }}>
+          <input
+            type="text"
+            placeholder="Rechercher par nom ou prénom..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              fontSize: 18,
+              padding: '8px 38px 8px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              width: '100%',
+              boxSizing: 'border-box',
+              background: '#fff',
+            }}
+          />
+          <span style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#aaa',
+            pointerEvents: 'none',
+            fontSize: 20,
+          }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="9" cy="9" r="7" stroke="#aaa" strokeWidth="2" />
+              <line x1="14.4142" y1="14" x2="18" y2="17.5858" stroke="#aaa" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </span>
+        </div>
       </div>
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
       {success && <SuccessPopup message={success} onClose={() => setSuccess(null)} />}
@@ -192,6 +216,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
               padding: 10,
               minWidth: 0,
               maxWidth: 180,
+              height: 120,
               maxHeight: 120,
               boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
               cursor: 'pointer',
@@ -202,6 +227,7 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
               transition: 'box-shadow 0.2s',
               marginBottom: 8,
               overflow: 'hidden',
+              justifyContent: 'center',
             }}
             onClick={() => onSelect(user)}
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
@@ -210,10 +236,10 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
             {user.avatar && (
               <img src={user.avatar} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', marginBottom: 6, objectFit: 'cover', border: '1.2px solid #1976d2' }} />
             )}
-            <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center' }}>{user.prenom} {user.nom}</div>
-            <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center' }}>{user.service}</div>
-            <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center' }}>{user.email}</div>
-            <div style={{ marginTop: 4, fontSize: 10, color: '#1976d2', fontWeight: 500, textAlign: 'center' }}>{user.status || 'Non badgé'}</div>
+            <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
+            <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
+            <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.email}</div>
+            <div style={{ marginTop: 4, fontSize: 10, color: '#1976d2', fontWeight: 500, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.status || 'Non badgé'}</div>
           </div>
         ))}
       </div>

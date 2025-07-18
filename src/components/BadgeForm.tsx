@@ -86,7 +86,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       setTimeout(() => {
         setShowSuccess(false);
         onBack();
-      }, 3000);
+      }, 0); // Fermer immédiatement
       setCode('');
     } else {
       setError("Erreur : badge non enregistré. Vérifiez le code ou contactez l'administrateur.");
