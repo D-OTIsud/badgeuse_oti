@@ -159,11 +159,6 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       {geoError && (
         <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>
       )}
-      {latitude !== null && longitude !== null && !geoError && (
-        <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
-          Position GPS : {latitude.toFixed(5)}, {longitude.toFixed(5)}
-        </div>
-      )}
       {message && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'green' }}>{message}</div>}
       {error && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'red' }}>{error}</div>}
     </form>

@@ -41,6 +41,22 @@ function App() {
       return;
     }
     const badgeId = badges[0].id;
+    // Appel webhook
+    try {
+      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          utilisateur_id: user.id,
+          badge_id: badgeId,
+          user_email: user.email,
+        }),
+      });
+    } catch (e) {
+      setWebhookError("Erreur lors de l'appel au webhook. Veuillez réessayer.");
+      setLoading(false);
+      return;
+    }
     setBadgeageCtx({ utilisateur: user, badgeId, heure: new Date() });
     setLoading(false);
   };
