@@ -173,13 +173,13 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 18,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: 14,
           flex: 1,
           justifyContent: 'center',
           alignItems: 'start',
           width: '100%',
-          maxWidth: 900,
+          maxWidth: 700,
           margin: '0 auto',
         }}
       >
@@ -188,11 +188,11 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
             key={user.id}
             style={{
               border: '1px solid #e0e0e0',
-              borderRadius: 14,
-              padding: 14,
+              borderRadius: 12,
+              padding: 10,
               minWidth: 0,
-              maxWidth: 220,
-              height: 180,
+              maxWidth: 180,
+              maxHeight: 120,
               boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
               cursor: 'pointer',
               background: '#fff',
@@ -200,19 +200,20 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
               flexDirection: 'column',
               alignItems: 'center',
               transition: 'box-shadow 0.2s',
-              marginBottom: 12,
+              marginBottom: 8,
+              overflow: 'hidden',
             }}
             onClick={() => onSelect(user)}
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
             {user.avatar && (
-              <img src={user.avatar} alt="avatar" style={{ width: 44, height: 44, borderRadius: '50%', marginBottom: 8, objectFit: 'cover', border: '1.5px solid #1976d2' }} />
+              <img src={user.avatar} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', marginBottom: 6, objectFit: 'cover', border: '1.2px solid #1976d2' }} />
             )}
-            <div style={{ fontWeight: 'bold', fontSize: 15, marginBottom: 2, textAlign: 'center' }}>{user.prenom} {user.nom}</div>
-            <div style={{ color: '#555', fontSize: 12, marginBottom: 1, textAlign: 'center' }}>{user.service}</div>
-            <div style={{ fontSize: 11, color: '#888', marginBottom: 1, textAlign: 'center' }}>{user.email}</div>
-            <div style={{ marginTop: 6, fontSize: 12, color: '#1976d2', fontWeight: 500, textAlign: 'center' }}>{user.status || 'Non badgé'}</div>
+            <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center' }}>{user.prenom} {user.nom}</div>
+            <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center' }}>{user.service}</div>
+            <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center' }}>{user.email}</div>
+            <div style={{ marginTop: 4, fontSize: 10, color: '#1976d2', fontWeight: 500, textAlign: 'center' }}>{user.status || 'Non badgé'}</div>
           </div>
         ))}
       </div>
