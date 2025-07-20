@@ -325,10 +325,11 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 border: '1.5px solid #1976d2', 
                 borderRadius: 8, 
                 boxShadow: '0 4px 16px rgba(25,118,210,0.08)', 
-                zIndex: 10, 
+                zIndex: 1000, 
                 maxHeight: 220, 
                 overflowY: 'auto',
-                WebkitOverflowScrolling: 'touch'
+                WebkitOverflowScrolling: 'touch',
+                isolation: 'isolate'
               }}>
                 {filteredUsers.map(u => (
                   <div key={u.id} onClick={() => { setSelectedUser(u.id); setUserSearch(''); setShowUserDropdown(false); }} style={{ 
@@ -341,7 +342,9 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     background: selectedUser === u.id ? '#e3f2fd' : '#fff',
                     minWidth: 0,
                     overflow: 'hidden',
-                    WebkitTapHighlightColor: 'transparent'
+                    WebkitTapHighlightColor: 'transparent',
+                    position: 'relative',
+                    zIndex: 1001
                   }}>
                     {u.avatar ? (
                       <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa', flexShrink: 0 }} />
