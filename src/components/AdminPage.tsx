@@ -1,6 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
+// Composant popup de succès
+const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
+  <div style={{
+    position: 'fixed',
+    top: 32,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#43a047',
+    color: '#fff',
+    padding: '18px 32px',
+    borderRadius: 12,
+    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+    zIndex: 1000,
+    fontSize: 20,
+    fontWeight: 600,
+    letterSpacing: 1,
+    minWidth: 220,
+    textAlign: 'center',
+  }}>
+    {message}
+    <button onClick={onClose} style={{ marginLeft: 24, background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>×</button>
+  </div>
+);
+
 const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Liste des utilisateurs actifs
   const [users, setUsers] = useState<any[]>([]);
@@ -22,6 +46,10 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Section de l'administration actuelle
   const [adminSection, setAdminSection] = useState<string | null>(null);
 
+  // Popup de succès
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
   // Recherche utilisateur pour le menu déroulant
   const [userSearch, setUserSearch] = useState('');
   const filteredUsers = users.filter(u => {
@@ -31,6 +59,20 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       u.prenom?.toLowerCase().includes(q)
     );
   });
+
+  // Fonction pour afficher le popup de succès et revenir à la page d'administration
+  const showSuccessAndReturn = (message: string) => {
+    setSuccessMessage(message);
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
+      setAdminSection(null); // Revenir à la page d'administration
+      setMessage(''); // Réinitialiser les messages
+      setNfcTag(''); // Réinitialiser le tag NFC
+      setSelectedUser(''); // Réinitialiser la sélection d'utilisateur
+      setLieu(''); // Réinitialiser le lieu
+    }, 2000);
+  };
 
   // Récupérer la liste des utilisateurs actifs au montage
   useEffect(() => {
@@ -140,7 +182,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           uid_tag: uid
         });
         if (!error) {
-          setMessage('Badge associé avec succès !');
+          showSuccessAndReturn('Badge associé avec succès !');
         } else {
           setMessage("Erreur lors de l'association du badge.");
         }
@@ -272,6 +314,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   if (adminSection === 'associer-tag') {
     return (
       <div style={{ background: '#fff', borderRadius: 20, maxWidth: 600, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
+        {showSuccess && <SuccessPopup message={successMessage} onClose={() => setShowSuccess(false)} />}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
@@ -372,6 +415,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   if (adminSection === 'ajouter-lieu') {
     return (
       <div style={{ background: '#fff', borderRadius: 20, maxWidth: 600, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
+        {showSuccess && <SuccessPopup message={successMessage} onClose={() => setShowSuccess(false)} />}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
@@ -379,7 +423,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Ajouter un nouveau lieu</h2>
         <div style={{ background: '#fffbe6', border: '1.5px solid #ffe58f', color: '#ad8b00', borderRadius: 10, padding: 14, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10, fontSize: 15 }}>
           <span style={{ fontSize: 22 }}>⚠️</span>
-          <span>Assurez-vous d’être connecté au réseau de l’OTI avant d’ajouter un nouveau lieu.</span>
+          <span>Assurez-vous d'être connecté au réseau de l'OTI avant d'ajouter un nouveau lieu.</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Nom du lieu</label>
@@ -390,7 +434,26 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <input value={latitude} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Longitude</label>
           <input value={longitude} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
-          <button disabled={!lieu || !ip} style={{ marginTop: 18, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !lieu || !ip ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}>Ajouter le lieu</button>
+          <button 
+            onClick={async () => {
+              if (!lieu || !ip) return;
+              const { error } = await supabase.from('appbadge_lieux').insert({
+                nom: lieu,
+                ip: ip,
+                latitude: latitude,
+                longitude: longitude
+              });
+              if (!error) {
+                showSuccessAndReturn('Lieu ajouté avec succès !');
+              } else {
+                setMessage("Erreur lors de l'ajout du lieu.");
+              }
+            }}
+            disabled={!lieu || !ip} 
+            style={{ marginTop: 18, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !lieu || !ip ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}
+          >
+            Ajouter le lieu
+          </button>
         </div>
         {message && <div style={{ color: '#1976d2', marginTop: 18, fontWeight: 600 }}>{message}</div>}
       </div>
@@ -399,6 +462,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div style={{ background: '#fff', borderRadius: 16, maxWidth: 600, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+      {showSuccess && <SuccessPopup message={successMessage} onClose={() => setShowSuccess(false)} />}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
         <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
