@@ -57,6 +57,28 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [gpsConsent, setGpsConsent] = useState(true);
   const [typeAction, setTypeAction] = useState<'entrée' | 'sortie' | 'pause' | 'retour'>('entrée');
 
+  // Appel du webhook à l'ouverture du formulaire (toujours, sans condition)
+  React.useEffect(() => {
+    (async () => {
+      try {
+        console.log('[WEBHOOK] Appel webhook n8n (ouverture formulaire)...');
+        const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            utilisateur_id: utilisateur.id,
+            badge_id: badgeId,
+            user_email: utilisateur.email,
+          }),
+        });
+        console.log('[WEBHOOK] Réponse webhook', res.status, res.statusText);
+      } catch (e: any) {
+        console.error('Erreur webhook (ouverture formulaire):', e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   React.useEffect(() => {
     // Si IP autorisée, utiliser les coordonnées de la base de données
     if (isIPAuthorized && locationLatitude && locationLongitude) {
@@ -118,35 +140,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         // Continuer sans coordonnées GPS
       }
     }
-    // Correction de la logique d'appel du webhook
-    const shouldCallWebhook = badgeMethod === 'manual' || (badgeMethod === 'nfc' && !isIPAuthorized);
-    if (shouldCallWebhook) {
-      try {
-        console.log('[WEBHOOK] Appel webhook n8n...');
-        const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            utilisateur_id: utilisateur.id,
-            badge_id: badgeId,
-            user_email: utilisateur.email,
-          }),
-        });
-        console.log('[WEBHOOK] Réponse webhook', res.status, res.statusText);
-        if (!res.ok) {
-          const text = await res.text();
-          setError(`Erreur webhook (HTTP ${res.status}): ${res.statusText} ${text}`);
-          setLoading(false);
-          return;
-        }
-      } catch (e: any) {
-        console.error('Erreur webhook:', e);
-        setError('Erreur lors de l’appel au webhook : ' + (e?.message || e));
-        setLoading(false);
-        return;
-      }
-    }
-    
+    // SUPPRIMER l'appel du webhook ici
+    // Ajout dans Supabase uniquement
     const insertData: any = {
       utilisateur_id: utilisateur.id,
       code,
@@ -193,6 +188,51 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       <button type="button" onClick={onBack} style={{ marginBottom: 16, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer' }}>
         ← Retour
       </button>
+      {/* ALERTE reseau inconnu en bannière tout en haut */}
+      {!isIPAuthorized && (
+        <div style={{
+          width: '100%',
+          background: '#fff3cd',
+          border: '1.5px solid #ffeaa7',
+          borderRadius: 8,
+          color: '#856404',
+          fontWeight: 700,
+          fontSize: 16,
+          padding: '12px 16px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span style={{ fontSize: 22 }}>⚠️</span> Vous n'êtes pas connecté au réseau WiFi d'un kit
+        </div>
+      )}
+      {/* COMMENTAIRE obligatoire juste après l'alerte */}
+      {!isIPAuthorized && (
+        <div style={{ marginBottom: 22, width: '100%' }}>
+          <div style={{ marginBottom: 8, fontSize: 15, color: '#666', fontWeight: 500 }}>
+            Veuillez expliquer pourquoi vous accédez depuis cet emplacement :
+          </div>
+          <textarea
+            value={commentaire}
+            onChange={(e) => setCommentaire(e.target.value)}
+            placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
+            style={{
+              width: '100%',
+              minHeight: 80,
+              padding: 12,
+              border: '1.5px solid #d32f2f',
+              borderRadius: 8,
+              fontSize: 14,
+              fontFamily: 'inherit',
+              resize: 'vertical',
+              background: '#fff8f8',
+            }}
+            required={!isIPAuthorized}
+          />
+        </div>
+      )}
+      {/* AVATAR, NOM, EMAIL */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, width: '100%' }}>
         {utilisateur.avatar ? (
           <img src={utilisateur.avatar} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid #1976d2', background: '#f4f6fa' }} />
@@ -206,34 +246,10 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           <div style={{ color: '#888', fontSize: 15 }}>{utilisateur.email}</div>
         </div>
       </div>
+      {/* CODE à 4 chiffres */}
       <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
         Saisissez le code à 4 chiffres :
       </div>
-      {/* Sélecteur du type d'action si IP non autorisée */}
-      {!isIPAuthorized && (
-        <div style={{ marginBottom: 18, width: '100%' }}>
-          <label htmlFor="type-action-select" style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, display: 'block' }}>Type d'action :</label>
-          <select
-            id="type-action-select"
-            value={typeAction}
-            onChange={e => setTypeAction(e.target.value as any)}
-            style={{
-              width: '100%',
-              padding: 8,
-              borderRadius: 6,
-              border: '1.5px solid #bbb',
-              fontSize: 16,
-              marginBottom: 6
-            }}
-            required
-          >
-            <option value="entrée">Entrée</option>
-            <option value="sortie">Sortie</option>
-            <option value="pause">Pause</option>
-            <option value="retour">Retour</option>
-          </select>
-        </div>
-      )}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {codeArr.map((val, idx) => (
           <input
@@ -270,40 +286,37 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           />
         ))}
       </div>
-      {/* Affichage du commentaire obligatoire si IP non autorisée */}
+      {/* TYPE D'ACTION */}
       {!isIPAuthorized && (
-        <div style={{ marginBottom: 16, width: '100%' }}>
-          <div style={{ marginBottom: 8, fontSize: 16, fontWeight: 600, color: '#d32f2f' }}>
-            ⚠️ Vous n'êtes pas connecté au réseau WiFi d'un kit
-          </div>
-          <div style={{ marginBottom: 8, fontSize: 14, color: '#666' }}>
-            Veuillez mentionner pourquoi :
-          </div>
-          <textarea
-            value={commentaire}
-            onChange={(e) => setCommentaire(e.target.value)}
-            placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
+        <div style={{ marginBottom: 18, width: '100%' }}>
+          <label htmlFor="type-action-select" style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, display: 'block' }}>Type d'action :</label>
+          <select
+            id="type-action-select"
+            value={typeAction}
+            onChange={e => setTypeAction(e.target.value as any)}
             style={{
               width: '100%',
-              minHeight: 80,
-              padding: 12,
-              border: '1.5px solid #d32f2f',
-              borderRadius: 8,
-              fontSize: 14,
-              fontFamily: 'inherit',
-              resize: 'vertical',
+              padding: 8,
+              borderRadius: 6,
+              border: '1.5px solid #bbb',
+              fontSize: 16,
+              marginBottom: 6
             }}
-            required={!isIPAuthorized}
-          />
+            required
+          >
+            <option value="entrée">Entrée</option>
+            <option value="sortie">Sortie</option>
+            <option value="pause">Pause</option>
+            <option value="retour">Retour</option>
+          </select>
         </div>
       )}
-      
-      {/* Avertissement GPS pour IP non autorisée */}
+      {/* GÉOLOCALISATION bloc + case à cocher */}
       {!isIPAuthorized && (
         <div style={{ marginBottom: 16, width: '100%' }}>
           <div style={{ 
             padding: 12, 
-            backgroundColor: '#fff3cd', 
+            backgroundColor: '#fffbe6', 
             border: '1px solid #ffeaa7', 
             borderRadius: 8,
             marginBottom: 8
@@ -327,7 +340,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           </label>
         </div>
       )}
-      
+      {/* BOUTON BADGER */}
       <button type="submit" disabled={loading || code.length !== 4 || !!geoError || (!isIPAuthorized && !commentaire.trim())} style={{
         fontSize: 20,
         background: '#1976d2',
