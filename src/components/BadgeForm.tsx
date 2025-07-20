@@ -118,21 +118,19 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       }
     }
     
-    // Appel webhook si IP non autorisée
-    if (!isIPAuthorized) {
-      try {
-        await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            utilisateur_id: utilisateur.id,
-            badge_id: badgeId,
-            user_email: utilisateur.email,
-          }),
-        });
-      } catch (e) {
-        console.error('Erreur webhook:', e);
-      }
+    // Appel webhook dans tous les cas (manuel)
+    try {
+      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          utilisateur_id: utilisateur.id,
+          badge_id: badgeId,
+          user_email: utilisateur.email,
+        }),
+      });
+    } catch (e) {
+      console.error('Erreur webhook:', e);
     }
     
     const insertData: any = {

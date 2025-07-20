@@ -15,6 +15,7 @@ const NfcLogo = () => (
 type Props = {
   onSelect: (user: Utilisateur) => void;
   isIPAuthorized?: boolean;
+  locationName?: string;
 };
 
 const isNfcSupported = () => {
@@ -45,7 +46,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true }) => {
+const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationName }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -164,13 +165,17 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true }) => {
                         // Logique selon l'autorisation IP
           if (isIPAuthorized) {
             // IP autorisée : badgeage direct sans webhook
-            const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
+            const insertData: any = {
               utilisateur_id,
               code: numero_badge,
               type_action: 'entrée',
               latitude,
               longitude,
-            });
+            };
+            if (locationName) {
+              insertData.lieux = locationName;
+            }
+            const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
             if (!insertError) {
               setSuccess(`Badge enregistré pour ${usersFound[0].prenom} ${usersFound[0].nom}`);
               setTimeout(() => setSuccess(null), 3000);

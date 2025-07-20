@@ -165,7 +165,7 @@ function App() {
             locationName={ipCheck?.locationName}
           />
         ) : (
-          <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} />
+          <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} locationName={ipCheck?.locationName} />
         )}
       </div>
     </div>
