@@ -62,7 +62,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
       setSuccess(null); // Réinitialiser les messages de succès
       const { data, error } = await supabase
         .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, service, email, status, avatar')
+        .select('id, nom, prenom, service, email, status, avatar, lieux')
         .eq('actif', true)
         .order('nom', { ascending: true });
       if (!error && data) setUsers(data);
@@ -320,9 +320,14 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 color: user.status === 'Entré' ? '#4caf50' : 
                        user.status === 'En pause' ? '#ff9800' : '#cccccc'
               }}>
-                {user.status || 'Non badgé'}
+                {user.status === 'Entré' ? 'Actif' : (user.status || 'Non badgé')}
               </span>
             </div>
+            {user.lieux && (
+              <div style={{ fontSize: 9, color: '#888', marginTop: 2, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                {user.lieux}
+              </div>
+            )}
           </div>
         ))}
       </div>
