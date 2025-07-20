@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { Utilisateur } from '../App';
+import { checkIPAuthorization } from '../services/ipService';
 
 // Logo NFC SVG
 const NfcLogo = () => (
@@ -83,6 +84,20 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
             return;
           }
           setNfcMessage('Tag scanné. Numéro de série : ' + uid);
+          
+          // Vérifier l'autorisation IP avant de traiter le badge
+          try {
+            const ipCheck = await checkIPAuthorization();
+            if (!ipCheck.isAuthorized) {
+              setNfcMessage('Accès non autorisé depuis cette localisation. Veuillez contacter l\'administrateur.');
+              return;
+            }
+          } catch (error) {
+            console.error('Erreur lors de la vérification IP:', error);
+            setNfcMessage('Erreur lors de la vérification de l\'accès.');
+            return;
+          }
+          
           // Chercher le badge actif avec ce uid_tag
           const { data: badges, error: badgeError } = await supabase
             .from('appbadge_badges')

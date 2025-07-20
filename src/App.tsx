@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import UserDeck from './components/UserDeck';
 import BadgeForm from './components/BadgeForm';
+import UnauthorizedIPForm from './components/UnauthorizedIPForm';
 import Header from './components/Header';
 import { supabase } from './supabaseClient';
+import { checkIPAuthorization, getWelcomeMessage } from './services/ipService';
 
 export type Utilisateur = {
   id: string;
@@ -48,6 +50,12 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [webhookError, setWebhookError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [ipCheck, setIpCheck] = useState<{
+    isAuthorized: boolean;
+    locationName?: string;
+    userIP: string;
+  } | null>(null);
+  const [ipCheckLoading, setIpCheckLoading] = useState(true);
 
   const handleSelectUser = async (user: Utilisateur) => {
     setLoading(true);
@@ -86,6 +94,27 @@ function App() {
   };
 
   // Nouvelle version : onBack peut recevoir un message de succès
+  // Vérification de l'IP au chargement de l'app
+  useEffect(() => {
+    const checkIP = async () => {
+      try {
+        const result = await checkIPAuthorization();
+        setIpCheck(result);
+      } catch (error) {
+        console.error('Erreur lors de la vérification IP:', error);
+        // En cas d'erreur, on autorise l'accès par défaut
+        setIpCheck({
+          isAuthorized: true,
+          userIP: '127.0.0.1'
+        });
+      } finally {
+        setIpCheckLoading(false);
+      }
+    };
+    
+    checkIP();
+  }, []);
+
   const handleBack = (successMsg?: string) => {
     setBadgeageCtx(null);
     setWebhookError(null);
@@ -95,9 +124,37 @@ function App() {
     }
   };
 
+  // Affichage du chargement IP
+  if (ipCheckLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#fcf9f3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#1976d2', fontSize: 18 }}>
+          Vérification de l'accès...
+        </div>
+      </div>
+    );
+  }
+
+  // Affichage du formulaire pour IP non autorisée
+  if (ipCheck && !ipCheck.isAuthorized) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
+        <Header welcomeMessage="Accès restreint" />
+        <UnauthorizedIPForm
+          onBack={() => {
+            // Recharger la page pour réessayer
+            window.location.reload();
+          }}
+          userIP={ipCheck.userIP}
+          locationName={ipCheck.locationName}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
-      <Header />
+      <Header welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName) : undefined} />
       {successMessage && <SuccessPopup message={successMessage} onClose={() => setSuccessMessage(null)} />}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
         {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}

@@ -2,7 +2,11 @@ import React from 'react';
 
 const LOGO_URL = 'https://supabertel.otisud.re/storage/v1/object/public/logo//logo200X200.png';
 
-const Header: React.FC = () => (
+interface HeaderProps {
+  welcomeMessage?: string;
+}
+
+const Header: React.FC<HeaderProps> = ({ welcomeMessage }) => (
   <header
     style={{
       width: '100%',
@@ -33,19 +37,35 @@ const Header: React.FC = () => (
         border: '2px solid #fff',
       }}
     />
-    <h1
-      style={{
-        color: '#fff',
-        fontWeight: 700,
-        fontSize: 'clamp(20px, 5vw, 36px)',
-        letterSpacing: 1,
-        margin: 0,
-        textAlign: 'center',
-        fontFamily: 'Segoe UI, Arial, sans-serif',
-      }}
-    >
-      OTI du SUD
-    </h1>
+    <div style={{ textAlign: 'center' }}>
+      <h1
+        style={{
+          color: '#fff',
+          fontWeight: 700,
+          fontSize: 'clamp(20px, 5vw, 36px)',
+          letterSpacing: 1,
+          margin: 0,
+          textAlign: 'center',
+          fontFamily: 'Segoe UI, Arial, sans-serif',
+        }}
+      >
+        OTI du SUD
+      </h1>
+      {welcomeMessage && (
+        <div
+          style={{
+            color: '#fff',
+            fontSize: 'clamp(14px, 3vw, 18px)',
+            fontWeight: 500,
+            marginTop: 8,
+            opacity: 0.9,
+            fontFamily: 'Segoe UI, Arial, sans-serif',
+          }}
+        >
+          {welcomeMessage}
+        </div>
+      )}
+    </div>
   </header>
 );
 
