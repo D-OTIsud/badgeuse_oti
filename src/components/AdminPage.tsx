@@ -22,6 +22,16 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Section de l'administration actuelle
   const [adminSection, setAdminSection] = useState<string | null>(null);
 
+  // Recherche utilisateur pour le menu déroulant
+  const [userSearch, setUserSearch] = useState('');
+  const filteredUsers = users.filter(u => {
+    const q = userSearch.trim().toLowerCase();
+    return (
+      u.nom?.toLowerCase().includes(q) ||
+      u.prenom?.toLowerCase().includes(q)
+    );
+  });
+
   // Récupérer la liste des utilisateurs actifs au montage
   useEffect(() => {
     const fetchUsers = async () => {
@@ -217,7 +227,23 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <button onClick={onClose} style={{ float: 'right', background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
         <h2 style={{ marginTop: 0 }}>Authentification Admin</h2>
         <p>Veuillez scanner votre badge NFC admin pour accéder à la gestion.</p>
-        <button onClick={handleAdminNfcScan} disabled={isScanning} style={{ marginBottom: 12 }}>
+        <button onClick={handleAdminNfcScan} disabled={isScanning} style={{
+          marginBottom: 12,
+          fontSize: 18,
+          background: '#1976d2',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '14px 0',
+          fontWeight: 700,
+          cursor: isScanning ? 'not-allowed' : 'pointer',
+          boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
+          transition: 'background 0.2s',
+          width: '100%',
+        }}
+          onMouseOver={e => (e.currentTarget.style.background = '#125ea2')}
+          onMouseOut={e => (e.currentTarget.style.background = '#1976d2')}
+        >
           {isScanning ? 'En attente du scan...' : 'Scanner mon badge'}
         </button>
         {nfcAuthError && <div style={{ color: 'red', marginTop: 12 }}>{nfcAuthError}</div>}
@@ -253,6 +279,22 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Associer un tag NFC à un utilisateur</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Utilisateur</label>
+          {/* Champ de recherche utilisateur */}
+          <input
+            type="text"
+            placeholder="Rechercher par nom ou prénom..."
+            value={userSearch}
+            onChange={e => setUserSearch(e.target.value)}
+            style={{
+              fontSize: 16,
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1.5px solid #bbb',
+              width: '100%',
+              background: '#f8f8f8',
+              marginBottom: 4,
+            }}
+          />
           {/* Custom select avec avatar */}
           <div style={{ position: 'relative', width: '100%' }}>
             <button type="button" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', justifyContent: 'flex-start' }} onClick={() => setShowUserDropdown(v => !v)}>
@@ -271,8 +313,8 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               <span style={{ marginLeft: 'auto', color: '#bbb', fontSize: 18 }}>▼</span>
             </button>
             {showUserDropdown && (
-              <div style={{ position: 'absolute', top: 48, left: 0, width: '100%', background: '#fff', border: '1.5px solid #1976d2', borderRadius: 8, boxShadow: '0 4px 16px rgba(25,118,210,0.08)', zIndex: 10, maxHeight: 220, overflowY: 'auto' }}>
-                {users.map(u => (
+              <div id="admin-user-dropdown" style={{ position: 'absolute', top: 48, left: 0, width: '100%', background: '#fff', border: '1.5px solid #1976d2', borderRadius: 8, boxShadow: '0 4px 16px rgba(25,118,210,0.08)', zIndex: 10, maxHeight: 220, overflowY: 'auto' }}>
+                {filteredUsers.map(u => (
                   <div key={u.id} onClick={() => { setSelectedUser(u.id); setShowUserDropdown(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, cursor: 'pointer', borderBottom: '1px solid #f0f0f0', background: selectedUser === u.id ? '#e3f2fd' : '#fff' }}>
                     {u.avatar ? (
                       <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa' }} />
