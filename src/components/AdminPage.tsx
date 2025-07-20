@@ -167,6 +167,37 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   };
 
+  // Réinitialiser le tag NFC à chaque ouverture du formulaire d'association
+  useEffect(() => {
+    if (adminSection === 'associer-tag') {
+      setNfcTag('');
+    }
+  }, [adminSection]);
+
+  // Récupération auto IP + GPS à l'ouverture du formulaire d'ajout de lieu
+  useEffect(() => {
+    if (adminSection === 'ajouter-lieu') {
+      // IP via ipify
+      fetch('https://api.ipify.org?format=json')
+        .then(res => res.json())
+        .then(data => setIp(data.ip))
+        .catch(() => setIp(''));
+      // GPS
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setLatitude(pos.coords.latitude.toString());
+            setLongitude(pos.coords.longitude.toString());
+          },
+          () => {
+            setLatitude('');
+            setLongitude('');
+          }
+        );
+      }
+    }
+  }, [adminSection]);
+
   if (!adminUser) {
     return (
       <div style={{ background: '#fff', borderRadius: 16, maxWidth: 400, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
@@ -223,19 +254,28 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Formulaire d'ajout de lieu (inchangé)
   if (adminSection === 'ajouter-lieu') {
     return (
-      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 600, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+      <div style={{ background: '#fff', borderRadius: 20, maxWidth: 600, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
         </div>
-        <h2 style={{ marginTop: 0 }}>Ajouter un nouveau lieu</h2>
-        <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Nom du lieu" style={{ width: '100%', marginBottom: 8 }} />
-        <button onClick={handleGetIpGps} style={{ marginBottom: 8 }}>Récupérer IP et GPS</button>
-        <input value={ip} onChange={e => setIp(e.target.value)} placeholder="IP" style={{ width: '100%', marginBottom: 8 }} />
-        <input value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="Latitude" style={{ width: '100%', marginBottom: 8 }} />
-        <input value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="Longitude" style={{ width: '100%', marginBottom: 8 }} />
-        <button disabled={!lieu || !ip} style={{ marginBottom: 8 }}>Ajouter le lieu</button>
-        {message && <div style={{ color: '#1976d2', marginTop: 12 }}>{message}</div>}
+        <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Ajouter un nouveau lieu</h2>
+        <div style={{ background: '#fffbe6', border: '1.5px solid #ffe58f', color: '#ad8b00', borderRadius: 10, padding: 14, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10, fontSize: 15 }}>
+          <span style={{ fontSize: 22 }}>⚠️</span>
+          <span>Assurez-vous d’être connecté au réseau de l’OTI avant d’ajouter un nouveau lieu.</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Nom du lieu</label>
+          <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Nom du lieu" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Adresse IP</label>
+          <input value={ip} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Latitude</label>
+          <input value={latitude} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Longitude</label>
+          <input value={longitude} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <button disabled={!lieu || !ip} style={{ marginTop: 18, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !lieu || !ip ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}>Ajouter le lieu</button>
+        </div>
+        {message && <div style={{ color: '#1976d2', marginTop: 18, fontWeight: 600 }}>{message}</div>}
       </div>
     );
   }
