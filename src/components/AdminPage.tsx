@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
 const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -19,55 +19,123 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [adminUser, setAdminUser] = useState<any>(null);
   const [nfcAuthError, setNfcAuthError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const nfcAbortRef = useRef<AbortController | null>(null);
+  const [isAssociating, setIsAssociating] = useState(false);
 
   // NFC scan pour authentification admin
   const handleAdminNfcScan = async () => {
     setIsScanning(true);
     setNfcAuthError('');
     setMessage('');
-    // MOCK NFC : remplace par la vraie API NFC
-    setTimeout(async () => {
-      // Simule un UID NFC
-      const uid = prompt('Simulez le scan d\'un badge NFC (entrez un UID de badge admin) :', 'ADMIN_UID_123');
-      if (!uid) {
-        setIsScanning(false);
-        return;
-      }
-      setNfcTag(uid);
-      // Recherche du badge dans la table appbadge_badges
-      const { data: badges } = await supabase
-        .from('appbadge_badges')
-        .select('utilisateur_id')
-        .eq('uid_tag', uid)
-        .eq('actif', true)
-        .limit(1);
-      if (!badges || badges.length === 0) {
-        setNfcAuthError('Badge inconnu ou inactif.');
-        setIsScanning(false);
-        return;
-      }
-      const utilisateurId = badges[0].utilisateur_id;
-      // Recherche de l'utilisateur
-      const { data: usersFound } = await supabase
-        .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, status')
-        .eq('id', utilisateurId)
-        .limit(1);
-      if (!usersFound || usersFound.length === 0) {
-        setNfcAuthError('Utilisateur non trouvé.');
-        setIsScanning(false);
-        return;
-      }
-      const user = usersFound[0];
-      if (user.status !== 'Admin') {
-        setNfcAuthError('Accès refusé : vous n\'êtes pas administrateur.');
-        setIsScanning(false);
-        return;
-      }
-      setAdminUser(user);
+    setNfcTag('');
+    if (!('NDEFReader' in window)) {
+      setNfcAuthError('NFC non supporté sur ce navigateur/appareil.');
       setIsScanning(false);
-    }, 500);
+      return;
+    }
+    try {
+      const NDEFReader = (window as any).NDEFReader;
+      const controller = new AbortController();
+      nfcAbortRef.current = controller;
+      const ndef = new NDEFReader();
+      await ndef.scan({ signal: controller.signal });
+      ndef.onreading = async (event: any) => {
+        let uid = event.serialNumber || (event.target && event.target.serialNumber);
+        if (!uid) {
+          setNfcAuthError('Tag scanné, mais aucun numéro de série (UID) trouvé.');
+          setIsScanning(false);
+          return;
+        }
+        setNfcTag(uid);
+        // Recherche du badge dans la table appbadge_badges
+        const { data: badges } = await supabase
+          .from('appbadge_badges')
+          .select('utilisateur_id')
+          .eq('uid_tag', uid)
+          .eq('actif', true)
+          .limit(1);
+        if (!badges || badges.length === 0) {
+          setNfcAuthError('Badge inconnu ou inactif.');
+          setIsScanning(false);
+          return;
+        }
+        const utilisateurId = badges[0].utilisateur_id;
+        // Recherche de l'utilisateur
+        const { data: usersFound } = await supabase
+          .from('appbadge_utilisateurs')
+          .select('id, nom, prenom, status')
+          .eq('id', utilisateurId)
+          .limit(1);
+        if (!usersFound || usersFound.length === 0) {
+          setNfcAuthError('Utilisateur non trouvé.');
+          setIsScanning(false);
+          return;
+        }
+        const user = usersFound[0];
+        if (user.status !== 'Admin') {
+          setNfcAuthError('Accès refusé : vous n\'êtes pas administrateur.');
+          setIsScanning(false);
+          return;
+        }
+        setAdminUser(user);
+        setIsScanning(false);
+        if (nfcAbortRef.current) nfcAbortRef.current.abort();
+      };
+    } catch (e) {
+      setNfcAuthError('Erreur lors du scan NFC.');
+      setIsScanning(false);
+    }
   };
+
+  // Association NFC à un utilisateur
+  const handleAssociateNfc = async () => {
+    setIsAssociating(true);
+    setMessage('');
+    setNfcTag('');
+    if (!('NDEFReader' in window)) {
+      setMessage('NFC non supporté sur ce navigateur/appareil.');
+      setIsAssociating(false);
+      return;
+    }
+    try {
+      const NDEFReader = (window as any).NDEFReader;
+      const controller = new AbortController();
+      nfcAbortRef.current = controller;
+      const ndef = new NDEFReader();
+      await ndef.scan({ signal: controller.signal });
+      ndef.onreading = async (event: any) => {
+        let uid = event.serialNumber || (event.target && event.target.serialNumber);
+        if (!uid) {
+          setMessage('Tag scanné, mais aucun numéro de série (UID) trouvé.');
+          setIsAssociating(false);
+          return;
+        }
+        setNfcTag(uid);
+        // Insertion dans appbadge_badges
+        const { error } = await supabase.from('appbadge_badges').insert({
+          utilisateur_id: selectedUser,
+          uid_tag: uid
+        });
+        if (!error) {
+          setMessage('Badge associé avec succès !');
+        } else {
+          setMessage("Erreur lors de l'association du badge.");
+        }
+        setIsAssociating(false);
+        if (nfcAbortRef.current) nfcAbortRef.current.abort();
+      };
+    } catch (e) {
+      setMessage('Erreur lors du scan NFC.');
+      setIsAssociating(false);
+    }
+  };
+
+  // Nettoyage NFC à la fermeture
+  React.useEffect(() => {
+    return () => {
+      if (nfcAbortRef.current) nfcAbortRef.current.abort();
+    };
+  }, []);
 
   // IP et GPS mock
   const handleGetIpGps = async () => {
@@ -115,7 +183,9 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <option value="">Sélectionner un utilisateur</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
         </select>
-        <button disabled={!nfcTag || !selectedUser} style={{ marginBottom: 8 }}>Associer</button>
+        <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginBottom: 8 }}>
+          {isAssociating ? 'En attente du scan...' : 'Associer'}
+        </button>
       </div>
       <div style={{ marginBottom: 32 }}>
         <h3>Ajouter un nouveau lieu</h3>
