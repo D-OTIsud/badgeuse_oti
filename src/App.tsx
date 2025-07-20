@@ -162,6 +162,7 @@ function App() {
             userIP={ipCheck?.userIP}
             locationLatitude={ipCheck?.latitude}
             locationLongitude={ipCheck?.longitude}
+            locationName={ipCheck?.locationName}
           />
         ) : (
           <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} />

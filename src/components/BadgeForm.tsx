@@ -11,6 +11,7 @@ interface BadgeFormProps {
   userIP?: string;
   locationLatitude?: string;
   locationLongitude?: string;
+  locationName?: string;
 }
 
 const splitCode = (code: string) => {
@@ -42,7 +43,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP, locationLatitude, locationLongitude }) => {
+const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP, locationLatitude, locationLongitude, locationName }) => {
   const [code, setCode] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -53,6 +54,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [gpsConsent, setGpsConsent] = useState(true);
+  const [typeAction, setTypeAction] = useState<'entrée' | 'sortie' | 'pause' | 'retour'>('entrée');
 
   React.useEffect(() => {
     // Si IP autorisée, utiliser les coordonnées de la base de données
@@ -133,14 +135,18 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       }
     }
     
-    const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
+    const insertData: any = {
       utilisateur_id: utilisateur.id,
       code,
-      type_action: 'entrée',
+      type_action: typeAction,
       latitude: finalLatitude,
       longitude: finalLongitude,
       commentaire: commentaire || null,
-    });
+    };
+    if (isIPAuthorized && locationName) {
+      insertData.lieux = locationName;
+    }
+    const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
     if (!insertError) {
       setShowSuccess(true);
       setTimeout(() => {
@@ -191,6 +197,31 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
         Saisissez le code à 4 chiffres :
       </div>
+      {/* Sélecteur du type d'action si IP non autorisée */}
+      {!isIPAuthorized && (
+        <div style={{ marginBottom: 18, width: '100%' }}>
+          <label htmlFor="type-action-select" style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, display: 'block' }}>Type d'action :</label>
+          <select
+            id="type-action-select"
+            value={typeAction}
+            onChange={e => setTypeAction(e.target.value as any)}
+            style={{
+              width: '100%',
+              padding: 8,
+              borderRadius: 6,
+              border: '1.5px solid #bbb',
+              fontSize: 16,
+              marginBottom: 6
+            }}
+            required
+          >
+            <option value="entrée">Entrée</option>
+            <option value="sortie">Sortie</option>
+            <option value="pause">Pause</option>
+            <option value="retour">Retour</option>
+          </select>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {codeArr.map((val, idx) => (
           <input
