@@ -327,7 +327,8 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 boxShadow: '0 4px 16px rgba(25,118,210,0.08)', 
                 zIndex: 10, 
                 maxHeight: 220, 
-                overflowY: 'auto' 
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch'
               }}>
                 {filteredUsers.map(u => (
                   <div key={u.id} onClick={() => { setSelectedUser(u.id); setUserSearch(''); setShowUserDropdown(false); }} style={{ 
@@ -339,7 +340,8 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     borderBottom: '1px solid #f0f0f0', 
                     background: selectedUser === u.id ? '#e3f2fd' : '#fff',
                     minWidth: 0,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    WebkitTapHighlightColor: 'transparent'
                   }}>
                     {u.avatar ? (
                       <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa', flexShrink: 0 }} />
