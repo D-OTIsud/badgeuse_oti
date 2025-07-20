@@ -188,50 +188,6 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       <button type="button" onClick={() => window.location.reload()} style={{ marginBottom: 16, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer' }}>
         ← Retour
       </button>
-      {/* ALERTE reseau inconnu en bannière tout en haut */}
-      {!isIPAuthorized && (
-        <div style={{
-          width: '100%',
-          background: '#fff3cd',
-          border: '1.5px solid #ffeaa7',
-          borderRadius: 8,
-          color: '#856404',
-          fontWeight: 700,
-          fontSize: 16,
-          padding: '12px 16px',
-          marginBottom: 18,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          <span style={{ fontSize: 22 }}>⚠️</span> Vous n'êtes pas connecté au réseau WiFi d'un kit
-        </div>
-      )}
-      {/* COMMENTAIRE obligatoire juste après l'alerte */}
-      {!isIPAuthorized && (
-        <div style={{ marginBottom: 22, width: '100%' }}>
-          <div style={{ marginBottom: 8, fontSize: 15, color: '#666', fontWeight: 500 }}>
-            Veuillez expliquer pourquoi vous accédez depuis cet emplacement :
-          </div>
-          <textarea
-            value={commentaire}
-            onChange={(e) => setCommentaire(e.target.value)}
-            placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
-            style={{
-              width: '100%',
-              minHeight: 80,
-              padding: 12,
-              border: '1.5px solid #d32f2f',
-              borderRadius: 8,
-              fontSize: 14,
-              fontFamily: 'inherit',
-              resize: 'vertical',
-              background: '#fff8f8',
-            }}
-            required={!isIPAuthorized}
-          />
-        </div>
-      )}
       {/* AVATAR, NOM, EMAIL */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, width: '100%' }}>
         {utilisateur.avatar ? (
@@ -309,6 +265,50 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
             <option value="pause">Pause</option>
             <option value="retour">Retour</option>
           </select>
+        </div>
+      )}
+      {/* AVERTISSEMENT reseau inconnu */}
+      {!isIPAuthorized && (
+        <div style={{
+          width: '100%',
+          background: '#fff3cd',
+          border: '1.5px solid #ffeaa7',
+          borderRadius: 8,
+          color: '#856404',
+          fontWeight: 700,
+          fontSize: 16,
+          padding: '12px 16px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span style={{ fontSize: 22 }}>⚠️</span> Vous n'êtes pas connecté au réseau WiFi d'un kit
+        </div>
+      )}
+      {/* COMMENTAIRE obligatoire */}
+      {!isIPAuthorized && (
+        <div style={{ marginBottom: 22, width: '100%' }}>
+          <div style={{ marginBottom: 8, fontSize: 15, color: '#666', fontWeight: 500 }}>
+            Veuillez expliquer pourquoi vous accédez depuis cet emplacement :
+          </div>
+          <textarea
+            value={commentaire}
+            onChange={(e) => setCommentaire(e.target.value)}
+            placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
+            style={{
+              width: '100%',
+              minHeight: 80,
+              padding: 12,
+              border: '1.5px solid #d32f2f',
+              borderRadius: 8,
+              fontSize: 14,
+              fontFamily: 'inherit',
+              resize: 'vertical',
+              background: '#fff8f8',
+            }}
+            required={!isIPAuthorized}
+          />
         </div>
       )}
       {/* GÉOLOCALISATION bloc + case à cocher */}
