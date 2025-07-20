@@ -27,7 +27,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const fetchUsers = async () => {
       const { data, error } = await supabase
         .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, role, actif')
+        .select('id, nom, prenom, role, actif, avatar')
         .eq('actif', true)
         .order('nom', { ascending: true });
       if (!error && data) setUsers(data);
@@ -198,6 +198,19 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   }, [adminSection]);
 
+  // Ajoute l'état pour le dropdown custom
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  // Ferme le dropdown si on clique en dehors
+  useEffect(() => {
+    if (!showUserDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      const el = document.getElementById('admin-user-dropdown');
+      if (el && !el.contains(e.target as Node)) setShowUserDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showUserDropdown]);
+
   if (!adminUser) {
     return (
       <div style={{ background: '#fff', borderRadius: 16, maxWidth: 400, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
@@ -232,21 +245,53 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Formulaire d'association de tag
   if (adminSection === 'associer-tag') {
     return (
-      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 600, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+      <div style={{ background: '#fff', borderRadius: 20, maxWidth: 600, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
         </div>
-        <h2 style={{ marginTop: 0 }}>Associer un tag NFC à un utilisateur</h2>
-        <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)} style={{ width: '100%', marginBottom: 8 }}>
-          <option value="">Sélectionner un utilisateur</option>
-          {users.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
-        </select>
-        <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginBottom: 8 }}>
-          {isAssociating ? 'En attente du scan...' : 'Associer'}
-        </button>
-        {nfcTag && <div style={{ marginBottom: 8 }}>Tag scanné : <b>{nfcTag}</b></div>}
-        {message && <div style={{ color: '#1976d2', marginTop: 12 }}>{message}</div>}
+        <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Associer un tag NFC à un utilisateur</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Utilisateur</label>
+          {/* Custom select avec avatar */}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <button type="button" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', justifyContent: 'flex-start' }} onClick={() => setShowUserDropdown(v => !v)}>
+              {selectedUser ? (
+                <>
+                  {users.find(u => u.id === selectedUser)?.avatar ? (
+                    <img src={users.find(u => u.id === selectedUser)?.avatar} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #1976d2', background: '#f4f6fa' }} />
+                  ) : (
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#bbb', border: '1.5px solid #1976d2' }}>👤</div>
+                  )}
+                  <span>{users.find(u => u.id === selectedUser)?.prenom} {users.find(u => u.id === selectedUser)?.nom}</span>
+                </>
+              ) : (
+                <span style={{ color: '#888' }}>Sélectionner un utilisateur</span>
+              )}
+              <span style={{ marginLeft: 'auto', color: '#bbb', fontSize: 18 }}>▼</span>
+            </button>
+            {showUserDropdown && (
+              <div style={{ position: 'absolute', top: 48, left: 0, width: '100%', background: '#fff', border: '1.5px solid #1976d2', borderRadius: 8, boxShadow: '0 4px 16px rgba(25,118,210,0.08)', zIndex: 10, maxHeight: 220, overflowY: 'auto' }}>
+                {users.map(u => (
+                  <div key={u.id} onClick={() => { setSelectedUser(u.id); setShowUserDropdown(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, cursor: 'pointer', borderBottom: '1px solid #f0f0f0', background: selectedUser === u.id ? '#e3f2fd' : '#fff' }}>
+                    {u.avatar ? (
+                      <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa' }} />
+                    ) : (
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#bbb', border: '1.2px solid #1976d2' }}>👤</div>
+                    )}
+                    <span style={{ fontSize: 15 }}>{u.prenom} {u.nom}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Fin custom select */}
+          <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginTop: 8, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !selectedUser || isAssociating ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}>
+            {isAssociating ? 'En attente du scan...' : 'Associer'}
+          </button>
+          {nfcTag && <div style={{ margin: '10px 0 0 0', color: '#1976d2', fontWeight: 600, fontSize: 15 }}>Tag scanné : <b>{nfcTag}</b></div>}
+          {message && <div style={{ color: '#1976d2', marginTop: 12, fontWeight: 600 }}>{message}</div>}
+        </div>
       </div>
     );
   }
