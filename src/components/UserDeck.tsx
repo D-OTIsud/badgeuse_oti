@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { Utilisateur } from '../App';
-import { checkIPAuthorization } from '../services/ipService';
 
 // Logo NFC SVG
 const NfcLogo = () => (
@@ -15,6 +14,7 @@ const NfcLogo = () => (
 
 type Props = {
   onSelect: (user: Utilisateur) => void;
+  isIPAuthorized?: boolean;
 };
 
 const isNfcSupported = () => {
@@ -45,7 +45,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-const UserDeck: React.FC<Props> = ({ onSelect }) => {
+const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -85,23 +85,10 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
           }
           setNfcMessage('Tag scanné. Numéro de série : ' + uid);
           
-          // Vérifier l'autorisation IP avant de traiter le badge
-          try {
-            const ipCheck = await checkIPAuthorization();
-            if (!ipCheck.isAuthorized) {
-              setNfcMessage('Accès non autorisé depuis cette localisation. Veuillez contacter l\'administrateur.');
-              return;
-            }
-          } catch (error) {
-            console.error('Erreur lors de la vérification IP:', error);
-            setNfcMessage('Erreur lors de la vérification de l\'accès.');
-            return;
-          }
-          
           // Chercher le badge actif avec ce uid_tag
           const { data: badges, error: badgeError } = await supabase
             .from('appbadge_badges')
-            .select('utilisateur_id, numero_badge')
+            .select('id, utilisateur_id, numero_badge')
             .eq('uid_tag', uid)
             .eq('actif', true)
             .limit(1);
@@ -131,21 +118,27 @@ const UserDeck: React.FC<Props> = ({ onSelect }) => {
                   );
                 });
               } catch {}
-              // Insérer la ligne dans appbadge_badgeages
-              const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
-                utilisateur_id,
-                code: numero_badge,
-                type_action: 'entrée',
-                latitude,
-                longitude,
-              });
-              if (!insertError) {
-                setSuccess(`Badge enregistré pour ${usersFound[0].prenom} ${usersFound[0].nom}`);
-                setTimeout(() => setSuccess(null), 3000);
-                setNfcMessage(null);
-              } else {
-                setNfcMessage("Erreur lors de l'enregistrement du badge.");
-              }
+                        // Logique selon l'autorisation IP
+          if (isIPAuthorized) {
+            // IP autorisée : badgeage direct sans webhook
+            const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
+              utilisateur_id,
+              code: numero_badge,
+              type_action: 'entrée',
+              latitude,
+              longitude,
+            });
+            if (!insertError) {
+              setSuccess(`Badge enregistré pour ${usersFound[0].prenom} ${usersFound[0].nom}`);
+              setTimeout(() => setSuccess(null), 3000);
+              setNfcMessage(null);
+            } else {
+              setNfcMessage("Erreur lors de l'enregistrement du badge.");
+            }
+          } else {
+            // IP non autorisée : rediriger vers le formulaire avec commentaire obligatoire
+            onSelect(usersFound[0]);
+          }
             }
           } else {
             setNfcMessage("Aucun badge actif trouvé pour ce tag.");

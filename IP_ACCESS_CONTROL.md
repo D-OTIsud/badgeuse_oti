@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Le système de contrôle d'accès par IP vérifie automatiquement si l'IP de l'utilisateur est autorisée. Si l'IP n'est pas dans la liste des IPs autorisées, l'utilisateur est redirigé vers un formulaire de justification.
+Le système de contrôle d'accès par IP vérifie automatiquement si l'IP de l'utilisateur est autorisée. Le comportement de badgeage et l'appel du webhook varient selon l'autorisation IP.
 
 ## Fonctionnalités
 
@@ -11,20 +11,22 @@ Le système de contrôle d'accès par IP vérifie automatiquement si l'IP de l'u
 - Comparaison avec la liste des plages IP autorisées
 - Affichage d'un message de chargement pendant la vérification
 
-### 2. Formulaire pour IP Non Autorisée
-- Formulaire dédié pour les utilisateurs avec IP non autorisée
-- Champ de commentaire obligatoire pour justifier l'accès
-- Enregistrement dans la table `appbadge_horaires_standards`
-- Message de succès après enregistrement
+### 2. Badgeage selon Autorisation IP
+- **IP autorisée** : Badgeage standard sans commentaire obligatoire
+- **IP non autorisée** : Badgeage avec commentaire obligatoire
+- Enregistrement dans la table `appbadge_badgeages`
 
-### 3. Messages de Bienvenue Personnalisés
+### 3. Appel du Webhook
+- **IP autorisée** : Webhook appelé uniquement pour sélection manuelle
+- **IP non autorisée** : Webhook appelé pour tous les badgeages (NFC et manuel)
+
+### 4. Messages de Bienvenue Personnalisés
 - Affichage du nom de l'emplacement dans le header
 - Format : "Bienvenue au kit de badgeage - [Nom de l'emplacement]"
 
-### 4. Contrôle NFC
-- Vérification IP avant traitement des badges NFC
-- Blocage des badges si IP non autorisée
-- Messages d'erreur appropriés
+### 5. Contrôle NFC
+- **IP autorisée** : Badgeage direct sans formulaire, sans webhook
+- **IP non autorisée** : Redirection vers formulaire avec commentaire obligatoire
 
 ## Configuration
 
@@ -52,32 +54,42 @@ La colonne `ip_address` est utilisée pour stocker les adresses IP autorisées.
 
 ## Flux d'Utilisation
 
-### 1. Accès Autorisé
+### 1. IP Autorisée - Sélection Manuelle
 1. L'utilisateur accède à l'application
 2. Vérification automatique de l'IP
-3. Affichage du message de bienvenue avec le nom de l'emplacement
-4. Accès normal à l'application
+3. Affichage du message de bienvenue
+4. Sélection manuelle de l'utilisateur
+5. **Appel du webhook**
+6. Formulaire de saisie du code
+7. Enregistrement dans la base de données
 
-### 2. Accès Non Autorisé
-1. L'utilisateur accède à l'application
-2. Vérification automatique de l'IP
-3. Redirection vers le formulaire de justification
-4. L'utilisateur doit expliquer pourquoi il accède depuis cet emplacement
-5. Enregistrement de la demande avec l'IP et le commentaire
-6. Message de succès et retour à l'accueil
-
-### 3. Badge NFC
+### 2. IP Autorisée - Badge NFC
 1. L'utilisateur scanne un badge NFC
-2. Vérification IP avant traitement
-3. Si autorisé : traitement normal du badge
-4. Si non autorisé : message d'erreur et blocage
+2. **Badgeage direct sans formulaire**
+3. **Aucun appel du webhook**
+4. Enregistrement direct dans la base de données
+
+### 3. IP Non Autorisée - Sélection Manuelle
+1. L'utilisateur accède à l'application
+2. Vérification automatique de l'IP
+3. Sélection manuelle de l'utilisateur
+4. **Appel du webhook**
+5. Formulaire avec code + commentaire obligatoire
+6. Enregistrement dans la base de données
+
+### 4. IP Non Autorisée - Badge NFC
+1. L'utilisateur scanne un badge NFC
+2. **Redirection vers formulaire avec commentaire obligatoire**
+3. **Appel du webhook**
+4. Enregistrement dans la base de données
 
 ## Composants
 
-### `UnauthorizedIPForm.tsx`
-- Formulaire pour les utilisateurs avec IP non autorisée
-- Champ de commentaire obligatoire
-- Enregistrement dans Supabase
+### `BadgeForm.tsx` (Modifié)
+- Formulaire de badgeage adaptatif selon l'autorisation IP
+- Champ de commentaire obligatoire pour IP non autorisée
+- **Appel du webhook pour IP non autorisée**
+- Enregistrement dans la table `appbadge_badgeages`
 - Interface utilisateur intuitive
 
 ### `ipService.ts`
@@ -89,15 +101,15 @@ La colonne `ip_address` est utilisée pour stocker les adresses IP autorisées.
 ### Modifications App.tsx
 - Intégration de la vérification IP
 - Gestion des états de chargement
-- Routage conditionnel selon l'autorisation IP
+- **Appel du webhook uniquement pour IP non autorisée lors de la sélection manuelle**
 
 ### Modifications Header.tsx
 - Support des messages de bienvenue personnalisés
 - Affichage responsive du nom de l'emplacement
 
 ### Modifications UserDeck.tsx
-- Vérification IP avant traitement NFC
-- Messages d'erreur appropriés
+- **IP autorisée** : Badgeage NFC direct sans webhook
+- **IP non autorisée** : Redirection vers formulaire avec commentaire obligatoire
 
 ## Sécurité
 

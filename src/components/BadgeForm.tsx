@@ -7,6 +7,8 @@ interface BadgeFormProps {
   badgeId: string;
   heure: Date;
   onBack: (message?: string) => void;
+  isIPAuthorized?: boolean;
+  userIP?: string;
 }
 
 const splitCode = (code: string) => {
@@ -38,7 +40,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack }) => {
+const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP }) => {
   const [code, setCode] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -73,6 +75,24 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     setLoading(true);
     setMessage(null);
     setError(null);
+    
+    // Appel webhook si IP non autorisée
+    if (!isIPAuthorized) {
+      try {
+        await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            utilisateur_id: utilisateur.id,
+            badge_id: badgeId,
+            user_email: utilisateur.email,
+          }),
+        });
+      } catch (e) {
+        console.error('Erreur webhook:', e);
+      }
+    }
+    
     const { error: insertError } = await supabase.from('appbadge_badgeages').insert({
       utilisateur_id: utilisateur.id,
       code,
@@ -167,7 +187,35 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           />
         ))}
       </div>
-      <button type="submit" disabled={loading || code.length !== 4 || !!geoError || latitude === null || longitude === null} style={{
+      {/* Affichage du commentaire obligatoire si IP non autorisée */}
+      {!isIPAuthorized && (
+        <div style={{ marginBottom: 16, width: '100%' }}>
+          <div style={{ marginBottom: 8, fontSize: 16, fontWeight: 600, color: '#d32f2f' }}>
+            ⚠️ Accès depuis IP non autorisée ({userIP})
+          </div>
+          <div style={{ marginBottom: 8, fontSize: 14, color: '#666' }}>
+            Veuillez justifier votre accès :
+          </div>
+          <textarea
+            value={commentaire}
+            onChange={(e) => setCommentaire(e.target.value)}
+            placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
+            style={{
+              width: '100%',
+              minHeight: 80,
+              padding: 12,
+              border: '1.5px solid #d32f2f',
+              borderRadius: 8,
+              fontSize: 14,
+              fontFamily: 'inherit',
+              resize: 'vertical',
+            }}
+            required={!isIPAuthorized}
+          />
+        </div>
+      )}
+      
+      <button type="submit" disabled={loading || code.length !== 4 || !!geoError || latitude === null || longitude === null || (!isIPAuthorized && !commentaire.trim())} style={{
         fontSize: 20,
         background: '#1976d2',
         color: '#fff',

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import UserDeck from './components/UserDeck';
 import BadgeForm from './components/BadgeForm';
-import UnauthorizedIPForm from './components/UnauthorizedIPForm';
 import Header from './components/Header';
 import { supabase } from './supabaseClient';
 import { checkIPAuthorization, getWelcomeMessage } from './services/ipService';
@@ -73,22 +72,26 @@ function App() {
       return;
     }
     const badgeId = badges[0].id;
-    // Appel webhook
-    try {
-      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          utilisateur_id: user.id,
-          badge_id: badgeId,
-          user_email: user.email,
-        }),
-      });
-    } catch (e) {
-      setWebhookError("Erreur lors de l'appel au webhook. Veuillez réessayer.");
-      setLoading(false);
-      return;
+    
+    // Appel webhook seulement si IP non autorisée
+    if (ipCheck && !ipCheck.isAuthorized) {
+      try {
+        await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            utilisateur_id: user.id,
+            badge_id: badgeId,
+            user_email: user.email,
+          }),
+        });
+      } catch (e) {
+        setWebhookError("Erreur lors de l'appel au webhook. Veuillez réessayer.");
+        setLoading(false);
+        return;
+      }
     }
+    
     setBadgeageCtx({ utilisateur: user, badgeId, heure: new Date() });
     setLoading(false);
   };
@@ -135,22 +138,7 @@ function App() {
     );
   }
 
-  // Affichage du formulaire pour IP non autorisée
-  if (ipCheck && !ipCheck.isAuthorized) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
-        <Header welcomeMessage="Accès restreint" />
-        <UnauthorizedIPForm
-          onBack={() => {
-            // Recharger la page pour réessayer
-            window.location.reload();
-          }}
-          userIP={ipCheck.userIP}
-          locationName={ipCheck.locationName}
-        />
-      </div>
-    );
-  }
+  // On ne bloque plus l'accès, on passe l'info d'autorisation IP au composant
 
   return (
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
@@ -165,9 +153,11 @@ function App() {
             badgeId={badgeageCtx.badgeId}
             heure={badgeageCtx.heure}
             onBack={handleBack}
+            isIPAuthorized={ipCheck?.isAuthorized ?? true}
+            userIP={ipCheck?.userIP}
           />
         ) : (
-          <UserDeck onSelect={handleSelectUser} />
+          <UserDeck onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} />
         )}
       </div>
     </div>
