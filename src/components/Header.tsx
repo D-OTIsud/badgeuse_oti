@@ -4,9 +4,10 @@ const LOGO_URL = 'https://supabertel.otisud.re/storage/v1/object/public/logo//lo
 
 interface HeaderProps {
   welcomeMessage?: string;
+  onAdminClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ welcomeMessage }) => (
+const Header: React.FC<HeaderProps> = ({ welcomeMessage, onAdminClick }) => (
   <header
     style={{
       width: '100%',
@@ -37,6 +38,27 @@ const Header: React.FC<HeaderProps> = ({ welcomeMessage }) => (
         border: '2px solid #fff',
       }}
     />
+    {/* Icône paramètre en haut à droite */}
+    {onAdminClick && (
+      <button
+        onClick={onAdminClick}
+        style={{
+          position: 'absolute',
+          right: 24,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 32,
+          color: '#fff',
+          opacity: 0.85,
+        }}
+        title="Administration"
+      >
+        <span role="img" aria-label="paramètres">⚙️</span>
+      </button>
+    )}
     <div style={{ textAlign: 'center' }}>
       <h1
         style={{

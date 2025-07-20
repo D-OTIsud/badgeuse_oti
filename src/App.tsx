@@ -4,6 +4,7 @@ import BadgeForm from './components/BadgeForm';
 import Header from './components/Header';
 import { supabase } from './supabaseClient';
 import { checkIPAuthorization, getWelcomeMessage } from './services/ipService';
+import AdminPage from './components/AdminPage';
 
 export type Utilisateur = {
   id: string;
@@ -58,6 +59,10 @@ function App() {
   } | null>(null);
   const [ipCheckLoading, setIpCheckLoading] = useState(true);
   const [deckKey, setDeckKey] = useState(Date.now());
+  const [showAdminPage, setShowAdminPage] = useState(false);
+
+  // MOCK : à remplacer par la vraie logique d'authentification/autorisation
+  const isAdmin = true;
 
   const handleSelectUser = async (user: Utilisateur) => {
     setLoading(true);
@@ -147,27 +152,36 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
-      <Header welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName, ipCheck.isAuthorized) : undefined} />
-      {successMessage && <SuccessPopup message={successMessage} onClose={() => setSuccessMessage(null)} />}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
-        {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
-        {webhookError && <div style={{ color: 'red', marginBottom: 16 }}>{webhookError}</div>}
-        {badgeageCtx ? (
-          <BadgeForm
-            utilisateur={badgeageCtx.utilisateur}
-            badgeId={badgeageCtx.badgeId}
-            heure={badgeageCtx.heure}
-            onBack={handleBack}
-            isIPAuthorized={ipCheck?.isAuthorized ?? true}
-            userIP={ipCheck?.userIP}
-            locationLatitude={ipCheck?.latitude}
-            locationLongitude={ipCheck?.longitude}
-            locationName={ipCheck?.locationName}
-          />
-        ) : (
-          <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} locationName={ipCheck?.locationName} />
-        )}
-      </div>
+      <Header 
+        welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName, ipCheck.isAuthorized) : undefined}
+        onAdminClick={isAdmin ? () => setShowAdminPage(true) : undefined}
+      />
+      {showAdminPage ? (
+        <AdminPage onClose={() => setShowAdminPage(false)} />
+      ) : (
+        <>
+          {successMessage && <SuccessPopup message={successMessage} onClose={() => setSuccessMessage(null)} />}
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+            {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
+            {webhookError && <div style={{ color: 'red', marginBottom: 16 }}>{webhookError}</div>}
+            {badgeageCtx ? (
+              <BadgeForm
+                utilisateur={badgeageCtx.utilisateur}
+                badgeId={badgeageCtx.badgeId}
+                heure={badgeageCtx.heure}
+                onBack={handleBack}
+                isIPAuthorized={ipCheck?.isAuthorized ?? true}
+                userIP={ipCheck?.userIP}
+                locationLatitude={ipCheck?.latitude}
+                locationLongitude={ipCheck?.longitude}
+                locationName={ipCheck?.locationName}
+              />
+            ) : (
+              <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} locationName={ipCheck?.locationName} />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
