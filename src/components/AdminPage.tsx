@@ -19,6 +19,9 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [isAssociating, setIsAssociating] = useState(false);
   const nfcAbortRef = useRef<AbortController | null>(null);
 
+  // Section de l'administration actuelle
+  const [adminSection, setAdminSection] = useState<string | null>(null);
+
   // Récupérer la liste des utilisateurs actifs au montage
   useEffect(() => {
     const fetchUsers = async () => {
@@ -174,6 +177,65 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {isScanning ? 'En attente du scan...' : 'Scanner mon badge'}
         </button>
         {nfcAuthError && <div style={{ color: 'red', marginTop: 12 }}>{nfcAuthError}</div>}
+      </div>
+    );
+  }
+
+  // Page d'accueil admin : choix des fonctions
+  if (!adminSection) {
+    return (
+      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 600, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
+        </div>
+        <h2 style={{ marginTop: 0 }}>Administration</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
+          <button onClick={() => setAdminSection('associer-tag')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Associer un nouveau tag</button>
+          <button onClick={() => setAdminSection('ajouter-lieu')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un nouveau lieu</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Formulaire d'association de tag
+  if (adminSection === 'associer-tag') {
+    return (
+      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 600, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
+        </div>
+        <h2 style={{ marginTop: 0 }}>Associer un tag NFC à un utilisateur</h2>
+        <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)} style={{ width: '100%', marginBottom: 8 }}>
+          <option value="">Sélectionner un utilisateur</option>
+          {users.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
+        </select>
+        <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginBottom: 8 }}>
+          {isAssociating ? 'En attente du scan...' : 'Associer'}
+        </button>
+        {nfcTag && <div style={{ marginBottom: 8 }}>Tag scanné : <b>{nfcTag}</b></div>}
+        {message && <div style={{ color: '#1976d2', marginTop: 12 }}>{message}</div>}
+      </div>
+    );
+  }
+
+  // Formulaire d'ajout de lieu (inchangé)
+  if (adminSection === 'ajouter-lieu') {
+    return (
+      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 600, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
+        </div>
+        <h2 style={{ marginTop: 0 }}>Ajouter un nouveau lieu</h2>
+        <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Nom du lieu" style={{ width: '100%', marginBottom: 8 }} />
+        <button onClick={handleGetIpGps} style={{ marginBottom: 8 }}>Récupérer IP et GPS</button>
+        <input value={ip} onChange={e => setIp(e.target.value)} placeholder="IP" style={{ width: '100%', marginBottom: 8 }} />
+        <input value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="Latitude" style={{ width: '100%', marginBottom: 8 }} />
+        <input value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="Longitude" style={{ width: '100%', marginBottom: 8 }} />
+        <button disabled={!lieu || !ip} style={{ marginBottom: 8 }}>Ajouter le lieu</button>
+        {message && <div style={{ color: '#1976d2', marginTop: 12 }}>{message}</div>}
       </div>
     );
   }
