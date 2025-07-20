@@ -120,7 +120,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     
     // Appel webhook dans tous les cas (manuel)
     try {
-      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+      console.log('[WEBHOOK] Appel webhook n8n...');
+      const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,8 +130,18 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           user_email: utilisateur.email,
         }),
       });
-    } catch (e) {
+      console.log('[WEBHOOK] Réponse webhook', res.status, res.statusText);
+      if (!res.ok) {
+        const text = await res.text();
+        setError(`Erreur webhook (HTTP ${res.status}): ${res.statusText} ${text}`);
+        setLoading(false);
+        return;
+      }
+    } catch (e: any) {
       console.error('Erreur webhook:', e);
+      setError('Erreur lors de l’appel au webhook : ' + (e?.message || e));
+      setLoading(false);
+      return;
     }
     
     const insertData: any = {

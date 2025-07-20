@@ -279,43 +279,41 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Associer un tag NFC à un utilisateur</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Utilisateur</label>
-          {/* Champ de recherche utilisateur */}
-          <input
-            type="text"
-            placeholder="Rechercher par nom ou prénom..."
-            value={userSearch}
-            onChange={e => setUserSearch(e.target.value)}
-            style={{
-              fontSize: 16,
-              padding: '8px 12px',
-              borderRadius: 6,
-              border: '1.5px solid #bbb',
-              width: '100%',
-              background: '#f8f8f8',
-              marginBottom: 4,
-            }}
-          />
-          {/* Custom select avec avatar */}
+          {/* Champ autocomplete utilisateur */}
           <div style={{ position: 'relative', width: '100%' }}>
-            <button type="button" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', justifyContent: 'flex-start' }} onClick={() => setShowUserDropdown(v => !v)}>
-              {selectedUser ? (
-                <>
-                  {users.find(u => u.id === selectedUser)?.avatar ? (
-                    <img src={users.find(u => u.id === selectedUser)?.avatar} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #1976d2', background: '#f4f6fa' }} />
-                  ) : (
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#bbb', border: '1.5px solid #1976d2' }}>👤</div>
-                  )}
-                  <span>{users.find(u => u.id === selectedUser)?.prenom} {users.find(u => u.id === selectedUser)?.nom}</span>
-                </>
+            <input
+              type="text"
+              placeholder="Rechercher par nom ou prénom..."
+              value={selectedUser ? (users.find(u => u.id === selectedUser)?.prenom + ' ' + users.find(u => u.id === selectedUser)?.nom) : userSearch}
+              onChange={e => {
+                setUserSearch(e.target.value);
+                setSelectedUser('');
+                setShowUserDropdown(true);
+              }}
+              onFocus={() => setShowUserDropdown(true)}
+              style={{
+                fontSize: 16,
+                padding: '12px 12px 12px 44px',
+                borderRadius: 8,
+                border: '1.5px solid #bbb',
+                width: '100%',
+                background: '#f8f8f8',
+                marginBottom: 2,
+                display: 'block',
+              }}
+            />
+            {/* Avatar dans le champ */}
+            <div style={{ position: 'absolute', left: 8, top: 8 }}>
+              {selectedUser && users.find(u => u.id === selectedUser)?.avatar ? (
+                <img src={users.find(u => u.id === selectedUser)?.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa' }} />
               ) : (
-                <span style={{ color: '#888' }}>Sélectionner un utilisateur</span>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#bbb', border: '1.2px solid #1976d2' }}>👤</div>
               )}
-              <span style={{ marginLeft: 'auto', color: '#bbb', fontSize: 18 }}>▼</span>
-            </button>
-            {showUserDropdown && (
+            </div>
+            {showUserDropdown && filteredUsers.length > 0 && (
               <div id="admin-user-dropdown" style={{ position: 'absolute', top: 48, left: 0, width: '100%', background: '#fff', border: '1.5px solid #1976d2', borderRadius: 8, boxShadow: '0 4px 16px rgba(25,118,210,0.08)', zIndex: 10, maxHeight: 220, overflowY: 'auto' }}>
                 {filteredUsers.map(u => (
-                  <div key={u.id} onClick={() => { setSelectedUser(u.id); setShowUserDropdown(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, cursor: 'pointer', borderBottom: '1px solid #f0f0f0', background: selectedUser === u.id ? '#e3f2fd' : '#fff' }}>
+                  <div key={u.id} onClick={() => { setSelectedUser(u.id); setUserSearch(''); setShowUserDropdown(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, cursor: 'pointer', borderBottom: '1px solid #f0f0f0', background: selectedUser === u.id ? '#e3f2fd' : '#fff' }}>
                     {u.avatar ? (
                       <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa' }} />
                     ) : (
@@ -327,7 +325,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </div>
             )}
           </div>
-          {/* Fin custom select */}
+          {/* Fin autocomplete */}
           <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginTop: 8, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !selectedUser || isAssociating ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}>
             {isAssociating ? 'En attente du scan...' : 'Associer'}
           </button>
