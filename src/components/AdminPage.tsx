@@ -1,12 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  // MOCK : liste d'utilisateurs pour association NFC
-  const [users] = useState([
-    { id: '1', nom: 'Dupont', prenom: 'Jean' },
-    { id: '2', nom: 'Martin', prenom: 'Alice' },
-  ]);
+  // Liste des utilisateurs actifs
+  const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [nfcTag, setNfcTag] = useState('');
   const [lieu, setLieu] = useState('');
@@ -19,8 +16,21 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [adminUser, setAdminUser] = useState<any>(null);
   const [nfcAuthError, setNfcAuthError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
-  const nfcAbortRef = useRef<AbortController | null>(null);
   const [isAssociating, setIsAssociating] = useState(false);
+  const nfcAbortRef = useRef<AbortController | null>(null);
+
+  // Récupérer la liste des utilisateurs actifs au montage
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('appbadge_utilisateurs')
+        .select('id, nom, prenom, role, actif')
+        .eq('actif', true)
+        .order('nom', { ascending: true });
+      if (!error && data) setUsers(data);
+    };
+    fetchUsers();
+  }, []);
 
   // NFC scan pour authentification admin
   const handleAdminNfcScan = async () => {
@@ -60,10 +70,10 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           return;
         }
         const utilisateurId = badges[0].utilisateur_id;
-        // Recherche de l'utilisateur
+        // Recherche de l'utilisateur (on veut le champ role)
         const { data: usersFound } = await supabase
           .from('appbadge_utilisateurs')
-          .select('id, nom, prenom, status')
+          .select('id, nom, prenom, role')
           .eq('id', utilisateurId)
           .limit(1);
         if (!usersFound || usersFound.length === 0) {
@@ -72,7 +82,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           return;
         }
         const user = usersFound[0];
-        if (user.status !== 'Admin') {
+        if (user.role !== 'Admin') {
           setNfcAuthError('Accès refusé : vous n\'êtes pas administrateur.');
           setIsScanning(false);
           return;
@@ -131,7 +141,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   // Nettoyage NFC à la fermeture
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (nfcAbortRef.current) nfcAbortRef.current.abort();
     };
@@ -177,15 +187,14 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <h2 style={{ marginTop: 0 }}>Administration</h2>
       <div style={{ marginBottom: 32 }}>
         <h3>Associer un tag NFC à un utilisateur</h3>
-        <button onClick={() => setNfcTag('NFC_TAG_' + Math.floor(Math.random() * 10000))} style={{ marginBottom: 12 }}>Scanner un tag NFC</button>
+        <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginBottom: 8 }}>
+          {isAssociating ? 'En attente du scan...' : 'Associer'}
+        </button>
         {nfcTag && <div style={{ marginBottom: 8 }}>Tag scanné : <b>{nfcTag}</b></div>}
         <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)} style={{ width: '100%', marginBottom: 8 }}>
           <option value="">Sélectionner un utilisateur</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
         </select>
-        <button onClick={handleAssociateNfc} disabled={!selectedUser || isAssociating} style={{ marginBottom: 8 }}>
-          {isAssociating ? 'En attente du scan...' : 'Associer'}
-        </button>
       </div>
       <div style={{ marginBottom: 32 }}>
         <h3>Ajouter un nouveau lieu</h3>
