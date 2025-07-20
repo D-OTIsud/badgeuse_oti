@@ -297,6 +297,8 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 borderRadius: 8,
                 border: '1.5px solid #bbb',
                 width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
                 background: '#f8f8f8',
                 marginBottom: 2,
                 display: 'block',
@@ -311,15 +313,40 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               )}
             </div>
             {showUserDropdown && filteredUsers.length > 0 && (
-              <div id="admin-user-dropdown" style={{ position: 'absolute', top: 48, left: 0, width: '100%', background: '#fff', border: '1.5px solid #1976d2', borderRadius: 8, boxShadow: '0 4px 16px rgba(25,118,210,0.08)', zIndex: 10, maxHeight: 220, overflowY: 'auto' }}>
+              <div id="admin-user-dropdown" style={{ 
+                position: 'absolute', 
+                top: 48, 
+                left: 0, 
+                right: 0,
+                width: '100%', 
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                background: '#fff', 
+                border: '1.5px solid #1976d2', 
+                borderRadius: 8, 
+                boxShadow: '0 4px 16px rgba(25,118,210,0.08)', 
+                zIndex: 10, 
+                maxHeight: 220, 
+                overflowY: 'auto' 
+              }}>
                 {filteredUsers.map(u => (
-                  <div key={u.id} onClick={() => { setSelectedUser(u.id); setUserSearch(''); setShowUserDropdown(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, cursor: 'pointer', borderBottom: '1px solid #f0f0f0', background: selectedUser === u.id ? '#e3f2fd' : '#fff' }}>
+                  <div key={u.id} onClick={() => { setSelectedUser(u.id); setUserSearch(''); setShowUserDropdown(false); }} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 10, 
+                    padding: 10, 
+                    cursor: 'pointer', 
+                    borderBottom: '1px solid #f0f0f0', 
+                    background: selectedUser === u.id ? '#e3f2fd' : '#fff',
+                    minWidth: 0,
+                    overflow: 'hidden'
+                  }}>
                     {u.avatar ? (
-                      <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa' }} />
+                      <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa', flexShrink: 0 }} />
                     ) : (
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#bbb', border: '1.2px solid #1976d2' }}>👤</div>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#bbb', border: '1.2px solid #1976d2', flexShrink: 0 }}>👤</div>
                     )}
-                    <span style={{ fontSize: 15 }}>{u.prenom} {u.nom}</span>
+                    <span style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{u.prenom} {u.nom}</span>
                   </div>
                 ))}
               </div>
