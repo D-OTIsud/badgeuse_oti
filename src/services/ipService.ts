@@ -47,11 +47,11 @@ const isIPInRange = (ip: string, range: string): boolean => {
 };
 
 // Fonction pour récupérer les IPs autorisées depuis la base de données
-const getAuthorizedIPs = async (): Promise<string[]> => {
+const getAuthorizedIPs = async (): Promise<{ip: string, lieu: string, latitude?: string, longitude?: string}[]> => {
   try {
     const { data, error } = await supabase
       .from('appbadge_horaires_standards')
-      .select('ip_address, lieux')
+      .select('ip_address, lieux, latitude, longitude')
       .not('ip_address', 'is', null);
     
     if (error) {
@@ -59,7 +59,12 @@ const getAuthorizedIPs = async (): Promise<string[]> => {
       return [];
     }
     
-    return data?.map(row => row.ip_address).filter(Boolean) || [];
+    return data?.map(row => ({ 
+      ip: row.ip_address, 
+      lieu: row.lieux,
+      latitude: row.latitude,
+      longitude: row.longitude
+    })).filter(item => item.ip) || [];
   } catch (error) {
     console.error('Erreur lors de la récupération des IPs autorisées:', error);
     return [];
@@ -71,26 +76,33 @@ export const checkIPAuthorization = async (): Promise<{
   isAuthorized: boolean;
   locationName?: string;
   userIP: string;
+  latitude?: string;
+  longitude?: string;
 }> => {
   const userIP = await getUserIP();
   const authorizedIPs = await getAuthorizedIPs();
   
   // Vérifier si l'IP exacte est dans la liste
-  if (authorizedIPs.includes(userIP)) {
+  const exactMatch = authorizedIPs.find(item => item.ip === userIP);
+  if (exactMatch) {
     return {
       isAuthorized: true,
-      locationName: `Emplacement autorisé (${userIP})`,
-      userIP
+      locationName: exactMatch.lieu,
+      userIP,
+      latitude: exactMatch.latitude,
+      longitude: exactMatch.longitude
     };
   }
   
   // Vérifier si l'IP est dans une plage autorisée
   for (const authorizedIP of authorizedIPs) {
-    if (isIPInRange(userIP, authorizedIP)) {
+    if (isIPInRange(userIP, authorizedIP.ip)) {
       return {
         isAuthorized: true,
-        locationName: `Emplacement autorisé (${authorizedIP})`,
-        userIP
+        locationName: authorizedIP.lieu,
+        userIP,
+        latitude: authorizedIP.latitude,
+        longitude: authorizedIP.longitude
       };
     }
   }
@@ -102,9 +114,9 @@ export const checkIPAuthorization = async (): Promise<{
 };
 
 // Fonction pour obtenir le message de bienvenue basé sur la localisation
-export const getWelcomeMessage = (locationName?: string): string => {
-  if (locationName) {
-    return `Bienvenue au kit de badgeage - ${locationName}`;
+export const getWelcomeMessage = (locationName?: string, isAuthorized?: boolean): string => {
+  if (isAuthorized && locationName) {
+    return `Bienvenue au kit - ${locationName}`;
   }
-  return "Bienvenue au kit de badgeage";
+  return "Bienvenue";
 }; 

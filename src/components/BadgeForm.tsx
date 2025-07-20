@@ -9,6 +9,8 @@ interface BadgeFormProps {
   onBack: (message?: string) => void;
   isIPAuthorized?: boolean;
   userIP?: string;
+  locationLatitude?: string;
+  locationLongitude?: string;
 }
 
 const splitCode = (code: string) => {
@@ -40,7 +42,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP }) => {
+const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP, locationLatitude, locationLongitude }) => {
   const [code, setCode] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -50,8 +52,22 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [geoError, setGeoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [gpsConsent, setGpsConsent] = useState(false);
 
   React.useEffect(() => {
+    // Si IP autorisée, utiliser les coordonnées de la base de données
+    if (isIPAuthorized && locationLatitude && locationLongitude) {
+      setLatitude(parseFloat(locationLatitude));
+      setLongitude(parseFloat(locationLongitude));
+      return;
+    }
+    
+    // Si IP non autorisée, ne pas récupérer automatiquement les coordonnées
+    if (!isIPAuthorized) {
+      return;
+    }
+    
+    // Pour IP autorisée sans coordonnées en base, récupérer automatiquement
     if (!('geolocation' in navigator)) {
       setGeoError('La géolocalisation n\'est pas supportée par ce navigateur.');
       return;
@@ -66,7 +82,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, []);
+  }, [isIPAuthorized, locationLatitude, locationLongitude]);
 
   const heureStr = heure.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -75,6 +91,30 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     setLoading(true);
     setMessage(null);
     setError(null);
+    
+    // Récupérer les coordonnées GPS si IP non autorisée et consentement donné
+    let finalLatitude = latitude;
+    let finalLongitude = longitude;
+    
+    if (!isIPAuthorized && gpsConsent) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!('geolocation' in navigator)) {
+            reject(new Error('Géolocalisation non supportée'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, { 
+            enableHighAccuracy: true, 
+            timeout: 10000 
+          });
+        });
+        finalLatitude = position.coords.latitude;
+        finalLongitude = position.coords.longitude;
+      } catch (error) {
+        console.error('Erreur lors de la récupération GPS:', error);
+        // Continuer sans coordonnées GPS
+      }
+    }
     
     // Appel webhook si IP non autorisée
     if (!isIPAuthorized) {
@@ -97,8 +137,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       utilisateur_id: utilisateur.id,
       code,
       type_action: 'entrée',
-      latitude,
-      longitude,
+      latitude: finalLatitude,
+      longitude: finalLongitude,
       commentaire: commentaire || null,
     });
     if (!insertError) {
@@ -191,10 +231,10 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       {!isIPAuthorized && (
         <div style={{ marginBottom: 16, width: '100%' }}>
           <div style={{ marginBottom: 8, fontSize: 16, fontWeight: 600, color: '#d32f2f' }}>
-            ⚠️ Accès depuis IP non autorisée ({userIP})
+            ⚠️ Vous n'êtes pas connecté au réseau WiFi d'un kit
           </div>
           <div style={{ marginBottom: 8, fontSize: 14, color: '#666' }}>
-            Veuillez justifier votre accès :
+            Veuillez mentionner pourquoi :
           </div>
           <textarea
             value={commentaire}
@@ -215,7 +255,37 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         </div>
       )}
       
-      <button type="submit" disabled={loading || code.length !== 4 || !!geoError || latitude === null || longitude === null || (!isIPAuthorized && !commentaire.trim())} style={{
+      {/* Avertissement GPS pour IP non autorisée */}
+      {!isIPAuthorized && (
+        <div style={{ marginBottom: 16, width: '100%' }}>
+          <div style={{ 
+            padding: 12, 
+            backgroundColor: '#fff3cd', 
+            border: '1px solid #ffeaa7', 
+            borderRadius: 8,
+            marginBottom: 8
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#856404', marginBottom: 4 }}>
+              ⚠️ Géolocalisation
+            </div>
+            <div style={{ fontSize: 12, color: '#856404' }}>
+              Pour des raisons de sécurité, nous devons relever vos coordonnées GPS. 
+              Cela peut donner suite à une alerte RH.
+            </div>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+            <input
+              type="checkbox"
+              checked={gpsConsent}
+              onChange={(e) => setGpsConsent(e.target.checked)}
+              style={{ width: 16, height: 16 }}
+            />
+            J'accepte que les coordonnées GPS soient transmises
+          </label>
+        </div>
+      )}
+      
+      <button type="submit" disabled={loading || code.length !== 4 || !!geoError || (!isIPAuthorized && !commentaire.trim())} style={{
         fontSize: 20,
         background: '#1976d2',
         color: '#fff',

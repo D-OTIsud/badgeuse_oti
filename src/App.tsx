@@ -53,8 +53,11 @@ function App() {
     isAuthorized: boolean;
     locationName?: string;
     userIP: string;
+    latitude?: string;
+    longitude?: string;
   } | null>(null);
   const [ipCheckLoading, setIpCheckLoading] = useState(true);
+  const [deckKey, setDeckKey] = useState(Date.now());
 
   const handleSelectUser = async (user: Utilisateur) => {
     setLoading(true);
@@ -121,6 +124,8 @@ function App() {
   const handleBack = (successMsg?: string) => {
     setBadgeageCtx(null);
     setWebhookError(null);
+    // Forcer le rechargement du deck en ajoutant un timestamp
+    setDeckKey(Date.now());
     if (successMsg) {
       setSuccessMessage(successMsg);
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -142,7 +147,7 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
-      <Header welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName) : undefined} />
+      <Header welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName, ipCheck.isAuthorized) : undefined} />
       {successMessage && <SuccessPopup message={successMessage} onClose={() => setSuccessMessage(null)} />}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
         {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
@@ -155,9 +160,11 @@ function App() {
             onBack={handleBack}
             isIPAuthorized={ipCheck?.isAuthorized ?? true}
             userIP={ipCheck?.userIP}
+            locationLatitude={ipCheck?.latitude}
+            locationLongitude={ipCheck?.longitude}
           />
         ) : (
-          <UserDeck onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} />
+          <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} />
         )}
       </div>
     </div>
