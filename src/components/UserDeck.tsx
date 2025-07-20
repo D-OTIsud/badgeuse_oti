@@ -56,6 +56,9 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true }) => {
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
+      setSearch(''); // Réinitialiser la recherche
+      setNfcMessage(null); // Réinitialiser les messages NFC
+      setSuccess(null); // Réinitialiser les messages de succès
       const { data, error } = await supabase
         .from('appbadge_utilisateurs')
         .select('id, nom, prenom, service, email, status, avatar')
@@ -64,8 +67,48 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true }) => {
       if (!error && data) setUsers(data);
       setLoading(false);
     };
+    
     fetchUsers();
-  }, []);
+    
+    // Subscription en temps réel pour les changements de statut
+    const subscription = supabase
+      .channel('user_status_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appbadge_utilisateurs',
+          filter: 'actif=eq.true'
+        },
+        (payload) => {
+          console.log('Changement détecté:', payload);
+          
+          // Mettre à jour seulement l'utilisateur modifié
+          if (payload.eventType === 'UPDATE') {
+            setUsers(prevUsers => 
+              prevUsers.map(user => 
+                user.id === payload.new.id 
+                  ? { ...user, ...payload.new }
+                  : user
+              )
+            );
+          } else if (payload.eventType === 'INSERT') {
+            // Ajouter le nouvel utilisateur
+            setUsers(prevUsers => [...prevUsers, payload.new].sort((a, b) => a.nom.localeCompare(b.nom)));
+          } else if (payload.eventType === 'DELETE') {
+            // Supprimer l'utilisateur
+            setUsers(prevUsers => prevUsers.filter(user => user.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+    
+    // Nettoyer la subscription à la fin
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isIPAuthorized]); // Ajouter isIPAuthorized comme dépendance pour forcer le rechargement
 
   // NFC listener auto (background, silencieux)
   useEffect(() => {
@@ -247,7 +290,34 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true }) => {
             <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
             <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
             <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.email}</div>
-            <div style={{ marginTop: 4, fontSize: 10, color: '#1976d2', fontWeight: 500, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.status || 'Non badgé'}</div>
+            <div style={{ 
+              marginTop: 4, 
+              fontSize: 10, 
+              fontWeight: 500, 
+              textAlign: 'center', 
+              whiteSpace: 'nowrap', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4
+            }}>
+              <div style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                backgroundColor: user.status === 'Entré' ? '#4caf50' : 
+                               user.status === 'En pause' ? '#ff9800' : '#cccccc'
+              }} />
+              <span style={{ 
+                color: user.status === 'Entré' ? '#4caf50' : 
+                       user.status === 'En pause' ? '#ff9800' : '#cccccc'
+              }}>
+                {user.status || 'Non badgé'}
+              </span>
+            </div>
           </div>
         ))}
       </div>

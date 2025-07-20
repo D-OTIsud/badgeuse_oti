@@ -52,7 +52,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [geoError, setGeoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [gpsConsent, setGpsConsent] = useState(false);
+  const [gpsConsent, setGpsConsent] = useState(true);
 
   React.useEffect(() => {
     // Si IP autorisée, utiliser les coordonnées de la base de données
