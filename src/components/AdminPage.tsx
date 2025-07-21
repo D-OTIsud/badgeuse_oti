@@ -263,6 +263,66 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showUserDropdown]);
 
+  // État pour le formulaire d'horaires standards
+  const [horaireLieu, setHoraireLieu] = useState('');
+  const [horaireHeureDebut, setHoraireHeureDebut] = useState('');
+  const [horaireHeureFin, setHoraireHeureFin] = useState('');
+  const [horaireIp, setHoraireIp] = useState('');
+  const [horaireLatitude, setHoraireLatitude] = useState('');
+  const [horaireLongitude, setHoraireLongitude] = useState('');
+
+  // Formulaire d'ajout d'horaires standards
+  if (adminSection === 'ajouter-horaire') {
+    return (
+      <div style={{ background: '#fff', borderRadius: 20, maxWidth: 600, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
+        {showSuccess && <SuccessPopup message={successMessage} onClose={() => setShowSuccess(false)} />}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={() => setAdminSection(null)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
+        </div>
+        <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Ajouter un horaire standard</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Lieu</label>
+          <input value={horaireLieu} onChange={e => setHoraireLieu(e.target.value)} placeholder="Nom du lieu" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Heure de début *</label>
+          <input type="time" value={horaireHeureDebut} onChange={e => setHoraireHeureDebut(e.target.value)} required style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Heure de fin</label>
+          <input type="time" value={horaireHeureFin} onChange={e => setHoraireHeureFin(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Adresse IP (optionnel)</label>
+          <input value={horaireIp} onChange={e => setHoraireIp(e.target.value)} placeholder="IP" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Latitude (optionnel)</label>
+          <input value={horaireLatitude} onChange={e => setHoraireLatitude(e.target.value)} placeholder="Latitude" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Longitude (optionnel)</label>
+          <input value={horaireLongitude} onChange={e => setHoraireLongitude(e.target.value)} placeholder="Longitude" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <button 
+            onClick={async () => {
+              if (!horaireLieu || !horaireHeureDebut) return;
+              const { error } = await supabase.from('appbadge_horaires_standards').insert({
+                lieux: horaireLieu,
+                heure_debut: horaireHeureDebut,
+                heure_fin: horaireHeureFin || null,
+                ip_address: horaireIp || null,
+                latitude: horaireLatitude || null,
+                longitude: horaireLongitude || null
+              });
+              if (!error) {
+                showSuccessAndReturn('Horaire ajouté avec succès !');
+                setHoraireLieu(''); setHoraireHeureDebut(''); setHoraireHeureFin(''); setHoraireIp(''); setHoraireLatitude(''); setHoraireLongitude('');
+              } else {
+                setMessage("Erreur lors de l'ajout de l'horaire.");
+              }
+            }}
+            disabled={!horaireLieu || !horaireHeureDebut} 
+            style={{ marginTop: 18, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !horaireLieu || !horaireHeureDebut ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}
+          >
+            Ajouter l'horaire
+          </button>
+        </div>
+        {message && <div style={{ color: '#1976d2', marginTop: 18, fontWeight: 600 }}>{message}</div>}
+      </div>
+    );
+  }
+
   if (!adminUser) {
     return (
       <div style={{ background: '#fff', borderRadius: 16, maxWidth: 400, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
@@ -305,6 +365,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
           <button onClick={() => setAdminSection('associer-tag')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Associer un nouveau tag</button>
           <button onClick={() => setAdminSection('ajouter-lieu')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un nouveau lieu</button>
+          <button onClick={() => setAdminSection('ajouter-horaire')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un horaire standard</button>
         </div>
       </div>
     );
