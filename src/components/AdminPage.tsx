@@ -365,7 +365,6 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
           <button onClick={() => setAdminSection('associer-tag')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Associer un nouveau tag</button>
           <button onClick={() => setAdminSection('ajouter-lieu')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un nouveau lieu</button>
-          <button onClick={() => setAdminSection('ajouter-horaire')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un horaire standard</button>
         </div>
       </div>
     );
@@ -472,7 +471,8 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
   }
 
-  // Formulaire d'ajout de lieu (inchangé)
+  // Supprimer le formulaire d'ajout d'horaires standards séparé
+  // Fusionner les champs horaires dans le formulaire d'ajout de lieu
   if (adminSection === 'ajouter-lieu') {
     return (
       <div style={{ background: '#fff', borderRadius: 20, maxWidth: 600, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
@@ -489,31 +489,46 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 18 }}>
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Nom du lieu</label>
           <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Nom du lieu" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Heure de début *</label>
+          <input type="time" value={horaireHeureDebut} onChange={e => setHoraireHeureDebut(e.target.value)} required style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
+          <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Heure de fin</label>
+          <input type="time" value={horaireHeureFin} onChange={e => setHoraireHeureFin(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #bbb', fontSize: 16, background: '#f8f8f8' }} />
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Adresse IP</label>
-          <input value={ip} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <input value={ip} onChange={e => setIp(e.target.value)} placeholder="IP" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Latitude</label>
-          <input value={latitude} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <input value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="Latitude" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
           <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15 }}>Longitude</label>
-          <input value={longitude} readOnly style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
+          <input value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="Longitude" style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #eee', fontSize: 16, background: '#f4f6fa', color: '#888' }} />
           <button 
             onClick={async () => {
-              if (!lieu || !ip) return;
-              const { error } = await supabase.from('appbadge_lieux').insert({
+              if (!lieu || !horaireHeureDebut) return;
+              // Ajout du lieu
+              const { error: lieuError } = await supabase.from('appbadge_lieux').insert({
                 nom: lieu,
                 ip: ip,
                 latitude: latitude,
                 longitude: longitude
               });
-              if (!error) {
-                showSuccessAndReturn('Lieu ajouté avec succès !');
+              // Ajout de l'horaire standard
+              const { error: horaireError } = await supabase.from('appbadge_horaires_standards').insert({
+                lieux: lieu,
+                heure_debut: horaireHeureDebut,
+                heure_fin: horaireHeureFin || null,
+                ip_address: ip || null,
+                latitude: latitude || null,
+                longitude: longitude || null
+              });
+              if (!lieuError && !horaireError) {
+                showSuccessAndReturn('Lieu et horaire ajoutés avec succès !');
+                setLieu(''); setHoraireHeureDebut(''); setHoraireHeureFin(''); setIp(''); setLatitude(''); setLongitude('');
               } else {
-                setMessage("Erreur lors de l'ajout du lieu.");
+                setMessage("Erreur lors de l'ajout du lieu ou de l'horaire.");
               }
             }}
-            disabled={!lieu || !ip} 
-            style={{ marginTop: 18, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !lieu || !ip ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}
+            disabled={!lieu || !horaireHeureDebut} 
+            style={{ marginTop: 18, fontSize: 18, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 0', fontWeight: 700, cursor: !lieu || !horaireHeureDebut ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(25,118,210,0.08)', transition: 'background 0.2s' }}
           >
-            Ajouter le lieu
+            Ajouter le lieu et l'horaire
           </button>
         </div>
         {message && <div style={{ color: '#1976d2', marginTop: 18, fontWeight: 600 }}>{message}</div>}
