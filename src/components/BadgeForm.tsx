@@ -57,6 +57,14 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [gpsConsent, setGpsConsent] = useState(true);
   const [typeAction, setTypeAction] = useState<'entrée' | 'sortie' | 'pause' | 'retour'>('entrée');
 
+  // Détection des rôles
+  const isManagerOrAdmin = utilisateur.role === 'Manager' || utilisateur.role === 'Admin';
+  const isAE = utilisateur.role === 'A-E';
+  const isFirstBadgeAE = isAE && !utilisateur.lieux;
+
+  // GPS options selon le rôle
+  const gpsOptions = isAE ? { enableHighAccuracy: false, timeout: 10000 } : { enableHighAccuracy: true, timeout: 10000 };
+
   // Appel du webhook à l'ouverture du formulaire (toujours, sans condition)
   React.useEffect(() => {
     (async () => {
@@ -86,12 +94,31 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       setLongitude(parseFloat(locationLongitude));
       return;
     }
-    
-    // Si IP non autorisée, ne pas récupérer automatiquement les coordonnées
+    // Pour Manager/Admin ou A-E, GPS obligatoire (précision selon rôle)
+    if ((!isIPAuthorized && isManagerOrAdmin) || isAE) {
+      if (!('geolocation' in navigator)) {
+        setGeoError('La géolocalisation n\'est pas supportée par ce navigateur.');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          // Précision réduite si A-E
+          const lat = isAE ? Number(pos.coords.latitude.toFixed(3)) : pos.coords.latitude;
+          const lon = isAE ? Number(pos.coords.longitude.toFixed(3)) : pos.coords.longitude;
+          setLatitude(lat);
+          setLongitude(lon);
+        },
+        (err) => {
+          setGeoError("Impossible d'obtenir la position GPS : " + err.message);
+        },
+        gpsOptions
+      );
+      return;
+    }
+    // Si IP non autorisée (autres rôles), ne pas récupérer automatiquement les coordonnées
     if (!isIPAuthorized) {
       return;
     }
-    
     // Pour IP autorisée sans coordonnées en base, récupérer automatiquement
     if (!('geolocation' in navigator)) {
       setGeoError('La géolocalisation n\'est pas supportée par ce navigateur.');
@@ -107,7 +134,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [isIPAuthorized, locationLatitude, locationLongitude]);
+  }, [isIPAuthorized, locationLatitude, locationLongitude, isManagerOrAdmin, isAE]);
+
+  // Forcer type_action à "entrée" pour le premier badgeage A-E
+  React.useEffect(() => {
+    if (isFirstBadgeAE) setTypeAction('entrée');
+  }, [isFirstBadgeAE]);
 
   const heureStr = heure.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -116,50 +148,41 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     setLoading(true);
     setMessage(null);
     setError(null);
-    
-    // Récupérer les coordonnées GPS si IP non autorisée et consentement donné
     let finalLatitude = latitude;
     let finalLongitude = longitude;
-    
-    if (!isIPAuthorized && gpsConsent) {
+    // Pour Manager/Admin ou A-E, GPS obligatoire (précision selon rôle)
+    if ((!isIPAuthorized && isManagerOrAdmin) || isAE) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           if (!('geolocation' in navigator)) {
             reject(new Error('Géolocalisation non supportée'));
             return;
           }
-          navigator.geolocation.getCurrentPosition(resolve, reject, { 
-            enableHighAccuracy: true, 
-            timeout: 10000 
-          });
+          navigator.geolocation.getCurrentPosition(resolve, reject, gpsOptions);
         });
-        finalLatitude = position.coords.latitude;
-        finalLongitude = position.coords.longitude;
+        finalLatitude = isAE ? Number(position.coords.latitude.toFixed(3)) : position.coords.latitude;
+        finalLongitude = isAE ? Number(position.coords.longitude.toFixed(3)) : position.coords.longitude;
       } catch (error) {
         console.error('Erreur lors de la récupération GPS:', error);
-        // Continuer sans coordonnées GPS
       }
     }
-    // SUPPRIMER l'appel du webhook ici
-    // Ajout dans Supabase uniquement
+    // Préparation des données à insérer
     const insertData: any = {
       utilisateur_id: utilisateur.id,
-      code,
-      type_action: typeAction,
+      code: code || (badgeMethod === 'nfc' ? utilisateur.numero_badge : ''),
+      type_action: isFirstBadgeAE ? 'entrée' : typeAction,
       latitude: finalLatitude,
       longitude: finalLongitude,
-      commentaire: commentaire || null,
+      commentaire: (!isManagerOrAdmin && !isAE && !isIPAuthorized) ? commentaire || null : null,
+      lieux: (isManagerOrAdmin && !isIPAuthorized) ? 'Télétravail' : (isIPAuthorized && locationName ? locationName : undefined),
     };
-    if (isIPAuthorized && locationName) {
-      insertData.lieux = locationName;
-    }
     const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
     if (!insertError) {
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         onBack(`Bonne journée ${utilisateur.prenom} !`);
-      }, 0); // Fermer immédiatement et afficher le popup global
+      }, 0);
       setCode('');
     } else {
       setError("Erreur : badge non enregistré. Vérifiez le code ou contactez l'administrateur.");
@@ -168,6 +191,13 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   };
 
   const codeArr = splitCode(code);
+
+  // Affichage conditionnel des champs
+  const showCodeInput = !isAE || isFirstBadgeAE ? true : false;
+  const showTypeAction = (!isAE || !isFirstBadgeAE) || (isAE && !isFirstBadgeAE);
+  const showCommentaire = !isManagerOrAdmin && !isAE && !isIPAuthorized;
+  const showAvertissement = !isManagerOrAdmin && !isAE && !isIPAuthorized;
+  const showGeoBlock = (!isManagerOrAdmin && !isAE && !isIPAuthorized);
 
   return (
     <form onSubmit={handleBadge} style={{
@@ -203,47 +233,51 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         </div>
       </div>
       {/* CODE à 4 chiffres */}
-      <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
-        Saisissez le code à 4 chiffres :
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {codeArr.map((val, idx) => (
-          <input
-            key={idx}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={val}
-            onChange={e => {
-              const v = e.target.value.replace(/\D/g, '').slice(0, 1);
-              let newCode = codeArr.slice();
-              newCode[idx] = v;
-              setCode(newCode.join('').slice(0, 4));
-              // Focus next
-              if (v && idx < 3) {
-                const next = document.getElementById(`code-input-${idx + 1}`);
-                if (next) (next as HTMLInputElement).focus();
-              }
-            }}
-            id={`code-input-${idx}`}
-            style={{
-              width: 48,
-              height: 48,
-              fontSize: 28,
-              textAlign: 'center',
-              border: '1.5px solid #bbb',
-              borderRadius: 8,
-              background: '#f8f8f8',
-              outline: 'none',
-              fontWeight: 600,
-            }}
-            disabled={loading || !!geoError}
-            autoFocus={idx === 0}
-          />
-        ))}
-      </div>
+      {showCodeInput && (
+        <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
+          Saisissez le code à 4 chiffres :
+        </div>
+      )}
+      {showCodeInput && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          {codeArr.map((val, idx) => (
+            <input
+              key={idx}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={val}
+              onChange={e => {
+                const v = e.target.value.replace(/\D/g, '').slice(0, 1);
+                let newCode = codeArr.slice();
+                newCode[idx] = v;
+                setCode(newCode.join('').slice(0, 4));
+                // Focus next
+                if (v && idx < 3) {
+                  const next = document.getElementById(`code-input-${idx + 1}`);
+                  if (next) (next as HTMLInputElement).focus();
+                }
+              }}
+              id={`code-input-${idx}`}
+              style={{
+                width: 48,
+                height: 48,
+                fontSize: 28,
+                textAlign: 'center',
+                border: '1.5px solid #bbb',
+                borderRadius: 8,
+                background: '#f8f8f8',
+                outline: 'none',
+                fontWeight: 600,
+              }}
+              disabled={loading || !!geoError}
+              autoFocus={idx === 0}
+            />
+          ))}
+        </div>
+      )}
       {/* TYPE D'ACTION */}
-      {!isIPAuthorized && (
+      {showTypeAction && (
         <div style={{ marginBottom: 18, width: '100%' }}>
           <label htmlFor="type-action-select" style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, display: 'block' }}>Type d'action :</label>
           <select
@@ -259,6 +293,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
               marginBottom: 6
             }}
             required
+            disabled={isFirstBadgeAE}
           >
             <option value="entrée">Entrée</option>
             <option value="sortie">Sortie</option>
@@ -268,7 +303,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         </div>
       )}
       {/* AVERTISSEMENT reseau inconnu */}
-      {!isIPAuthorized && (
+      {showAvertissement && (
         <div style={{
           width: '100%',
           background: '#fff3cd',
@@ -287,7 +322,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         </div>
       )}
       {/* COMMENTAIRE obligatoire */}
-      {!isIPAuthorized && (
+      {showCommentaire && (
         <div style={{ marginBottom: 22, width: '100%' }}>
           <div style={{ marginBottom: 8, fontSize: 15, color: '#666', fontWeight: 500 }}>
             Veuillez expliquer pourquoi vous accédez depuis cet emplacement :
@@ -307,12 +342,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
               resize: 'vertical',
               background: '#fff8f8',
             }}
-            required={!isIPAuthorized}
+            required={showCommentaire}
           />
         </div>
       )}
       {/* GÉOLOCALISATION bloc + case à cocher */}
-      {!isIPAuthorized && (
+      {showGeoBlock && (
         <div style={{ marginBottom: 16, width: '100%' }}>
           <div style={{ 
             padding: 12, 
@@ -341,7 +376,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         </div>
       )}
       {/* BOUTON BADGER */}
-      <button type="submit" disabled={loading || code.length !== 4 || !!geoError || (!isIPAuthorized && !commentaire.trim())} style={{
+      <button type="submit" disabled={loading || (showCodeInput && code.length !== 4) || !!geoError || (showCommentaire && !commentaire.trim())} style={{
         fontSize: 20,
         background: '#1976d2',
         color: '#fff',
