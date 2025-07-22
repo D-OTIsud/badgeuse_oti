@@ -170,12 +170,15 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     const insertData: any = {
       utilisateur_id: utilisateur.id,
       code: code || (badgeMethod === 'nfc' ? utilisateur.numero_badge : ''),
-      type_action: isFirstBadgeAE ? 'entrée' : typeAction,
       latitude: finalLatitude,
       longitude: finalLongitude,
       commentaire: (!isManagerOrAdmin && !isAE && !isIPAuthorized) ? commentaire || null : null,
       lieux: (isManagerOrAdmin && !isIPAuthorized) ? 'Télétravail' : (isIPAuthorized && locationName ? locationName : undefined),
     };
+    // Exception : pour A-E premier badgeage (lieux == null), il faut transmettre type_action: 'entrée'
+    if ((isAE && isFirstBadgeAE) || !lieuConnu) {
+      insertData.type_action = isFirstBadgeAE ? 'entrée' : typeAction;
+    }
     const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
     if (!insertError) {
       setShowSuccess(true);
