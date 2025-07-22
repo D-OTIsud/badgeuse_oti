@@ -180,11 +180,9 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       commentaire: (!isManagerOrAdmin && !isAE && !isIPAuthorized) ? commentaire || null : null,
       lieux: (isManagerOrAdmin && !isIPAuthorized) ? 'Télétravail' : (isIPAuthorized && locationName ? locationName : undefined),
     };
-    // type_action n'est transmis que :
-    // 1. Pour A-E, si utilisateur.lieux == null (premier badgeage) → 'entrée'
-    // 2. Pour tout autre utilisateur, uniquement si le lieu n'est pas connu (pas de locationName et pas Admin/Manager hors IP autorisée) → valeur du dropdown
-    if (isAE && isFirstBadgeAE) {
-      insertData.type_action = 'entrée';
+    // Pour A-E, toujours transmettre type_action (entrée si premier badgeage, sinon valeur du dropdown)
+    if (isAE) {
+      insertData.type_action = isFirstBadgeAE ? 'entrée' : typeAction;
     } else if (!lieuConnu) {
       insertData.type_action = typeAction;
     }
