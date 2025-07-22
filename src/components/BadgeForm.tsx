@@ -70,23 +70,25 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
 
   // Appel du webhook à l'ouverture du formulaire (toujours, sans condition)
   React.useEffect(() => {
-    (async () => {
-      try {
-        console.log('[WEBHOOK] Appel webhook n8n (ouverture formulaire)...');
-        const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            utilisateur_id: utilisateur.id,
-            badge_id: badgeId,
-            user_email: utilisateur.email,
-          }),
-        });
-        console.log('[WEBHOOK] Réponse webhook', res.status, res.statusText);
-      } catch (e: any) {
-        console.error('Erreur webhook (ouverture formulaire):', e);
-      }
-    })();
+    if (utilisateur.role && utilisateur.role !== 'A-E') {
+      (async () => {
+        try {
+          console.log('[WEBHOOK] Appel webhook n8n (ouverture formulaire)...');
+          const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              utilisateur_id: utilisateur.id,
+              badge_id: badgeId,
+              user_email: utilisateur.email,
+            }),
+          });
+          console.log('[WEBHOOK] Réponse webhook', res.status, res.statusText);
+        } catch (e: any) {
+          console.error('Erreur webhook (ouverture formulaire):', e);
+        }
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
