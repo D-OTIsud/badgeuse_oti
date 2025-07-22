@@ -195,9 +195,10 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   // Affichage conditionnel des champs
   const showCodeInput = !isAE || isFirstBadgeAE ? true : false;
   const showTypeAction = (!isAE || !isFirstBadgeAE) || (isAE && !isFirstBadgeAE);
+  // Correction : Admin/Manager ne voient jamais les avertissements ni commentaire ni case GPS
   const showCommentaire = !isManagerOrAdmin && !isAE && !isIPAuthorized;
   const showAvertissement = !isManagerOrAdmin && !isAE && !isIPAuthorized;
-  const showGeoBlock = (!isManagerOrAdmin && !isAE && !isIPAuthorized);
+  const showGeoBlock = !isManagerOrAdmin && !isAE && !isIPAuthorized;
 
   return (
     <form onSubmit={handleBadge} style={{
