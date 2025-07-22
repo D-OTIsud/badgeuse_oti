@@ -193,8 +193,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const codeArr = splitCode(code);
 
   // Affichage conditionnel des champs
-  const showCodeInput = !isAE || isFirstBadgeAE ? true : false;
-  const showTypeAction = (!isAE || !isFirstBadgeAE) || (isAE && !isFirstBadgeAE);
+  // Pour A-E :
+  // - Premier badgeage : pas de champ code, pas de champ type d'action
+  // - Après : uniquement champ type d'action, pas de champ code
+  // Pour les autres rôles : comportement classique
+  const showCodeInput = !isAE;
+  const showTypeAction = (isAE && !isFirstBadgeAE) || (!isAE && (!isManagerOrAdmin || isIPAuthorized));
   // Correction : Admin/Manager ne voient jamais les avertissements ni commentaire ni case GPS
   const showCommentaire = !isManagerOrAdmin && !isAE && !isIPAuthorized;
   const showAvertissement = !isManagerOrAdmin && !isAE && !isIPAuthorized;
@@ -234,12 +238,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         </div>
       </div>
       {/* CODE à 4 chiffres */}
-      {showCodeInput && (
+      {showCodeInput && !isAE && (
         <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
           Saisissez le code à 4 chiffres :
         </div>
       )}
-      {showCodeInput && (
+      {showCodeInput && !isAE && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
           {codeArr.map((val, idx) => (
             <input
