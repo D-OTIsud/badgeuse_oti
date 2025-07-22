@@ -145,6 +145,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
+              const user = usersFound[0];
               // Récupérer la position GPS
               let latitude: number | null = null;
               let longitude: number | null = null;
@@ -162,31 +163,50 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                   );
                 });
               } catch {}
-                        // Logique selon l'autorisation IP
-          if (isIPAuthorized) {
-            // IP autorisée : badgeage direct sans webhook
-            const insertData: any = {
-              utilisateur_id,
-              code: numero_badge,
-              type_action: 'entrée',
-              latitude,
-              longitude,
-            };
-            if (locationName) {
-              insertData.lieux = locationName;
-            }
-            const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
-            if (!insertError) {
-              setSuccess(`Badge enregistré pour ${usersFound[0].prenom} ${usersFound[0].nom}`);
-              setTimeout(() => setSuccess(null), 3000);
-              setNfcMessage(null);
-            } else {
-              setNfcMessage("Erreur lors de l'enregistrement du badge.");
-            }
-          } else {
-            // IP non autorisée : rediriger vers le formulaire avec commentaire obligatoire
-            onSelect(usersFound[0]);
-          }
+              // Logique selon l'autorisation IP
+              const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
+              if (isIPAuthorized) {
+                // IP autorisée : badgeage direct sans webhook
+                const insertData: any = {
+                  utilisateur_id,
+                  code: numero_badge,
+                  type_action: 'entrée',
+                  latitude,
+                  longitude,
+                };
+                if (locationName) {
+                  insertData.lieux = locationName;
+                }
+                const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                if (!insertError) {
+                  setSuccess(`Badge enregistré pour ${user.prenom} ${user.nom}`);
+                  setTimeout(() => setSuccess(null), 3000);
+                  setNfcMessage(null);
+                } else {
+                  setNfcMessage("Erreur lors de l'enregistrement du badge.");
+                }
+              } else if (isManagerOrAdmin) {
+                // Admin/Manager sur réseau inconnu : badgeage direct, lieu = Télétravail, pas de webhook, pas de formulaire
+                const insertData: any = {
+                  utilisateur_id,
+                  code: numero_badge,
+                  type_action: 'entrée',
+                  latitude,
+                  longitude,
+                  lieux: 'Télétravail',
+                };
+                const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                if (!insertError) {
+                  setSuccess(`Badge enregistré (Télétravail) pour ${user.prenom} ${user.nom}`);
+                  setTimeout(() => setSuccess(null), 3000);
+                  setNfcMessage(null);
+                } else {
+                  setNfcMessage("Erreur lors de l'enregistrement du badge.");
+                }
+              } else {
+                // IP non autorisée : rediriger vers le formulaire avec commentaire obligatoire
+                onSelect(user);
+              }
             }
           } else {
             setNfcMessage("Aucun badge actif trouvé pour ce tag.");
