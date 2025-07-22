@@ -62,7 +62,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
       setSuccess(null); // Réinitialiser les messages de succès
       const { data, error } = await supabase
         .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, service, email, status, avatar, lieux')
+        .select('id, nom, prenom, service, email, status, avatar, lieux, role')
         .eq('actif', true)
         .order('nom', { ascending: true });
       if (!error && data) setUsers(data);
@@ -141,7 +141,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
             // Chercher l'utilisateur
             const { data: usersFound, error: userError } = await supabase
               .from('appbadge_utilisateurs')
-              .select('id, nom, prenom, service, email, status, avatar')
+              .select('id, nom, prenom, service, email, status, avatar, role')
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
