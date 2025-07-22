@@ -141,7 +141,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
             // Chercher l'utilisateur
             const { data: usersFound, error: userError } = await supabase
               .from('appbadge_utilisateurs')
-              .select('id, nom, prenom, service, email, status, avatar, role')
+              .select('id, nom, prenom, service, email, status, avatar, role, lieux')
               .eq('id', utilisateur_id)
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
@@ -167,6 +167,33 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
               const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
               const isAE = user.role === 'A-E';
               const isFirstBadgeAE = isAE && !user.lieux;
+
+              // Cas A-E :
+              if (isAE) {
+                if (isFirstBadgeAE) {
+                  // Premier badgeage : badgeage direct
+                  const insertData: any = {
+                    utilisateur_id,
+                    code: numero_badge,
+                    latitude,
+                    longitude,
+                    type_action: 'entrée',
+                  };
+                  const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                  if (!insertError) {
+                    setSuccess(`Badge enregistré (entrée) pour ${user.prenom} ${user.nom}`);
+                    setTimeout(() => setSuccess(null), 3000);
+                    setNfcMessage(null);
+                  } else {
+                    setNfcMessage("Erreur lors de l'enregistrement du badge.");
+                  }
+                } else {
+                  // Après premier badgeage : rediriger vers le formulaire pour choisir le type d'action
+                  onSelect(user);
+                }
+                return;
+              }
+
               if (isIPAuthorized) {
                 // IP autorisée : badgeage direct sans webhook
                 const insertData: any = {
