@@ -8,7 +8,7 @@ const LottieLoader: React.FC = () => (
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      overflow: 'hidden', // crop
+      overflow: 'hidden',
       position: 'relative'
     }}
   >
@@ -18,8 +18,7 @@ const LottieLoader: React.FC = () => (
       speed="1"
       style={{
         width: '100%',
-        height: 120,
-        marginTop: -30 // shift up to crop bottom
+        height: 120 // no marginTop, crop is at the bottom
       }}
       loop
       autoplay
