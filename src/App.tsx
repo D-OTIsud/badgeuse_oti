@@ -5,6 +5,7 @@ import Header from './components/Header';
 import { supabase } from './supabaseClient';
 import { checkIPAuthorization, getWelcomeMessage } from './services/ipService';
 import AdminPage from './components/AdminPage';
+import LottieLoader from './components/LottieLoader';
 
 export type Utilisateur = {
   id: string;
@@ -138,12 +139,10 @@ function App() {
   };
 
   // Affichage du chargement IP
-  if (ipCheckLoading) {
+  if (ipCheckLoading || loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#fcf9f3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', color: '#1976d2', fontSize: 18 }}>
-          Vérification de l'accès...
-        </div>
+        <LottieLoader />
       </div>
     );
   }
