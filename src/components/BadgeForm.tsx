@@ -65,6 +65,9 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   // GPS options selon le rôle
   const gpsOptions = isAE ? { enableHighAccuracy: false, timeout: 10000 } : { enableHighAccuracy: true, timeout: 10000 };
 
+  // Masquer le champ type d'action si le lieu est connu (locationName défini ou Admin/Manager sur réseau inconnu)
+  const lieuConnu = (isManagerOrAdmin && !isIPAuthorized) || (isIPAuthorized && locationName);
+
   // Appel du webhook à l'ouverture du formulaire (toujours, sans condition)
   React.useEffect(() => {
     (async () => {
@@ -167,9 +170,11 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
       }
     }
     // Préparation des données à insérer
+    // Pour A-E, toujours transmettre code auto (jamais de champ code saisi)
+    const codeToSend = isAE ? utilisateur.numero_badge : (code || (badgeMethod === 'nfc' ? utilisateur.numero_badge : ''));
     const insertData: any = {
       utilisateur_id: utilisateur.id,
-      code: code || (badgeMethod === 'nfc' ? utilisateur.numero_badge : ''),
+      code: codeToSend,
       latitude: finalLatitude,
       longitude: finalLongitude,
       commentaire: (!isManagerOrAdmin && !isAE && !isIPAuthorized) ? commentaire || null : null,
@@ -201,13 +206,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
 
   // Affichage conditionnel des champs
   // Pour A-E :
-  // - Premier badgeage : pas de champ code, pas de champ type d'action
-  // - Après : uniquement champ type d'action, pas de champ code
+  // - Premier badgeage : pas de champ code, pas de champ type d'action, mais transmettre code (auto), utilisateur_id, GPS, type_action = 'entrée'
+  // - Après : uniquement champ type d'action, pas de champ code, transmettre code (auto), utilisateur_id, GPS, type_action (choisi)
   // Pour les autres rôles : comportement classique
   const showCodeInput = !isAE;
-  // Masquer le champ type d'action si le lieu est connu (locationName défini ou Admin/Manager sur réseau inconnu)
-  const lieuConnu = (isManagerOrAdmin && !isIPAuthorized) || (isIPAuthorized && locationName);
-  const showTypeAction = !lieuConnu && ((isAE && !isFirstBadgeAE) || (!isAE && (!isManagerOrAdmin || isIPAuthorized)));
+  // Pour A-E, deuxième badgeage : afficher uniquement le dropdown type d'action
+  const showTypeAction = (isAE && !isFirstBadgeAE) || (!isAE && !lieuConnu);
   // Correction : Admin/Manager ne voient jamais les avertissements ni commentaire ni case GPS
   const showCommentaire = !isManagerOrAdmin && !isAE && !isIPAuthorized;
   const showAvertissement = !isManagerOrAdmin && !isAE && !isIPAuthorized;
