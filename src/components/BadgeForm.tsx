@@ -198,7 +198,9 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   // - Après : uniquement champ type d'action, pas de champ code
   // Pour les autres rôles : comportement classique
   const showCodeInput = !isAE;
-  const showTypeAction = (isAE && !isFirstBadgeAE) || (!isAE && (!isManagerOrAdmin || isIPAuthorized));
+  // Masquer le champ type d'action si le lieu est connu (locationName défini ou Admin/Manager sur réseau inconnu)
+  const lieuConnu = (isManagerOrAdmin && !isIPAuthorized) || (isIPAuthorized && locationName);
+  const showTypeAction = !lieuConnu && ((isAE && !isFirstBadgeAE) || (!isAE && (!isManagerOrAdmin || isIPAuthorized)));
   // Correction : Admin/Manager ne voient jamais les avertissements ni commentaire ni case GPS
   const showCommentaire = !isManagerOrAdmin && !isAE && !isIPAuthorized;
   const showAvertissement = !isManagerOrAdmin && !isAE && !isIPAuthorized;
