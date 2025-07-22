@@ -3,8 +3,9 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json .
 #COPY package-lock.json .
-RUN npm install && chmod -R +x node_modules/.bin
+RUN npm install
 COPY . .
+RUN chmod -R +x node_modules/.bin
 RUN npm run build
 
 # Production stage
