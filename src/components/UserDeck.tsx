@@ -165,17 +165,22 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
               } catch {}
               // Logique selon l'autorisation IP
               const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
+              const isAE = user.role === 'A-E';
+              const isFirstBadgeAE = isAE && !user.lieux;
               if (isIPAuthorized) {
                 // IP autorisée : badgeage direct sans webhook
                 const insertData: any = {
                   utilisateur_id,
                   code: numero_badge,
-                  type_action: 'entrée',
                   latitude,
                   longitude,
                 };
                 if (locationName) {
                   insertData.lieux = locationName;
+                }
+                // Pour A-E, transmettre type_action: 'entrée' uniquement si premier badgeage
+                if (isFirstBadgeAE) {
+                  insertData.type_action = 'entrée';
                 }
                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
                 if (!insertError) {
@@ -190,7 +195,6 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 const insertData: any = {
                   utilisateur_id,
                   code: numero_badge,
-                  type_action: 'entrée',
                   latitude,
                   longitude,
                   lieux: 'Télétravail',
