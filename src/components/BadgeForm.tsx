@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Utilisateur } from '../App';
+import LottieLoader from './LottieLoader';
 
 interface BadgeFormProps {
   utilisateur: Utilisateur;
@@ -218,204 +219,219 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const showGeoBlock = !isManagerOrAdmin && !isAE && !isIPAuthorized;
 
   return (
-    <form onSubmit={handleBadge} style={{
-      maxWidth: 420,
-      margin: '48px auto',
-      background: '#fff',
-      borderRadius: 18,
-      boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-      padding: 36,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      fontFamily: 'Segoe UI, Arial, sans-serif',
-    }}>
-      {showSuccess && (
-        <SuccessPopup message={`Bonne journée ${utilisateur.prenom} !`} onClose={() => { setShowSuccess(false); onBack(); }} />
-      )}
-      <button type="button" onClick={() => window.location.reload()} style={{ marginBottom: 16, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer' }}>
-        ← Retour
-      </button>
-      {/* AVATAR, NOM, EMAIL */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, width: '100%' }}>
-        {utilisateur.avatar ? (
-          <img src={utilisateur.avatar} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid #1976d2', background: '#f4f6fa' }} />
-        ) : (
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#bbb', border: '2px solid #1976d2' }}>
-            <span>👤</span>
-          </div>
-        )}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 'bold', fontSize: 22 }}>{utilisateur.prenom} {utilisateur.nom}</div>
-          <div style={{ color: '#888', fontSize: 15 }}>{utilisateur.email}</div>
-        </div>
-      </div>
-      {/* CODE à 4 chiffres */}
-      {showCodeInput && !isAE && (
-        <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
-          Saisissez le code à 4 chiffres :
-        </div>
-      )}
-      {showCodeInput && !isAE && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {codeArr.map((val, idx) => (
-            <input
-              key={idx}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={val}
-              onChange={e => {
-                const v = e.target.value.replace(/\D/g, '').slice(0, 1);
-                let newCode = codeArr.slice();
-                newCode[idx] = v;
-                setCode(newCode.join('').slice(0, 4));
-                // Focus next
-                if (v && idx < 3) {
-                  const next = document.getElementById(`code-input-${idx + 1}`);
-                  if (next) (next as HTMLInputElement).focus();
-                }
-              }}
-              id={`code-input-${idx}`}
-              style={{
-                width: 48,
-                height: 48,
-                fontSize: 28,
-                textAlign: 'center',
-                border: '1.5px solid #bbb',
-                borderRadius: 8,
-                background: '#f8f8f8',
-                outline: 'none',
-                fontWeight: 600,
-              }}
-              disabled={loading || !!geoError}
-              autoFocus={idx === 0}
-            />
-          ))}
-        </div>
-      )}
-      {/* TYPE D'ACTION */}
-      {showTypeAction && (
-        <div style={{ marginBottom: 18, width: '100%' }}>
-          <label htmlFor="type-action-select" style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, display: 'block' }}>Type d'action :</label>
-          <select
-            id="type-action-select"
-            value={typeAction}
-            onChange={e => setTypeAction(e.target.value as any)}
-            style={{
-              width: '100%',
-              padding: 8,
-              borderRadius: 6,
-              border: '1.5px solid #bbb',
-              fontSize: 16,
-              marginBottom: 6
-            }}
-            required
-            disabled={isFirstBadgeAE}
-          >
-            <option value="entrée">Entrée</option>
-            <option value="sortie">Sortie</option>
-            <option value="pause">Pause</option>
-            <option value="retour">Retour</option>
-          </select>
-        </div>
-      )}
-      {/* AVERTISSEMENT reseau inconnu */}
-      {showAvertissement && (
+    <>
+      {loading && (
         <div style={{
-          width: '100%',
-          background: '#fff3cd',
-          border: '1.5px solid #ffeaa7',
-          borderRadius: 8,
-          color: '#856404',
-          fontWeight: 700,
-          fontSize: 16,
-          padding: '12px 16px',
-          marginBottom: 18,
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          justifyContent: 'center',
+          background: 'rgba(255,255,255,0.7)',
+          zIndex: 2000
         }}>
-          <span style={{ fontSize: 22 }}>⚠️</span> Vous n'êtes pas connecté au réseau WiFi d'un kit
+          <LottieLoader />
         </div>
       )}
-      {/* COMMENTAIRE obligatoire */}
-      {showCommentaire && (
-        <div style={{ marginBottom: 22, width: '100%' }}>
-          <div style={{ marginBottom: 8, fontSize: 15, color: '#666', fontWeight: 500 }}>
-            Veuillez expliquer pourquoi vous accédez depuis cet emplacement :
-          </div>
-          <textarea
-            value={commentaire}
-            onChange={(e) => setCommentaire(e.target.value)}
-            placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
-            style={{
-              width: '100%',
-              minHeight: 80,
-              padding: 12,
-              border: '1.5px solid #d32f2f',
-              borderRadius: 8,
-              fontSize: 14,
-              fontFamily: 'inherit',
-              resize: 'vertical',
-              background: '#fff8f8',
-            }}
-            required={showCommentaire}
-          />
-        </div>
-      )}
-      {/* GÉOLOCALISATION bloc + case à cocher */}
-      {showGeoBlock && (
-        <div style={{ marginBottom: 16, width: '100%' }}>
-          <div style={{ 
-            padding: 12, 
-            backgroundColor: '#fffbe6', 
-            border: '1px solid #ffeaa7', 
-            borderRadius: 8,
-            marginBottom: 8
-          }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#856404', marginBottom: 4 }}>
-              ⚠️ Géolocalisation
-            </div>
-            <div style={{ fontSize: 12, color: '#856404' }}>
-              Pour des raisons de sécurité, nous devons relever vos coordonnées GPS. 
-              Cela peut donner suite à une alerte RH.
-            </div>
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-            <input
-              type="checkbox"
-              checked={gpsConsent}
-              onChange={(e) => setGpsConsent(e.target.checked)}
-              style={{ width: 16, height: 16 }}
-            />
-            J'accepte que les coordonnées GPS soient transmises
-          </label>
-        </div>
-      )}
-      {/* BOUTON BADGER */}
-      <button type="submit" disabled={loading || (showCodeInput && code.length !== 4) || !!geoError || (showCommentaire && !commentaire.trim())} style={{
-        fontSize: 20,
-        background: '#1976d2',
-        color: '#fff',
-        border: 'none',
-        borderRadius: 8,
-        padding: '14px 0',
-        width: '100%',
-        fontWeight: 700,
-        cursor: loading ? 'not-allowed' : 'pointer',
-        marginBottom: 12,
-        boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
-        transition: 'background 0.2s',
+      <form onSubmit={handleBadge} style={{
+        maxWidth: 420,
+        margin: '48px auto',
+        background: '#fff',
+        borderRadius: 18,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
+        padding: 36,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        fontFamily: 'Segoe UI, Arial, sans-serif',
       }}>
-        {loading ? 'Badge en cours...' : 'Badger'}
-      </button>
-      {geoError && (
-        <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>
-      )}
-      {message && !showSuccess && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'green' }}>{message}</div>}
-      {error && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'red' }}>{error}</div>}
-    </form>
+        {showSuccess && (
+          <SuccessPopup message={`Bonne journée ${utilisateur.prenom} !`} onClose={() => { setShowSuccess(false); onBack(); }} />
+        )}
+        <button type="button" onClick={() => window.location.reload()} style={{ marginBottom: 16, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer' }}>
+          ← Retour
+        </button>
+        {/* AVATAR, NOM, EMAIL */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, width: '100%' }}>
+          {utilisateur.avatar ? (
+            <img src={utilisateur.avatar} alt="avatar" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: '2px solid #1976d2', background: '#f4f6fa' }} />
+          ) : (
+            <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#bbb', border: '2px solid #1976d2' }}>
+              <span>👤</span>
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 'bold', fontSize: 22 }}>{utilisateur.prenom} {utilisateur.nom}</div>
+            <div style={{ color: '#888', fontSize: 15 }}>{utilisateur.email}</div>
+          </div>
+        </div>
+        {/* CODE à 4 chiffres */}
+        {showCodeInput && !isAE && (
+          <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
+            Saisissez le code à 4 chiffres :
+          </div>
+        )}
+        {showCodeInput && !isAE && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+            {codeArr.map((val, idx) => (
+              <input
+                key={idx}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={val}
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '').slice(0, 1);
+                  let newCode = codeArr.slice();
+                  newCode[idx] = v;
+                  setCode(newCode.join('').slice(0, 4));
+                  // Focus next
+                  if (v && idx < 3) {
+                    const next = document.getElementById(`code-input-${idx + 1}`);
+                    if (next) (next as HTMLInputElement).focus();
+                  }
+                }}
+                id={`code-input-${idx}`}
+                style={{
+                  width: 48,
+                  height: 48,
+                  fontSize: 28,
+                  textAlign: 'center',
+                  border: '1.5px solid #bbb',
+                  borderRadius: 8,
+                  background: '#f8f8f8',
+                  outline: 'none',
+                  fontWeight: 600,
+                }}
+                disabled={loading || !!geoError}
+                autoFocus={idx === 0}
+              />
+            ))}
+          </div>
+        )}
+        {/* TYPE D'ACTION */}
+        {showTypeAction && (
+          <div style={{ marginBottom: 18, width: '100%' }}>
+            <label htmlFor="type-action-select" style={{ fontWeight: 600, fontSize: 15, marginBottom: 6, display: 'block' }}>Type d'action :</label>
+            <select
+              id="type-action-select"
+              value={typeAction}
+              onChange={e => setTypeAction(e.target.value as any)}
+              style={{
+                width: '100%',
+                padding: 8,
+                borderRadius: 6,
+                border: '1.5px solid #bbb',
+                fontSize: 16,
+                marginBottom: 6
+              }}
+              required
+              disabled={isFirstBadgeAE}
+            >
+              <option value="entrée">Entrée</option>
+              <option value="sortie">Sortie</option>
+              <option value="pause">Pause</option>
+              <option value="retour">Retour</option>
+            </select>
+          </div>
+        )}
+        {/* AVERTISSEMENT reseau inconnu */}
+        {showAvertissement && (
+          <div style={{
+            width: '100%',
+            background: '#fff3cd',
+            border: '1.5px solid #ffeaa7',
+            borderRadius: 8,
+            color: '#856404',
+            fontWeight: 700,
+            fontSize: 16,
+            padding: '12px 16px',
+            marginBottom: 18,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <span style={{ fontSize: 22 }}>⚠️</span> Vous n'êtes pas connecté au réseau WiFi d'un kit
+          </div>
+        )}
+        {/* COMMENTAIRE obligatoire */}
+        {showCommentaire && (
+          <div style={{ marginBottom: 22, width: '100%' }}>
+            <div style={{ marginBottom: 8, fontSize: 15, color: '#666', fontWeight: 500 }}>
+              Veuillez expliquer pourquoi vous accédez depuis cet emplacement :
+            </div>
+            <textarea
+              value={commentaire}
+              onChange={(e) => setCommentaire(e.target.value)}
+              placeholder="Expliquez pourquoi vous accédez depuis cet emplacement..."
+              style={{
+                width: '100%',
+                minHeight: 80,
+                padding: 12,
+                border: '1.5px solid #d32f2f',
+                borderRadius: 8,
+                fontSize: 14,
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                background: '#fff8f8',
+              }}
+              required={showCommentaire}
+            />
+          </div>
+        )}
+        {/* GÉOLOCALISATION bloc + case à cocher */}
+        {showGeoBlock && (
+          <div style={{ marginBottom: 16, width: '100%' }}>
+            <div style={{ 
+              padding: 12, 
+              backgroundColor: '#fffbe6', 
+              border: '1px solid #ffeaa7', 
+              borderRadius: 8,
+              marginBottom: 8
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#856404', marginBottom: 4 }}>
+                ⚠️ Géolocalisation
+              </div>
+              <div style={{ fontSize: 12, color: '#856404' }}>
+                Pour des raisons de sécurité, nous devons relever vos coordonnées GPS. 
+                Cela peut donner suite à une alerte RH.
+              </div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={gpsConsent}
+                onChange={(e) => setGpsConsent(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
+              J'accepte que les coordonnées GPS soient transmises
+            </label>
+          </div>
+        )}
+        {/* BOUTON BADGER */}
+        <button type="submit" disabled={loading || (showCodeInput && code.length !== 4) || !!geoError || (showCommentaire && !commentaire.trim())} style={{
+          fontSize: 20,
+          background: '#1976d2',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '14px 0',
+          width: '100%',
+          fontWeight: 700,
+          cursor: loading ? 'not-allowed' : 'pointer',
+          marginBottom: 12,
+          boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
+          transition: 'background 0.2s',
+        }}>
+          {loading ? 'Badge en cours...' : 'Badger'}
+        </button>
+        {geoError && (
+          <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>
+        )}
+        {message && !showSuccess && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'green' }}>{message}</div>}
+        {error && <div style={{ marginTop: 16, fontWeight: 'bold', color: 'red' }}>{error}</div>}
+      </form>
+    </>
   );
 };
 
