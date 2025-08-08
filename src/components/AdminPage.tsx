@@ -378,6 +378,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
         <h2 style={{ marginTop: 0 }}>Administration</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
+          <button onClick={() => setAdminSection('dashboard')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #3ba27c', background: '#f0f8f4', color: '#3ba27c', fontWeight: 600, cursor: 'pointer' }}>📊 Tableau de bord</button>
           <button onClick={() => setAdminSection('associer-tag')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Associer un nouveau tag</button>
           <button onClick={() => setAdminSection('ajouter-lieu')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un nouveau lieu</button>
         </div>
