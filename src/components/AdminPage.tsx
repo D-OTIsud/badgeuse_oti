@@ -37,12 +37,19 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [longitude, setLongitude] = useState('');
   const [message, setMessage] = useState('');
 
-  // Admin NFC auth
+  // Admin auth
   const [adminUser, setAdminUser] = useState<any>(null);
-  const [nfcAuthError, setNfcAuthError] = useState('');
+  const [authError, setAuthError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [isAssociating, setIsAssociating] = useState(false);
   const nfcAbortRef = useRef<AbortController | null>(null);
+  
+  // Admin code auth
+  const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [adminCode, setAdminCode] = useState('');
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(false);
 
   // Section de l'administration actuelle
   const [adminSection, setAdminSection] = useState<string | null>(null);
@@ -54,6 +61,16 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Recherche utilisateur pour le menu déroulant
   const [userSearch, setUserSearch] = useState('');
   const filteredUsers = users.filter(u => {
+    const q = userSearch.trim().toLowerCase();
+    return (
+      u.nom?.toLowerCase().includes(q) ||
+      u.prenom?.toLowerCase().includes(q)
+    );
+  });
+
+  // Filtrer les administrateurs pour l'authentification
+  const adminUsers = users.filter(u => u.role === 'Admin');
+  const filteredAdminUsers = adminUsers.filter(u => {
     const q = userSearch.trim().toLowerCase();
     return (
       u.nom?.toLowerCase().includes(q) ||
@@ -94,69 +111,105 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     fetchUsers();
   }, []);
 
-  // NFC scan pour authentification admin
-  const handleAdminNfcScan = async () => {
-    setIsScanning(true);
-    setNfcAuthError('');
-    setMessage('');
-    setNfcTag('');
-    if (!('NDEFReader' in window)) {
-      setNfcAuthError('NFC non supporté sur ce navigateur/appareil.');
-      setIsScanning(false);
+  // Demander le code pour un administrateur
+  const handleRequestAdminCode = async () => {
+    if (!selectedAdmin) {
+      setAuthError('Veuillez sélectionner un administrateur.');
       return;
     }
+    
+    setIsRequestingCode(true);
+    setAuthError('');
+    
     try {
-      const NDEFReader = (window as any).NDEFReader;
-      const controller = new AbortController();
-      nfcAbortRef.current = controller;
-      const ndef = new NDEFReader();
-      await ndef.scan({ signal: controller.signal });
-      ndef.onreading = async (event: any) => {
-        let uid = event.serialNumber || (event.target && event.target.serialNumber);
-        if (!uid) {
-          setNfcAuthError('Tag scanné, mais aucun numéro de série (UID) trouvé.');
-          setIsScanning(false);
-          return;
-        }
-        setNfcTag(uid);
-        // Recherche du badge dans la table appbadge_badges
-        const { data: badges } = await supabase
-          .from('appbadge_badges')
-          .select('utilisateur_id')
-          .eq('uid_tag', uid)
-          .eq('actif', true)
-          .limit(1);
-        if (!badges || badges.length === 0) {
-          setNfcAuthError('Badge inconnu ou inactif.');
-          setIsScanning(false);
-          return;
-        }
-        const utilisateurId = badges[0].utilisateur_id;
-        // Recherche de l'utilisateur (on veut le champ role)
-        const { data: usersFound } = await supabase
-          .from('appbadge_utilisateurs')
-          .select('id, nom, prenom, role')
-          .eq('id', utilisateurId)
-          .limit(1);
-        if (!usersFound || usersFound.length === 0) {
-          setNfcAuthError('Utilisateur non trouvé.');
-          setIsScanning(false);
-          return;
-        }
-        const user = usersFound[0];
-        if (user.role !== 'Admin') {
-          setNfcAuthError('Accès refusé : vous n\'êtes pas administrateur.');
-          setIsScanning(false);
-          return;
-        }
-        setAdminUser(user);
-        setIsScanning(false);
-        if (nfcAbortRef.current) nfcAbortRef.current.abort();
-      };
+      const selectedUser = users.find(u => u.id === selectedAdmin);
+      if (!selectedUser) {
+        setAuthError('Administrateur non trouvé.');
+        setIsRequestingCode(false);
+        return;
+      }
+
+      // Appel du webhook pour envoyer le code
+      const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          utilisateur_id: selectedUser.id,
+          badge_id: 'admin-auth',
+          user_email: selectedUser.email,
+          user_role: selectedUser.role,
+        }),
+      });
+
+      if (res.ok) {
+        setShowCodeInput(true);
+        setAuthError('');
+      } else {
+        setAuthError('Erreur lors de l\'envoi du code. Veuillez réessayer.');
+      }
     } catch (e) {
-      setNfcAuthError('Erreur lors du scan NFC.');
-      setIsScanning(false);
+      setAuthError('Erreur lors de l\'envoi du code. Veuillez réessayer.');
     }
+    
+    setIsRequestingCode(false);
+  };
+
+  // Vérifier le code administrateur
+  const handleVerifyAdminCode = async () => {
+    if (adminCode.length !== 4) {
+      setAuthError('Le code doit contenir 4 chiffres.');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    setAuthError('');
+
+    try {
+      const selectedUser = users.find(u => u.id === selectedAdmin);
+      if (!selectedUser) {
+        setAuthError('Administrateur non trouvé.');
+        setIsVerifyingCode(false);
+        return;
+      }
+
+      // Vérifier le code en interrogeant la table appbadge_badges
+      const { data: badges, error } = await supabase
+        .from('appbadge_badges')
+        .select('numero_badge_history')
+        .eq('utilisateur_id', selectedUser.id)
+        .eq('actif', true)
+        .limit(1);
+
+      if (error) {
+        setAuthError('Erreur lors de la vérification du code.');
+        setIsVerifyingCode(false);
+        return;
+      }
+
+      if (!badges || badges.length === 0) {
+        setAuthError('Aucun badge actif trouvé pour cet administrateur.');
+        setIsVerifyingCode(false);
+        return;
+      }
+
+      const badge = badges[0];
+      const numeroBadgeHistory = badge.numero_badge_history || [];
+
+      // Vérifier si le code fourni fait partie de l'array numero_badge_history
+      if (numeroBadgeHistory.includes(adminCode)) {
+        setAdminUser(selectedUser);
+        setShowCodeInput(false);
+        setAdminCode('');
+        setSelectedAdmin('');
+        setAuthError('');
+      } else {
+        setAuthError('Code incorrect. Veuillez réessayer.');
+      }
+    } catch (e) {
+      setAuthError('Erreur lors de la vérification du code.');
+    }
+
+    setIsVerifyingCode(false);
   };
 
   // Association NFC à un utilisateur
@@ -340,30 +393,158 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   if (!adminUser) {
     return (
-      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 400, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, maxWidth: 500, margin: '40px auto', padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
         <button onClick={onClose} style={{ float: 'right', background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
         <h2 style={{ marginTop: 0 }}>Authentification Admin</h2>
-        <p>Veuillez scanner votre badge NFC admin pour accéder à la gestion.</p>
-        <button onClick={handleAdminNfcScan} disabled={isScanning} style={{
-          marginBottom: 12,
-          fontSize: 18,
-          background: '#1976d2',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          padding: '14px 0',
-          fontWeight: 700,
-          cursor: isScanning ? 'not-allowed' : 'pointer',
-          boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
-          transition: 'background 0.2s',
-          width: '100%',
-        }}
-          onMouseOver={e => (e.currentTarget.style.background = '#125ea2')}
-          onMouseOut={e => (e.currentTarget.style.background = '#1976d2')}
-        >
-          {isScanning ? 'En attente du scan...' : 'Scanner mon badge'}
-        </button>
-        {nfcAuthError && <div style={{ color: 'red', marginTop: 12 }}>{nfcAuthError}</div>}
+        
+        {!showCodeInput ? (
+          <>
+            <p style={{ marginBottom: 20 }}>Sélectionnez un administrateur pour recevoir un code de connexion :</p>
+            
+            {/* Sélection de l'administrateur */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15, marginBottom: 8, display: 'block' }}>Administrateur :</label>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type="text"
+                  placeholder="Rechercher un administrateur..."
+                  value={selectedAdmin ? (adminUsers.find(u => u.id === selectedAdmin)?.prenom + ' ' + adminUsers.find(u => u.id === selectedAdmin)?.nom) : userSearch}
+                  onChange={e => {
+                    setUserSearch(e.target.value);
+                    setSelectedAdmin('');
+                  }}
+                  onFocus={() => setShowUserDropdown(true)}
+                  style={{
+                    fontSize: 16,
+                    padding: '12px 12px 12px 44px',
+                    borderRadius: 8,
+                    border: '1.5px solid #bbb',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    background: '#f8f8f8',
+                  }}
+                />
+                {/* Avatar dans le champ */}
+                <div style={{ position: 'absolute', left: 8, top: 8 }}>
+                  {selectedAdmin && adminUsers.find(u => u.id === selectedAdmin)?.avatar ? (
+                    <img src={adminUsers.find(u => u.id === selectedAdmin)?.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa' }} />
+                  ) : (
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#bbb', border: '1.2px solid #1976d2' }}>👤</div>
+                  )}
+                </div>
+                {showUserDropdown && filteredAdminUsers.length > 0 && (
+                  <div id="admin-user-dropdown" style={{ 
+                    position: 'absolute', 
+                    top: 48, 
+                    left: 0, 
+                    right: 0,
+                    background: '#fff', 
+                    border: '1.5px solid #1976d2', 
+                    borderRadius: 8, 
+                    boxShadow: '0 4px 16px rgba(25,118,210,0.08)', 
+                    zIndex: 1000, 
+                    maxHeight: 220, 
+                    overflowY: 'auto',
+                  }}>
+                    {filteredAdminUsers.map(u => (
+                      <div key={u.id} onClick={() => { setSelectedAdmin(u.id); setUserSearch(''); setShowUserDropdown(false); }} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 10, 
+                        padding: 10, 
+                        cursor: 'pointer', 
+                        borderBottom: '1px solid #f0f0f0', 
+                        background: selectedAdmin === u.id ? '#e3f2fd' : '#fff',
+                      }}>
+                        {u.avatar ? (
+                          <img src={u.avatar} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1.2px solid #1976d2', background: '#f4f6fa', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#bbb', border: '1.2px solid #1976d2', flexShrink: 0 }}>👤</div>
+                        )}
+                        <span style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{u.prenom} {u.nom}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <button onClick={handleRequestAdminCode} disabled={!selectedAdmin || isRequestingCode} style={{
+              fontSize: 18,
+              background: '#1976d2',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '14px 0',
+              fontWeight: 700,
+              cursor: !selectedAdmin || isRequestingCode ? 'not-allowed' : 'pointer',
+              boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
+              transition: 'background 0.2s',
+              width: '100%',
+            }}>
+              {isRequestingCode ? 'Envoi du code...' : 'Demander le code'}
+            </button>
+          </>
+        ) : (
+          <>
+            <p style={{ marginBottom: 20 }}>Saisissez le code à 4 chiffres reçu :</p>
+            
+            {/* Champ de saisie du code */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15, marginBottom: 8, display: 'block' }}>Code à 4 chiffres :</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={adminCode}
+                onChange={e => setAdminCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="0000"
+                style={{
+                  fontSize: 24,
+                  padding: 12,
+                  borderRadius: 8,
+                  border: '1.5px solid #bbb',
+                  width: '100%',
+                  textAlign: 'center',
+                  letterSpacing: 4,
+                  fontWeight: 600,
+                }}
+                disabled={isVerifyingCode}
+                autoFocus
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => { setShowCodeInput(false); setAdminCode(''); setSelectedAdmin(''); setAuthError(''); }} style={{
+                fontSize: 16,
+                background: 'none',
+                color: '#666',
+                border: '1px solid #ccc',
+                borderRadius: 8,
+                padding: '12px 20px',
+                cursor: 'pointer',
+                flex: 1,
+              }}>
+                Retour
+              </button>
+              <button onClick={handleVerifyAdminCode} disabled={adminCode.length !== 4 || isVerifyingCode} style={{
+                fontSize: 16,
+                background: '#1976d2',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '12px 20px',
+                fontWeight: 700,
+                cursor: adminCode.length !== 4 || isVerifyingCode ? 'not-allowed' : 'pointer',
+                flex: 1,
+              }}>
+                {isVerifyingCode ? 'Vérification...' : 'Se connecter'}
+              </button>
+            </div>
+          </>
+        )}
+        
+        {authError && <div style={{ color: 'red', marginTop: 12, fontSize: 14 }}>{authError}</div>}
       </div>
     );
   }
