@@ -57,17 +57,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const fetchData = async () => {
     try {
       // Récupérer les données du dashboard jour
-      const { data: dashboardData } = await supabase
+      const { data: dashboardData, error: dashboardError } = await supabase
         .from('appbadge_v_dashboard_jour')
         .select('*')
         .eq('jour_local', new Date().toISOString().split('T')[0]);
 
+      if (dashboardError) {
+        console.error('Erreur dashboard jour:', dashboardError);
+      } else {
+        console.log('Données dashboard jour:', dashboardData);
+      }
+
       // Récupérer les anomalies
-      const { data: anomaliesData } = await supabase
+      const { data: anomaliesData, error: anomaliesError } = await supabase
         .from('appbadge_v_anomalies')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(10);
+
+      if (anomaliesError) {
+        console.error('Erreur anomalies:', anomaliesError);
+      } else {
+        console.log('Données anomalies:', anomaliesData);
+      }
 
       setData(prev => ({
         ...prev,
@@ -111,21 +123,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     const presents = filteredUsers.filter(u => u.status === 'Entré').length || 0;
     const enPause = filteredUsers.filter(u => u.status === 'En pause').length || 0;
     
-    // Pour les KPIs basés sur dashboardJour, filtrer selon les utilisateurs sélectionnés
-    const userIds = filteredUsers.map(u => u.id);
-    const filteredDashboardData = data.dashboardJour.filter(item => 
-      userIds.includes(item.utilisateur_id)
-    );
-    
-    const retardCumule = filteredDashboardData?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
-    const travailNetMoyen = filteredDashboardData?.length > 0 
-      ? filteredDashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / filteredDashboardData.length 
+    // Pour les KPIs basés sur dashboardJour, utiliser toutes les données pour l'instant
+    // car la correspondance utilisateur_id peut ne pas fonctionner
+    const retardCumule = data.dashboardJour?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
+    const travailNetMoyen = data.dashboardJour?.length > 0 
+      ? data.dashboardJour.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / data.dashboardJour.length 
       : 0;
-    const pauseMoyenne = filteredDashboardData?.length > 0 
-      ? filteredDashboardData.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / filteredDashboardData.length 
+    const pauseMoyenne = data.dashboardJour?.length > 0 
+      ? data.dashboardJour.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / data.dashboardJour.length 
       : 0;
-    const tauxPonctualite = filteredDashboardData?.length > 0 
-      ? (filteredDashboardData.filter(item => (item.retard_minutes || 0) === 0).length / filteredDashboardData.length) * 100 
+    const tauxPonctualite = data.dashboardJour?.length > 0 
+      ? (data.dashboardJour.filter(item => (item.retard_minutes || 0) === 0).length / data.dashboardJour.length) * 100 
       : 0;
 
     return {
@@ -302,13 +310,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   const { services: availableServicesForFilter, roles: availableRolesForFilter } = getAvailableOptions();
 
-  // Données pour les graphiques (filtrées selon les utilisateurs sélectionnés)
-  const userIds = filteredUsers.map(u => u.id);
-  const filteredDashboardData = data.dashboardJour.filter(item => 
-    userIds.includes(item.utilisateur_id)
-  );
-
-  const chartData = filteredDashboardData.map(item => ({
+  // Données pour les graphiques (utiliser toutes les données pour l'instant)
+  const chartData = data.dashboardJour.map(item => ({
     jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
     retard: item.retard_minutes || 0,
     travailNet: item.travail_net_minutes || 0
@@ -327,7 +330,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     value: count
   }));
 
-  const arrivalData = filteredDashboardData.reduce((acc, item) => {
+  const arrivalData = data.dashboardJour.reduce((acc, item) => {
     const retard = item.retard_minutes || 0;
     let bucket = '0';
     if (retard > 0 && retard <= 5) bucket = '1-5';
