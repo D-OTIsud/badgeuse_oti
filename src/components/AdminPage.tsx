@@ -98,18 +98,18 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }, 2000);
   };
 
-  // Récupérer la liste des utilisateurs actifs au montage
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const { data, error } = await supabase
-        .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, role, actif, avatar')
-        .eq('actif', true)
-        .order('nom', { ascending: true });
-      if (!error && data) setUsers(data);
-    };
-    fetchUsers();
-  }, []);
+     // Récupérer la liste des utilisateurs actifs au montage
+   useEffect(() => {
+     const fetchUsers = async () => {
+       const { data, error } = await supabase
+         .from('appbadge_utilisateurs')
+         .select('id, nom, prenom, role, actif, avatar, email')
+         .eq('actif', true)
+         .order('nom', { ascending: true });
+       if (!error && data) setUsers(data);
+     };
+     fetchUsers();
+   }, []);
 
   // Demander le code pour un administrateur
   const handleRequestAdminCode = async () => {
@@ -129,13 +129,29 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         return;
       }
 
-                    // Appel du webhook pour envoyer le code
+                    // Récupérer le numéro de badge de l'utilisateur
+       const { data: badges, error: badgeError } = await supabase
+         .from('appbadge_badges')
+         .select('numero_badge')
+         .eq('utilisateur_id', selectedUser.id)
+         .eq('actif', true)
+         .limit(1);
+
+       if (badgeError || !badges || badges.length === 0) {
+         setAuthError('Aucun badge actif trouvé pour cet administrateur.');
+         setIsRequestingCode(false);
+         return;
+       }
+
+       const badgeId = badges[0].numero_badge;
+
+       // Appel du webhook pour envoyer le code
         const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             utilisateur_id: selectedUser.id,
-            badge_id: 'admin-auth',
+            badge_id: badgeId,
             user_email: selectedUser.email,
             user_role: selectedUser.role,
           }),
