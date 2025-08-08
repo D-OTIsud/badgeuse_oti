@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import Dashboard from './Dashboard';
 
 // Composant popup de succès
 const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
@@ -483,6 +484,11 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
       </div>
     );
+  }
+
+  // Afficher le tableau de bord
+  if (adminSection === 'dashboard') {
+    return <Dashboard />;
   }
 
   // Supprimer le formulaire d'ajout d'horaires standards séparé
