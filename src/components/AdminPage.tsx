@@ -129,17 +129,17 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         return;
       }
 
-      // Appel du webhook pour envoyer le code
-      const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          utilisateur_id: selectedUser.id,
-          badge_id: 'admin-auth',
-          user_email: selectedUser.email,
-          user_role: selectedUser.role,
-        }),
-      });
+                    // Appel du webhook pour envoyer le code
+        const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            utilisateur_id: selectedUser.id,
+            badge_id: 'admin-auth',
+            user_email: selectedUser.email,
+            user_role: selectedUser.role,
+          }),
+        });
 
       if (res.ok) {
         setShowCodeInput(true);
