@@ -81,8 +81,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   // Calculer les KPIs en temps réel basé sur les statuts courants
   const calculateKPIs = () => {
-    const presents = data.statutCourant.filter(u => u.statut_presence === 'Présent').length || 0;
-    const enPause = data.statutCourant.filter(u => u.statut_presence === 'En pause').length || 0;
+    const presents = data.statutCourant.filter(u => u.status === 'Présent').length || 0;
+    const enPause = data.statutCourant.filter(u => u.status === 'En pause').length || 0;
     const retardCumule = data.dashboardJour?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
     const travailNetMoyen = data.dashboardJour?.length > 0 
       ? data.dashboardJour.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / data.dashboardJour.length 
@@ -114,40 +114,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     return () => clearInterval(interval);
   }, [period]);
 
-  // Temps réel pour les statuts courants et récupération des services/rôles
+  // Temps réel pour les utilisateurs et récupération des services/rôles
   useEffect(() => {
-    // Récupérer les statuts initiaux et les services/rôles disponibles
-    const fetchStatutsAndOptions = async () => {
-      // Récupérer les données complètes des utilisateurs avec leurs lieux
+    // Récupérer les utilisateurs initiaux
+    const fetchUsers = async () => {
       const { data: usersData } = await supabase
         .from('appbadge_utilisateurs')
-        .select('id, nom, prenom, email, role, service, avatar, lieux, actif')
+        .select('id, nom, prenom, email, role, service, avatar, lieux, actif, status')
         .eq('actif', true);
       
-      // Récupérer les statuts courants
-      const { data: statutData } = await supabase
-        .from('appbadge_v_statut_courant')
-        .select('*');
-      
-      if (statutData && usersData) {
-        // Fusionner les données des utilisateurs avec leurs statuts
-        const mergedData = statutData.map(statut => {
-          const user = usersData.find(u => u.id === statut.id);
-          return {
-            ...statut,
-            lieux: user?.lieux || null,
-            avatar: user?.avatar || null
-          };
-        });
-        
+      if (usersData) {
         setData(prev => ({
           ...prev,
-          statutCourant: mergedData
+          statutCourant: usersData
         }));
         
         // Extraire les services et rôles uniques
-        const services = [...new Set(mergedData.map(user => user.service).filter(Boolean))];
-        const roles = [...new Set(mergedData.map(user => user.role).filter(Boolean))];
+        const services = [...new Set(usersData.map(user => user.service).filter(Boolean))];
+        const roles = [...new Set(usersData.map(user => user.role).filter(Boolean))];
         
         setAvailableServices(services.sort());
         setAvailableRoles(roles.sort());
@@ -155,53 +139,53 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       }
     };
 
-    fetchStatutsAndOptions();
+    fetchUsers();
 
-    // Abonnement temps réel
+    // Abonnement temps réel sur la table utilisateurs
     const channel = supabase
-      .channel('statut_courant_changes')
+      .channel('utilisateurs_changes')
       .on('postgres_changes', 
         { 
           event: '*', 
           schema: 'public', 
-          table: 'appbadge_v_statut_courant' 
+          table: 'appbadge_utilisateurs' 
         }, 
         (payload) => {
-          console.log('Changement détecté:', payload.eventType, payload.new);
+          console.log('Changement utilisateur détecté:', payload.eventType, payload.new);
           
-          // Mettre à jour les statuts en temps réel
+          // Mettre à jour les utilisateurs en temps réel
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setData(prev => {
-              const updatedStatuts = prev.statutCourant.map(user => 
+              const updatedUsers = prev.statutCourant.map(user => 
                 user.id === payload.new.id ? { ...user, ...payload.new } : user
               );
               
               // Mettre à jour les services et rôles disponibles
-              const services = [...new Set(updatedStatuts.map(user => user.service).filter(Boolean))];
-              const roles = [...new Set(updatedStatuts.map(user => user.role).filter(Boolean))];
+              const services = [...new Set(updatedUsers.map(user => user.service).filter(Boolean))];
+              const roles = [...new Set(updatedUsers.map(user => user.role).filter(Boolean))];
               
               setAvailableServices(services.sort());
               setAvailableRoles(roles.sort());
               
               return {
                 ...prev,
-                statutCourant: updatedStatuts
+                statutCourant: updatedUsers
               };
             });
           } else if (payload.eventType === 'DELETE') {
             setData(prev => {
-              const updatedStatuts = prev.statutCourant.filter(user => user.id !== payload.old.id);
+              const updatedUsers = prev.statutCourant.filter(user => user.id !== payload.old.id);
               
               // Mettre à jour les services et rôles disponibles
-              const services = [...new Set(updatedStatuts.map(user => user.service).filter(Boolean))];
-              const roles = [...new Set(updatedStatuts.map(user => user.role).filter(Boolean))];
+              const services = [...new Set(updatedUsers.map(user => user.service).filter(Boolean))];
+              const roles = [...new Set(updatedUsers.map(user => user.role).filter(Boolean))];
               
               setAvailableServices(services.sort());
               setAvailableRoles(roles.sort());
               
               return {
                 ...prev,
-                statutCourant: updatedStatuts
+                statutCourant: updatedUsers
               };
             });
           }
@@ -255,8 +239,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     })
     .sort((a, b) => {
       // D'abord par statut
-      const statusA = getStatusPriority(a.statut_presence);
-      const statusB = getStatusPriority(b.statut_presence);
+      const statusA = getStatusPriority(a.status);
+      const statusB = getStatusPriority(b.status);
       
       if (statusA !== statusB) {
         return statusA - statusB;
@@ -274,7 +258,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   }));
 
   const occupationData = filteredUsers
-    .filter(u => u.statut_presence === 'Présent')
+    .filter(u => u.status === 'Présent')
     .reduce((acc, user) => {
       const lieu = user.lieux || 'Non défini';
       acc[lieu] = (acc[lieu] || 0) + 1;
@@ -601,37 +585,37 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                       </div>
                     )}
                   </div>
-                  <div style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    background: user.statut_presence === 'Présent' ? 'rgba(76, 175, 80, 0.1)' : 
-                               user.statut_presence === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
-                               'rgba(204, 204, 204, 0.1)',
-                    border: `1px solid ${user.statut_presence === 'Présent' ? '#4caf50' : 
-                                       user.statut_presence === 'En pause' ? '#ff9800' : '#cccccc'}`
-                  }}>
-                    <div style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      backgroundColor: user.statut_presence === 'Présent' ? '#4caf50' : 
-                                     user.statut_presence === 'En pause' ? '#ff9800' : '#cccccc'
-                    }} />
-                    <span style={{ 
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: user.statut_presence === 'Présent' ? '#4caf50' : 
-                             user.statut_presence === 'En pause' ? '#ff9800' : '#cccccc'
-                    }}>
-                      {user.statut_presence === 'Présent' ? 'Actif' : 
-                       user.statut_presence === 'En pause' ? 'En pause' :
-                       user.statut_presence === 'Sorti' ? 'Sorti' : 
-                       (user.statut_presence || 'Non badgé')}
-                    </span>
-                  </div>
+                                     <div style={{ 
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 8,
+                     padding: '8px 12px',
+                     borderRadius: 8,
+                     background: user.status === 'Présent' ? 'rgba(76, 175, 80, 0.1)' : 
+                                user.status === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
+                                'rgba(204, 204, 204, 0.1)',
+                     border: `1px solid ${user.status === 'Présent' ? '#4caf50' : 
+                                        user.status === 'En pause' ? '#ff9800' : '#cccccc'}`
+                   }}>
+                     <div style={{
+                       width: 8,
+                       height: 8,
+                       borderRadius: '50%',
+                       backgroundColor: user.status === 'Présent' ? '#4caf50' : 
+                                      user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                     }} />
+                     <span style={{ 
+                       fontSize: 14,
+                       fontWeight: 600,
+                       color: user.status === 'Présent' ? '#4caf50' : 
+                              user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                     }}>
+                       {user.status === 'Présent' ? 'Actif' : 
+                        user.status === 'En pause' ? 'En pause' :
+                        user.status === 'Sorti' ? 'Sorti' : 
+                        (user.status || 'Non badgé')}
+                     </span>
+                   </div>
                 </div>
              ))}
             {filteredUsers.length === 0 && (
