@@ -54,40 +54,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     textLight: '#666666'
   };
 
-  const fetchData = async () => {
-    try {
-      // Récupérer les données du dashboard jour
-      const { data: dashboardData, error: dashboardError } = await supabase
-        .from('appbadge_v_dashboard_jour')
-        .select('*')
-        .eq('jour_local', new Date().toISOString().split('T')[0]);
-
-      if (dashboardError) {
-        console.error('Erreur dashboard jour:', dashboardError);
-      } else {
-        console.log('Données dashboard jour:', dashboardData);
-      }
-
-      // Récupérer les anomalies
-      const { data: anomaliesData, error: anomaliesError } = await supabase
-        .from('appbadge_v_anomalies')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (anomaliesError) {
-        console.error('Erreur anomalies:', anomaliesError);
-      } else {
-        console.log('Données anomalies:', anomaliesData);
-      }
-
-      setData(prev => ({
-        ...prev,
-        dashboardJour: dashboardData || [],
-        anomalies: anomaliesData || []
-      }));
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
+  // Fonction pour obtenir l'ordre de priorité du statut
+  const getStatusPriority = (status: string) => {
+    switch (status) {
+      case 'Entré': return 1;
+      case 'En pause': return 2;
+      case 'Sorti': return 3;
+      default: return 4; // Non badgé ou autres
     }
   };
 
@@ -123,17 +96,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     const presents = filteredUsers.filter(u => u.status === 'Entré').length || 0;
     const enPause = filteredUsers.filter(u => u.status === 'En pause').length || 0;
     
-    // Pour les KPIs basés sur dashboardJour, utiliser toutes les données pour l'instant
-    // car la correspondance utilisateur_id peut ne pas fonctionner
-    const retardCumule = data.dashboardJour?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
-    const travailNetMoyen = data.dashboardJour?.length > 0 
-      ? data.dashboardJour.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / data.dashboardJour.length 
+    // Pour les KPIs basés sur dashboardJour, filtrer selon les utilisateurs sélectionnés
+    const userIds = filteredUsers.map(u => u.id);
+    const filteredDashboardData = data.dashboardJour.filter(item => 
+      userIds.includes(item.utilisateur_id)
+    );
+    
+    const retardCumule = filteredDashboardData?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
+    const travailNetMoyen = filteredDashboardData?.length > 0 
+      ? filteredDashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / filteredDashboardData.length 
       : 0;
-    const pauseMoyenne = data.dashboardJour?.length > 0 
-      ? data.dashboardJour.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / data.dashboardJour.length 
+    const pauseMoyenne = filteredDashboardData?.length > 0 
+      ? filteredDashboardData.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / filteredDashboardData.length 
       : 0;
-    const tauxPonctualite = data.dashboardJour?.length > 0 
-      ? (data.dashboardJour.filter(item => (item.retard_minutes || 0) === 0).length / data.dashboardJour.length) * 100 
+    const tauxPonctualite = filteredDashboardData?.length > 0 
+      ? (filteredDashboardData.filter(item => (item.retard_minutes || 0) === 0).length / filteredDashboardData.length) * 100 
       : 0;
 
     return {
@@ -149,6 +126,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   // KPIs calculés en temps réel
   const kpis = calculateKPIs();
 
+  const fetchData = async () => {
+    try {
+      // Récupérer les données du dashboard jour (vue appbadge_v_dashboard_jour)
+      const { data: dashboardData, error: dashboardError } = await supabase
+        .from('appbadge_v_dashboard_jour')
+        .select('*')
+        .eq('jour_local', new Date().toISOString().split('T')[0]);
+
+      if (dashboardError) {
+        console.error('Erreur dashboard jour:', dashboardError);
+      } else {
+        console.log('Données dashboard jour:', dashboardData);
+      }
+
+      // Récupérer les anomalies (vue appbadge_v_anomalies)
+      const { data: anomaliesData, error: anomaliesError } = await supabase
+        .from('appbadge_v_anomalies')
+        .select('*')
+        .order('date_heure', { ascending: false })
+        .limit(10);
+
+      if (anomaliesError) {
+        console.error('Erreur anomalies:', anomaliesError);
+      } else {
+        console.log('Données anomalies:', anomaliesData);
+      }
+
+      setData(prev => ({
+        ...prev,
+        dashboardJour: dashboardData || [],
+        anomalies: anomaliesData || []
+      }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+    }
+  };
+
   // Initialisation et mise à jour périodique (5 minutes)
   useEffect(() => {
     fetchData();
@@ -158,7 +172,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   // Temps réel pour les utilisateurs et récupération des services/rôles
   useEffect(() => {
-    // Récupérer les utilisateurs initiaux
+    // Récupérer les utilisateurs initiaux depuis la table appbadge_utilisateurs
     const fetchUsers = async () => {
       const { data: usersData } = await supabase
         .from('appbadge_utilisateurs')
@@ -240,32 +254,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     };
   }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Présent': return colors.present;
-      case 'En pause': return colors.pause;
-      default: return colors.absent;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Présent': return '✓';
-      case 'En pause': return '⏸';
-      default: return '○';
-    }
-  };
-
-  // Fonction pour obtenir l'ordre de priorité du statut
-  const getStatusPriority = (status: string) => {
-    switch (status) {
-      case 'Entré': return 1;
-      case 'En pause': return 2;
-      case 'Sorti': return 3;
-      default: return 4; // Non badgé ou autres
-    }
-  };
-
   // Calculer les options disponibles pour les filtres
   const getAvailableOptions = () => {
     // D'abord filtrer par recherche
@@ -310,8 +298,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   const { services: availableServicesForFilter, roles: availableRolesForFilter } = getAvailableOptions();
 
-  // Données pour les graphiques (utiliser toutes les données pour l'instant)
-  const chartData = data.dashboardJour.map(item => ({
+  // Données pour les graphiques (filtrées selon les utilisateurs sélectionnés)
+  const userIds = filteredUsers.map(u => u.id);
+  const filteredDashboardData = data.dashboardJour.filter(item => 
+    userIds.includes(item.utilisateur_id)
+  );
+
+  const chartData = filteredDashboardData.map(item => ({
     jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
     retard: item.retard_minutes || 0,
     travailNet: item.travail_net_minutes || 0
@@ -330,7 +323,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     value: count
   }));
 
-  const arrivalData = data.dashboardJour.reduce((acc, item) => {
+  const arrivalData = filteredDashboardData.reduce((acc, item) => {
     const retard = item.retard_minutes || 0;
     let bucket = '0';
     if (retard > 0 && retard <= 5) bucket = '1-5';
@@ -460,49 +453,49 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             </button>
           ))}
           
-                     <select
-             value={selectedService}
-             onChange={(e) => {
-               setSelectedService(e.target.value);
-               // Réinitialiser le rôle si le service change
-               if (e.target.value !== selectedService) {
-                 setSelectedRole('');
-               }
-             }}
-             style={{
-               padding: '8px 12px',
-               borderRadius: 8,
-               border: '1px solid #ddd',
-               fontSize: 14
-             }}
-           >
-             <option value="">Tous les services</option>
-             {availableServicesForFilter.map(service => (
-               <option key={service} value={service}>{service}</option>
-             ))}
-           </select>
+          <select
+            value={selectedService}
+            onChange={(e) => {
+              setSelectedService(e.target.value);
+              // Réinitialiser le rôle si le service change
+              if (e.target.value !== selectedService) {
+                setSelectedRole('');
+              }
+            }}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              border: '1px solid #ddd',
+              fontSize: 14
+            }}
+          >
+            <option value="">Tous les services</option>
+            {availableServicesForFilter.map(service => (
+              <option key={service} value={service}>{service}</option>
+            ))}
+          </select>
 
-           <select
-             value={selectedRole}
-             onChange={(e) => {
-               setSelectedRole(e.target.value);
-               // Réinitialiser le service si le rôle change
-               if (e.target.value !== selectedRole) {
-                 setSelectedService('');
-               }
-             }}
-             style={{
-               padding: '8px 12px',
-               borderRadius: 8,
-               border: '1px solid #ddd',
-               fontSize: 14
-             }}
-           >
-             <option value="">Tous les rôles</option>
-             {availableRolesForFilter.map(role => (
-               <option key={role} value={role}>{role}</option>
-             ))}
-           </select>
+          <select
+            value={selectedRole}
+            onChange={(e) => {
+              setSelectedRole(e.target.value);
+              // Réinitialiser le service si le rôle change
+              if (e.target.value !== selectedRole) {
+                setSelectedService('');
+              }
+            }}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              border: '1px solid #ddd',
+              fontSize: 14
+            }}
+          >
+            <option value="">Tous les rôles</option>
+            {availableRolesForFilter.map(role => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
 
           <input
             type="text"
@@ -536,7 +529,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
-                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
         </div>
 
@@ -549,7 +542,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
-                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
         </div>
 
@@ -562,7 +555,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
-                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
         </div>
 
@@ -575,7 +568,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
         </div>
       </div>
@@ -597,103 +590,103 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
             Status en direct ({filteredUsers.length} utilisateurs)
           </h3>
-                     <div style={{ 
-             display: 'flex',
-             flexDirection: 'column',
-             gap: 12,
-             maxHeight: 400,
-             overflowY: 'auto',
-             paddingRight: 8
-           }}>
-                         {filteredUsers.map((user, index) => (
-                               <div key={user.id || index} style={{
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 12,
-                  padding: 16,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                  background: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  transition: 'box-shadow 0.2s',
-                  marginBottom: 8,
-                }}>
-                  {user.avatar ? (
-                    <img src={user.avatar} alt="avatar" style={{ 
-                      width: 48, 
-                      height: 48, 
-                      borderRadius: '50%', 
-                      objectFit: 'cover', 
-                      border: '2px solid #1976d2',
-                      boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-                    }} />
-                  ) : (
-                    <div style={{ 
-                      width: 48, 
-                      height: 48, 
-                      borderRadius: '50%', 
-                      background: '#f4f6fa', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      fontSize: 20, 
-                      color: '#bbb', 
-                      border: '2px solid #1976d2',
-                      boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-                    }}>
-                      👤
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            maxHeight: 400,
+            overflowY: 'auto',
+            paddingRight: 8
+          }}>
+            {filteredUsers.map((user, index) => (
+              <div key={user.id || index} style={{
+                border: '1px solid #e0e0e0',
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                transition: 'box-shadow 0.2s',
+                marginBottom: 8,
+              }}>
+                {user.avatar ? (
+                  <img src={user.avatar} alt="avatar" style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: '50%', 
+                    objectFit: 'cover', 
+                    border: '2px solid #1976d2',
+                    boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                  }} />
+                ) : (
+                  <div style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: '50%', 
+                    background: '#f4f6fa', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: 20, 
+                    color: '#bbb', 
+                    border: '2px solid #1976d2',
+                    boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                  }}>
+                    👤
+                  </div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: colors.text }}>
+                    {user.prenom} {user.nom}
+                  </div>
+                  <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
+                    {user.service}
+                  </div>
+                  {user.lieux && (
+                    <div style={{ fontSize: 12, color: '#888' }}>
+                      {user.lieux}
                     </div>
                   )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: colors.text }}>
-                      {user.prenom} {user.nom}
-                    </div>
-                    <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
-                      {user.service}
-                    </div>
-                                         {user.lieux && (
-                       <div style={{ fontSize: 12, color: '#888' }}>
-                         {user.lieux}
-                       </div>
-                     )}
-                  </div>
-                                     <div style={{ 
-                     display: 'flex',
-                     alignItems: 'center',
-                     gap: 8,
-                     padding: '8px 12px',
-                     borderRadius: 8,
-                     background: user.status === 'Entré' ? 'rgba(76, 175, 80, 0.1)' : 
-                                user.status === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
-                                user.status === 'Sorti' ? 'rgba(244, 67, 54, 0.1)' :
-                                'rgba(204, 204, 204, 0.1)',
-                     border: `1px solid ${user.status === 'Entré' ? '#4caf50' : 
-                                        user.status === 'En pause' ? '#ff9800' : 
-                                        user.status === 'Sorti' ? '#f44336' : '#cccccc'}`
-                   }}>
-                     <div style={{
-                       width: 8,
-                       height: 8,
-                       borderRadius: '50%',
-                       backgroundColor: user.status === 'Entré' ? '#4caf50' : 
-                                      user.status === 'En pause' ? '#ff9800' : 
-                                      user.status === 'Sorti' ? '#f44336' : '#cccccc'
-                     }} />
-                                           <span style={{ 
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: user.status === 'Entré' ? '#4caf50' : 
-                               user.status === 'En pause' ? '#ff9800' : 
-                               user.status === 'Sorti' ? '#f44336' : '#cccccc'
-                      }}>
-                        {user.status === 'Entré' ? 'Présent' : 
-                         user.status === 'En pause' ? 'En pause' :
-                         user.status === 'Sorti' ? 'Sorti' : 
-                         (user.status || 'Non badgé')}
-                      </span>
-                   </div>
                 </div>
-             ))}
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  background: user.status === 'Entré' ? 'rgba(76, 175, 80, 0.1)' : 
+                             user.status === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
+                             user.status === 'Sorti' ? 'rgba(244, 67, 54, 0.1)' :
+                             'rgba(204, 204, 204, 0.1)',
+                  border: `1px solid ${user.status === 'Entré' ? '#4caf50' : 
+                                     user.status === 'En pause' ? '#ff9800' : 
+                                     user.status === 'Sorti' ? '#f44336' : '#cccccc'}`
+                }}>
+                  <div style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: user.status === 'Entré' ? '#4caf50' : 
+                                   user.status === 'En pause' ? '#ff9800' : 
+                                   user.status === 'Sorti' ? '#f44336' : '#cccccc'
+                  }} />
+                  <span style={{ 
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: user.status === 'Entré' ? '#4caf50' : 
+                           user.status === 'En pause' ? '#ff9800' : 
+                           user.status === 'Sorti' ? '#f44336' : '#cccccc'
+                  }}>
+                    {user.status === 'Entré' ? 'Présent' : 
+                     user.status === 'En pause' ? 'En pause' :
+                     user.status === 'Sorti' ? 'Sorti' : 
+                     (user.status || 'Non badgé')}
+                  </span>
+                </div>
+              </div>
+            ))}
             {filteredUsers.length === 0 && (
               <div style={{ 
                 textAlign: 'center', 
@@ -730,10 +723,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               }}>
                 <span style={{ fontSize: 16, color: '#856404' }}>⚠️</span>
                 <div style={{ flex: 1, fontSize: 14, color: '#856404' }}>
-                  {anomalie.type || 'Anomalie détectée'}
+                  {anomalie.anomalie || 'Anomalie détectée'}
                 </div>
                 <div style={{ fontSize: 12, color: '#856404' }}>
-                  {new Date(anomalie.created_at).toLocaleDateString('fr-FR')}
+                  {new Date(anomalie.date_heure).toLocaleDateString('fr-FR')}
                 </div>
               </div>
             ))}
