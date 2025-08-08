@@ -55,6 +55,11 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   const [success, setSuccess] = useState<string | null>(null);
   const nfcAbortRef = useRef<AbortController | null>(null);
   const [nfcLoading, setNfcLoading] = useState(false);
+  
+  // États pour la vérification des permissions
+  const [permissionsChecked, setPermissionsChecked] = useState(false);
+  const [gpsPermission, setGpsPermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt');
+  const [nfcPermission, setNfcPermission] = useState<'granted' | 'denied' | 'unsupported'>('unsupported');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -112,6 +117,49 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
       subscription.unsubscribe();
     };
   }, [isIPAuthorized]); // Ajouter isIPAuthorized comme dépendance pour forcer le rechargement
+
+  // Vérification des permissions au chargement
+  useEffect(() => {
+    const checkPermissions = async () => {
+      // Vérifier la permission GPS
+      if ('geolocation' in navigator) {
+        try {
+          // Tester la permission GPS
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          });
+          setGpsPermission('granted');
+        } catch (error: any) {
+          if (error.code === 1) {
+            setGpsPermission('denied');
+          } else {
+            setGpsPermission('prompt');
+          }
+        }
+      } else {
+        setGpsPermission('unsupported');
+      }
+
+      // Vérifier la permission NFC
+      if (isNfcSupported()) {
+        try {
+          const NDEFReader = (window as any).NDEFReader;
+          const ndef = new NDEFReader();
+          // Essayer de scanner pour tester la permission
+          await ndef.scan();
+          setNfcPermission('granted');
+        } catch (error) {
+          setNfcPermission('denied');
+        }
+      } else {
+        setNfcPermission('unsupported');
+      }
+
+      setPermissionsChecked(true);
+    };
+
+    checkPermissions();
+  }, []);
 
   // NFC listener auto (background, silencieux)
   useEffect(() => {
@@ -272,7 +320,164 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
     );
   });
 
+  // Composant de vérification des permissions
+  const PermissionsCheck = () => {
+    const requestGpsPermission = async () => {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+        });
+        setGpsPermission('granted');
+      } catch (error: any) {
+        if (error.code === 1) {
+          setGpsPermission('denied');
+        }
+      }
+    };
+
+    const requestNfcPermission = async () => {
+      try {
+        const NDEFReader = (window as any).NDEFReader;
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        setNfcPermission('granted');
+      } catch (error) {
+        setNfcPermission('denied');
+      }
+    };
+
+    return (
+      <div style={{
+        background: '#fff',
+        borderRadius: 16,
+        maxWidth: 600,
+        margin: '40px auto',
+        padding: 32,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700 }}>Permissions requises</h2>
+        <p style={{ color: '#666', marginBottom: 24 }}>
+          Pour fonctionner correctement, l'application a besoin d'accéder à votre position GPS et aux fonctionnalités NFC.
+        </p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          {/* GPS Permission */}
+          <div style={{
+            padding: 16,
+            border: '1px solid #e0e0e0',
+            borderRadius: 8,
+            background: '#f8f8f8'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontWeight: 600 }}>📍 Géolocalisation</span>
+              <span style={{
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 12,
+                fontWeight: 600,
+                background: gpsPermission === 'granted' ? '#4caf50' : 
+                           gpsPermission === 'denied' ? '#f44336' : '#ff9800',
+                color: '#fff'
+              }}>
+                {gpsPermission === 'granted' ? 'Autorisé' : 
+                 gpsPermission === 'denied' ? 'Refusé' : 
+                 gpsPermission === 'unsupported' ? 'Non supporté' : 'En attente'}
+              </span>
+            </div>
+            <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+              Nécessaire pour enregistrer votre position lors du badgeage
+            </p>
+            {gpsPermission === 'prompt' && (
+              <button 
+                onClick={requestGpsPermission}
+                style={{
+                  marginTop: 8,
+                  padding: '8px 16px',
+                  background: '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 14
+                }}
+              >
+                Autoriser la géolocalisation
+              </button>
+            )}
+          </div>
+
+          {/* NFC Permission */}
+          <div style={{
+            padding: 16,
+            border: '1px solid #e0e0e0',
+            borderRadius: 8,
+            background: '#f8f8f8'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontWeight: 600 }}>📱 NFC</span>
+              <span style={{
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 12,
+                fontWeight: 600,
+                background: nfcPermission === 'granted' ? '#4caf50' : 
+                           nfcPermission === 'denied' ? '#f44336' : '#ff9800',
+                color: '#fff'
+              }}>
+                {nfcPermission === 'granted' ? 'Autorisé' : 
+                 nfcPermission === 'denied' ? 'Refusé' : 'Non supporté'}
+              </span>
+            </div>
+            <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+              Nécessaire pour scanner les badges NFC
+            </p>
+            {nfcPermission === 'denied' && (
+              <button 
+                onClick={requestNfcPermission}
+                style={{
+                  marginTop: 8,
+                  padding: '8px 16px',
+                  background: '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 14
+                }}
+              >
+                Réessayer NFC
+              </button>
+            )}
+          </div>
+        </div>
+
+        <button 
+          onClick={() => setPermissionsChecked(true)}
+          disabled={gpsPermission === 'denied' && nfcPermission === 'denied'}
+          style={{
+            padding: '12px 24px',
+            background: (gpsPermission === 'denied' && nfcPermission === 'denied') ? '#ccc' : '#1976d2',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            cursor: (gpsPermission === 'denied' && nfcPermission === 'denied') ? 'not-allowed' : 'pointer',
+            fontSize: 16,
+            fontWeight: 600
+          }}
+        >
+          Continuer
+        </button>
+      </div>
+    );
+  };
+
   if (loading) return <div>Chargement...</div>;
+  
+  // Afficher la vérification des permissions si pas encore vérifiées
+  if (!permissionsChecked) {
+    return <PermissionsCheck />;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', position: 'relative' }}>
