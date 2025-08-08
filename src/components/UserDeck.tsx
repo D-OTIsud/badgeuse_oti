@@ -121,6 +121,9 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   // Vérification des permissions au chargement
   useEffect(() => {
     const checkPermissions = async () => {
+      let gpsGranted = false;
+      let nfcGranted = false;
+
       // Vérifier la permission GPS
       if ('geolocation' in navigator) {
         try {
@@ -129,6 +132,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
             navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
           });
           setGpsPermission('granted');
+          gpsGranted = true;
         } catch (error: any) {
           if (error.code === 1) {
             setGpsPermission('denied');
@@ -140,22 +144,22 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
         setGpsPermission('unsupported');
       }
 
-      // Vérifier la permission NFC
+      // Vérifier la permission NFC - méthode plus fiable
       if (isNfcSupported()) {
-        try {
-          const NDEFReader = (window as any).NDEFReader;
-          const ndef = new NDEFReader();
-          // Essayer de scanner pour tester la permission
-          await ndef.scan();
-          setNfcPermission('granted');
-        } catch (error) {
-          setNfcPermission('denied');
-        }
+        // Pour NFC, on considère que c'est supporté si l'API existe
+        // La vraie vérification se fait lors du scan
+        setNfcPermission('granted');
+        nfcGranted = true;
       } else {
         setNfcPermission('unsupported');
       }
 
-      setPermissionsChecked(true);
+             // Ne passer à l'interface que si les permissions nécessaires sont accordées
+       // ou si l'utilisateur clique explicitement sur "Continuer"
+       if (gpsGranted && (nfcGranted || !isNfcSupported())) {
+         setPermissionsChecked(true);
+       }
+       // Sinon, l'écran de permissions reste affiché jusqu'à ce que l'utilisateur clique sur "Continuer"
     };
 
     checkPermissions();
@@ -322,18 +326,24 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
 
   // Composant de vérification des permissions
   const PermissionsCheck = () => {
-    const requestGpsPermission = async () => {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-        });
-        setGpsPermission('granted');
-      } catch (error: any) {
-        if (error.code === 1) {
-          setGpsPermission('denied');
-        }
-      }
-    };
+         const requestGpsPermission = async () => {
+       try {
+         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+           navigator.geolocation.getCurrentPosition(resolve, reject, { 
+             timeout: 10000,
+             enableHighAccuracy: false // Précision réduite pour éviter les problèmes
+           });
+         });
+         setGpsPermission('granted');
+       } catch (error: any) {
+         console.error('Erreur GPS:', error);
+         if (error.code === 1) {
+           setGpsPermission('denied');
+         } else {
+           setGpsPermission('prompt');
+         }
+       }
+     };
 
     const requestNfcPermission = async () => {
       try {
@@ -356,128 +366,151 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
         boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
         textAlign: 'center'
       }}>
-        <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700 }}>Permissions requises</h2>
-        <p style={{ color: '#666', marginBottom: 24 }}>
-          Pour fonctionner correctement, l'application a besoin d'accéder à votre position GPS et aux fonctionnalités NFC.
-        </p>
+                 <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700 }}>Permissions requises</h2>
+         <p style={{ color: '#666', marginBottom: 24 }}>
+           Pour fonctionner correctement, l'application a besoin d'accéder à votre position GPS (approximative).
+         </p>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-          {/* GPS Permission */}
-          <div style={{
-            padding: 16,
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            background: '#f8f8f8'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontWeight: 600 }}>📍 Géolocalisation</span>
-              <span style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                fontSize: 12,
-                fontWeight: 600,
-                background: gpsPermission === 'granted' ? '#4caf50' : 
-                           gpsPermission === 'denied' ? '#f44336' : '#ff9800',
-                color: '#fff'
-              }}>
-                {gpsPermission === 'granted' ? 'Autorisé' : 
-                 gpsPermission === 'denied' ? 'Refusé' : 
-                 gpsPermission === 'unsupported' ? 'Non supporté' : 'En attente'}
-              </span>
-            </div>
-            <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
-              Nécessaire pour enregistrer votre position lors du badgeage
-            </p>
-            {gpsPermission === 'prompt' && (
-              <button 
-                onClick={requestGpsPermission}
-                style={{
-                  marginTop: 8,
-                  padding: '8px 16px',
-                  background: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 14
-                }}
-              >
-                Autoriser la géolocalisation
-              </button>
-            )}
-          </div>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+           {/* GPS Permission */}
+           <div style={{
+             padding: 16,
+             border: '1px solid #e0e0e0',
+             borderRadius: 8,
+             background: '#f8f8f8'
+           }}>
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+               <span style={{ fontWeight: 600 }}>📍 Géolocalisation</span>
+               <span style={{
+                 padding: '4px 8px',
+                 borderRadius: 4,
+                 fontSize: 12,
+                 fontWeight: 600,
+                 background: gpsPermission === 'granted' ? '#4caf50' : 
+                            gpsPermission === 'denied' ? '#f44336' : '#ff9800',
+                 color: '#fff'
+               }}>
+                 {gpsPermission === 'granted' ? 'Autorisé' : 
+                  gpsPermission === 'denied' ? 'Refusé' : 
+                  gpsPermission === 'unsupported' ? 'Non supporté' : 'En attente'}
+               </span>
+             </div>
+             <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+               Nécessaire pour enregistrer votre position approximative lors du badgeage
+             </p>
+             {gpsPermission === 'prompt' && (
+               <button 
+                 onClick={requestGpsPermission}
+                 style={{
+                   marginTop: 8,
+                   padding: '8px 16px',
+                   background: '#1976d2',
+                   color: '#fff',
+                   border: 'none',
+                   borderRadius: 6,
+                   cursor: 'pointer',
+                   fontSize: 14
+                 }}
+               >
+                 Autoriser la géolocalisation
+               </button>
+             )}
+           </div>
 
-          {/* NFC Permission */}
-          <div style={{
-            padding: 16,
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            background: '#f8f8f8'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontWeight: 600 }}>📱 NFC</span>
-              <span style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                fontSize: 12,
-                fontWeight: 600,
-                background: nfcPermission === 'granted' ? '#4caf50' : 
-                           nfcPermission === 'denied' ? '#f44336' : '#ff9800',
-                color: '#fff'
-              }}>
-                {nfcPermission === 'granted' ? 'Autorisé' : 
-                 nfcPermission === 'denied' ? 'Refusé' : 'Non supporté'}
-              </span>
-            </div>
-            <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
-              Nécessaire pour scanner les badges NFC
-            </p>
-            {nfcPermission === 'denied' && (
-              <button 
-                onClick={requestNfcPermission}
-                style={{
-                  marginTop: 8,
-                  padding: '8px 16px',
-                  background: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 14
-                }}
-              >
-                Réessayer NFC
-              </button>
-            )}
-          </div>
-        </div>
+           {/* NFC Permission - seulement si supporté */}
+           {isNfcSupported() && (
+             <div style={{
+               padding: 16,
+               border: '1px solid #e0e0e0',
+               borderRadius: 8,
+               background: '#f8f8f8'
+             }}>
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                 <span style={{ fontWeight: 600 }}>📱 NFC</span>
+                 <span style={{
+                   padding: '4px 8px',
+                   borderRadius: 4,
+                   fontSize: 12,
+                   fontWeight: 600,
+                   background: nfcPermission === 'granted' ? '#4caf50' : 
+                              nfcPermission === 'denied' ? '#f44336' : '#ff9800',
+                   color: '#fff'
+                 }}>
+                   {nfcPermission === 'granted' ? 'Autorisé' : 
+                    nfcPermission === 'denied' ? 'Refusé' : 'Non supporté'}
+                 </span>
+               </div>
+               <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+                 Nécessaire pour scanner les badges NFC
+               </p>
+               {nfcPermission === 'denied' && (
+                 <button 
+                   onClick={requestNfcPermission}
+                   style={{
+                     marginTop: 8,
+                     padding: '8px 16px',
+                     background: '#1976d2',
+                     color: '#fff',
+                     border: 'none',
+                     borderRadius: 6,
+                     cursor: 'pointer',
+                     fontSize: 14
+                   }}
+                 >
+                   Réessayer NFC
+                 </button>
+               )}
+             </div>
+           )}
+         </div>
 
-        <button 
-          onClick={() => setPermissionsChecked(true)}
-          disabled={gpsPermission === 'denied' && nfcPermission === 'denied'}
-          style={{
-            padding: '12px 24px',
-            background: (gpsPermission === 'denied' && nfcPermission === 'denied') ? '#ccc' : '#1976d2',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            cursor: (gpsPermission === 'denied' && nfcPermission === 'denied') ? 'not-allowed' : 'pointer',
-            fontSize: 16,
-            fontWeight: 600
-          }}
-        >
-          Continuer
-        </button>
+                 {/* Avertissement RH si permissions non accordées */}
+         {(gpsPermission === 'denied' || (isNfcSupported() && nfcPermission === 'denied')) && (
+           <div style={{
+             background: '#fff3cd',
+             border: '1px solid #ffeaa7',
+             borderRadius: 8,
+             color: '#856404',
+             padding: '16px',
+             marginBottom: 24,
+             fontSize: 14,
+             fontWeight: 500
+           }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+               <span style={{ fontSize: 18 }}>⚠️</span>
+               <span style={{ fontWeight: 600 }}>Avertissement RH</span>
+             </div>
+             <p style={{ margin: 0, lineHeight: 1.4 }}>
+               L'utilisation de l'application sans les permissions requises peut entraîner une notification aux ressources humaines.
+             </p>
+           </div>
+         )}
+
+         <button 
+           onClick={() => setPermissionsChecked(true)}
+           style={{
+             padding: '12px 24px',
+             background: '#1976d2',
+             color: '#fff',
+             border: 'none',
+             borderRadius: 8,
+             cursor: 'pointer',
+             fontSize: 16,
+             fontWeight: 600
+           }}
+         >
+           Continuer
+         </button>
       </div>
     );
   };
 
   if (loading) return <div>Chargement...</div>;
   
-  // Afficher la vérification des permissions si pas encore vérifiées
-  if (!permissionsChecked) {
-    return <PermissionsCheck />;
-  }
+     // Afficher la vérification des permissions si pas encore vérifiées
+   if (!permissionsChecked) {
+     return <PermissionsCheck />;
+   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', position: 'relative' }}>
