@@ -213,18 +213,41 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   };
 
-  // Filtrer les utilisateurs selon les critères
-  const filteredUsers = data.statutCourant.filter(user => {
-    const matchesSearch = searchTerm === '' || 
-      user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesService = selectedService === '' || user.service === selectedService;
-    const matchesRole = selectedRole === '' || user.role === selectedRole;
-    
-    return matchesSearch && matchesService && matchesRole;
-  });
+  // Fonction pour obtenir l'ordre de priorité du statut
+  const getStatusPriority = (status: string) => {
+    switch (status) {
+      case 'Présent': return 1;
+      case 'En pause': return 2;
+      case 'Sorti': return 3;
+      default: return 4; // Non badgé ou autres
+    }
+  };
+
+  // Filtrer et trier les utilisateurs selon les critères
+  const filteredUsers = data.statutCourant
+    .filter(user => {
+      const matchesSearch = searchTerm === '' || 
+        user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesService = selectedService === '' || user.service === selectedService;
+      const matchesRole = selectedRole === '' || user.role === selectedRole;
+      
+      return matchesSearch && matchesService && matchesRole;
+    })
+    .sort((a, b) => {
+      // D'abord par statut
+      const statusA = getStatusPriority(a.statut_presence);
+      const statusB = getStatusPriority(b.statut_presence);
+      
+      if (statusA !== statusB) {
+        return statusA - statusB;
+      }
+      
+      // Puis par prénom
+      return (a.prenom || '').localeCompare(b.prenom || '');
+    });
 
   // Données pour les graphiques
   const chartData = data.dashboardJour.map(item => ({
@@ -501,85 +524,99 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
             Status en direct ({filteredUsers.length} utilisateurs)
           </h3>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 12,
-            maxHeight: 400,
-            overflowY: 'auto',
-            paddingRight: 8
-          }}>
-            {filteredUsers.map((user, index) => (
-              <div key={user.id || index} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: 12,
-                borderRadius: 8,
-                background: '#f8f9fa',
-                border: '1px solid #e9ecef'
-              }}>
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: '#f4f6fa',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 20,
-                    color: '#bbb',
-                    border: `3px solid ${colors.avatarRing}`
-                  }}>
-                    {user.avatar ? (
-                      <img 
-                        src={user.avatar} 
-                        alt="avatar" 
-                        style={{ 
-                          width: '100%', 
-                          height: '100%', 
-                          borderRadius: '50%', 
-                          objectFit: 'cover' 
-                        }} 
-                      />
-                    ) : (
-                      '👤'
-                    )}
-                  </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: colors.text, fontSize: 14 }}>
-                    {user.prenom} {user.nom}
-                  </div>
-                  <div style={{ color: colors.textLight, fontSize: 12 }}>
-                    {user.email}
-                  </div>
-                  {user.lieux && (
-                    <div style={{ color: colors.textLight, fontSize: 11 }}>
-                      📍 {user.lieux}
+                     <div style={{ 
+             display: 'flex',
+             flexDirection: 'column',
+             gap: 12,
+             maxHeight: 400,
+             overflowY: 'auto',
+             paddingRight: 8
+           }}>
+                         {filteredUsers.map((user, index) => (
+                               <div key={user.id || index} style={{
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 12,
+                  padding: 16,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  transition: 'box-shadow 0.2s',
+                  marginBottom: 8,
+                }}>
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="avatar" style={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '50%', 
+                      objectFit: 'cover', 
+                      border: '2px solid #1976d2',
+                      boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                    }} />
+                  ) : (
+                    <div style={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '50%', 
+                      background: '#f4f6fa', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      fontSize: 20, 
+                      color: '#bbb', 
+                      border: '2px solid #1976d2',
+                      boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                    }}>
+                      👤
                     </div>
                   )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: colors.text }}>
+                      {user.prenom} {user.nom}
+                    </div>
+                    <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
+                      {user.service}
+                    </div>
+                    {user.lieux && (
+                      <div style={{ fontSize: 12, color: '#888' }}>
+                        📍 {user.lieux}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    background: user.statut_presence === 'Présent' ? 'rgba(76, 175, 80, 0.1)' : 
+                               user.statut_presence === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
+                               'rgba(204, 204, 204, 0.1)',
+                    border: `1px solid ${user.statut_presence === 'Présent' ? '#4caf50' : 
+                                       user.statut_presence === 'En pause' ? '#ff9800' : '#cccccc'}`
+                  }}>
+                    <div style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      backgroundColor: user.statut_presence === 'Présent' ? '#4caf50' : 
+                                     user.statut_presence === 'En pause' ? '#ff9800' : '#cccccc'
+                    }} />
+                    <span style={{ 
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: user.statut_presence === 'Présent' ? '#4caf50' : 
+                             user.statut_presence === 'En pause' ? '#ff9800' : '#cccccc'
+                    }}>
+                      {user.statut_presence === 'Présent' ? 'Actif' : 
+                       user.statut_presence === 'En pause' ? 'En pause' :
+                       user.statut_presence === 'Sorti' ? 'Sorti' : 
+                       (user.statut_presence || 'Non badgé')}
+                    </span>
+                  </div>
                 </div>
-                                 <div style={{
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: 8,
-                   color: getStatusColor(user.statut_presence),
-                   fontWeight: 600,
-                   fontSize: 14,
-                   transition: 'all 0.3s ease',
-                   padding: '4px 8px',
-                   borderRadius: 6,
-                   background: getStatusColor(user.statut_presence) === colors.present ? 'rgba(76, 175, 80, 0.1)' : 
-                              getStatusColor(user.statut_presence) === colors.pause ? 'rgba(255, 152, 0, 0.1)' : 
-                              'rgba(204, 204, 204, 0.1)'
-                 }}>
-                   <span style={{ fontSize: 16 }}>{getStatusIcon(user.statut_presence)}</span>
-                   {user.statut_presence}
-                 </div>
-              </div>
-            ))}
+             ))}
             {filteredUsers.length === 0 && (
               <div style={{ 
                 textAlign: 'center', 

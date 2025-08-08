@@ -514,6 +514,11 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 maxLength={4}
                 value={adminCode}
                 onChange={e => setAdminCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && adminCode.length === 4 && !isVerifyingCode) {
+                    handleVerifyAdminCode();
+                  }
+                }}
                 placeholder="0000"
                 style={{
                   fontSize: 24,
