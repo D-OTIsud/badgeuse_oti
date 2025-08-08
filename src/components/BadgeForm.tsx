@@ -72,7 +72,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   // Masquer le champ type d'action si le lieu est connu (locationName défini ou Admin/Manager sur réseau inconnu)
   const lieuConnu = (isManagerOrAdmin && !isIPAuthorized) || (isIPAuthorized && locationName);
 
-  // Appel du webhook à l'ouverture du formulaire (toujours, sans condition)
+  // Appel du webhook à l'ouverture du formulaire (une seule fois)
   React.useEffect(() => {
     if (utilisateur.role && utilisateur.role !== 'A-E') {
       (async () => {
@@ -93,8 +93,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         }
       })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [utilisateur.id, badgeId, utilisateur.email, utilisateur.role]);
 
   React.useEffect(() => {
     // Si IP autorisée, utiliser les coordonnées de la base de données
