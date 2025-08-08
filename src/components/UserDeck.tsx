@@ -98,7 +98,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
             );
           } else if (payload.eventType === 'INSERT') {
             // Ajouter le nouvel utilisateur
-            setUsers(prevUsers => [...prevUsers, payload.new].sort((a, b) => a.nom.localeCompare(b.nom)));
+            setUsers(prevUsers => [...prevUsers, payload.new as Utilisateur].sort((a, b) => a.nom.localeCompare(b.nom)));
           } else if (payload.eventType === 'DELETE') {
             // Supprimer l'utilisateur
             setUsers(prevUsers => prevUsers.filter(user => user.id !== payload.old.id));
@@ -248,11 +248,13 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
               }
             }
           } else {
+            setNfcLoading(false);
             setNfcMessage("Aucun badge actif trouvé pour ce tag.");
           }
         };
       } catch (e) {
         // NFC non supporté ou refusé
+        setNfcLoading(false);
       }
     };
     listenNfc();
@@ -344,8 +346,8 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
               padding: 10,
               minWidth: 0,
               maxWidth: 180,
-              height: 120,
-              maxHeight: 120,
+              height: 140,
+              maxHeight: 140,
               boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
               cursor: 'pointer',
               background: '#fff',
@@ -361,8 +363,33 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
-            {user.avatar && (
-              <img src={user.avatar} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', marginBottom: 6, objectFit: 'cover', border: '1.2px solid #1976d2' }} />
+            {user.avatar ? (
+              <img src={user.avatar} alt="avatar" style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: '50%', 
+                marginBottom: 8, 
+                objectFit: 'cover', 
+                border: '2px solid #1976d2',
+                boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+              }} />
+            ) : (
+              <div style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: '50%', 
+                marginBottom: 8, 
+                background: '#f4f6fa', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                fontSize: 20, 
+                color: '#bbb', 
+                border: '2px solid #1976d2',
+                boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+              }}>
+                👤
+              </div>
             )}
             <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
             <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
