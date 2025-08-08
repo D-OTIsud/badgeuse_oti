@@ -100,14 +100,14 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
      // Récupérer la liste des utilisateurs actifs au montage
    useEffect(() => {
-     const fetchUsers = async () => {
-       const { data, error } = await supabase
-         .from('appbadge_utilisateurs')
-         .select('id, nom, prenom, role, actif, avatar, email')
-         .eq('actif', true)
-         .order('nom', { ascending: true });
-       if (!error && data) setUsers(data);
-     };
+           const fetchUsers = async () => {
+        const { data, error } = await supabase
+          .from('appbadge_utilisateurs')
+          .select('id, nom, prenom, role, actif, avatar, email, service, lieux')
+          .eq('actif', true)
+          .order('nom', { ascending: true });
+        if (!error && data) setUsers(data);
+      };
      fetchUsers();
    }, []);
 

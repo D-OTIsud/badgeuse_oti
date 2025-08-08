@@ -118,19 +118,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   useEffect(() => {
     // Récupérer les statuts initiaux et les services/rôles disponibles
     const fetchStatutsAndOptions = async () => {
+      // Récupérer les données complètes des utilisateurs avec leurs lieux
+      const { data: usersData } = await supabase
+        .from('appbadge_utilisateurs')
+        .select('id, nom, prenom, email, role, service, avatar, lieux, actif')
+        .eq('actif', true);
+      
+      // Récupérer les statuts courants
       const { data: statutData } = await supabase
         .from('appbadge_v_statut_courant')
         .select('*');
       
-      if (statutData) {
+      if (statutData && usersData) {
+        // Fusionner les données des utilisateurs avec leurs statuts
+        const mergedData = statutData.map(statut => {
+          const user = usersData.find(u => u.id === statut.id);
+          return {
+            ...statut,
+            lieux: user?.lieux || null,
+            avatar: user?.avatar || null
+          };
+        });
+        
         setData(prev => ({
           ...prev,
-          statutCourant: statutData
+          statutCourant: mergedData
         }));
         
         // Extraire les services et rôles uniques
-        const services = [...new Set(statutData.map(user => user.service).filter(Boolean))];
-        const roles = [...new Set(statutData.map(user => user.role).filter(Boolean))];
+        const services = [...new Set(mergedData.map(user => user.service).filter(Boolean))];
+        const roles = [...new Set(mergedData.map(user => user.role).filter(Boolean))];
         
         setAvailableServices(services.sort());
         setAvailableRoles(roles.sort());
@@ -156,7 +173,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setData(prev => {
               const updatedStatuts = prev.statutCourant.map(user => 
-                user.id === payload.new.id ? payload.new : user
+                user.id === payload.new.id ? { ...user, ...payload.new } : user
               );
               
               // Mettre à jour les services et rôles disponibles
