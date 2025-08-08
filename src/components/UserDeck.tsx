@@ -56,10 +56,11 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   const nfcAbortRef = useRef<AbortController | null>(null);
   const [nfcLoading, setNfcLoading] = useState(false);
   
-  // États pour la vérification des permissions
-  const [permissionsChecked, setPermissionsChecked] = useState(false);
-  const [gpsPermission, setGpsPermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt');
-  const [nfcPermission, setNfcPermission] = useState<'granted' | 'denied' | 'unsupported'>('unsupported');
+     // États pour la vérification des permissions
+   const [permissionsChecked, setPermissionsChecked] = useState(false);
+   const [showPermissionsScreen, setShowPermissionsScreen] = useState(false);
+   const [gpsPermission, setGpsPermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt');
+   const [nfcPermission, setNfcPermission] = useState<'granted' | 'denied' | 'unsupported'>('unsupported');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -118,52 +119,58 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
     };
   }, [isIPAuthorized]); // Ajouter isIPAuthorized comme dépendance pour forcer le rechargement
 
-  // Vérification des permissions au chargement
-  useEffect(() => {
-    const checkPermissions = async () => {
-      let gpsGranted = false;
-      let nfcGranted = false;
+     // Vérification des permissions en arrière-plan
+   useEffect(() => {
+     const checkPermissions = async () => {
+       let gpsGranted = false;
+       let nfcGranted = false;
+       let needsPermissionScreen = false;
 
-      // Vérifier la permission GPS
-      if ('geolocation' in navigator) {
-        try {
-          // Tester la permission GPS
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          setGpsPermission('granted');
-          gpsGranted = true;
-        } catch (error: any) {
-          if (error.code === 1) {
-            setGpsPermission('denied');
-          } else {
-            setGpsPermission('prompt');
-          }
-        }
-      } else {
-        setGpsPermission('unsupported');
-      }
-
-      // Vérifier la permission NFC - méthode plus fiable
-      if (isNfcSupported()) {
-        // Pour NFC, on considère que c'est supporté si l'API existe
-        // La vraie vérification se fait lors du scan
-        setNfcPermission('granted');
-        nfcGranted = true;
-      } else {
-        setNfcPermission('unsupported');
-      }
-
-             // Ne passer à l'interface que si les permissions nécessaires sont accordées
-       // ou si l'utilisateur clique explicitement sur "Continuer"
-       if (gpsGranted && (nfcGranted || !isNfcSupported())) {
-         setPermissionsChecked(true);
+       // Vérifier la permission GPS rapidement
+       if ('geolocation' in navigator) {
+         try {
+           // Test rapide de la permission GPS (timeout court)
+           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+             navigator.geolocation.getCurrentPosition(resolve, reject, { 
+               timeout: 2000,
+               enableHighAccuracy: false 
+             });
+           });
+           setGpsPermission('granted');
+           gpsGranted = true;
+         } catch (error: any) {
+           if (error.code === 1) {
+             setGpsPermission('denied');
+             needsPermissionScreen = true;
+           } else {
+             setGpsPermission('prompt');
+             needsPermissionScreen = true;
+           }
+         }
+       } else {
+         setGpsPermission('unsupported');
+         needsPermissionScreen = true;
        }
-       // Sinon, l'écran de permissions reste affiché jusqu'à ce que l'utilisateur clique sur "Continuer"
-    };
 
-    checkPermissions();
-  }, []);
+       // Vérifier la permission NFC
+       if (isNfcSupported()) {
+         setNfcPermission('granted');
+         nfcGranted = true;
+       } else {
+         setNfcPermission('unsupported');
+       }
+
+       // Marquer comme vérifié et décider si afficher l'écran de permissions
+       setPermissionsChecked(true);
+       
+       // Afficher l'écran de permissions seulement si nécessaire
+       if (needsPermissionScreen) {
+         setShowPermissionsScreen(true);
+       }
+     };
+
+     checkPermissions();
+   }, []);
 
   // NFC listener auto (background, silencieux)
   useEffect(() => {
@@ -330,11 +337,15 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
        try {
          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
            navigator.geolocation.getCurrentPosition(resolve, reject, { 
-             timeout: 10000,
+             timeout: 5000,
              enableHighAccuracy: false // Précision réduite pour éviter les problèmes
            });
          });
          setGpsPermission('granted');
+         // Masquer l'écran de permissions si GPS est maintenant accordé
+         if (gpsPermission === 'granted' && (!isNfcSupported() || nfcPermission === 'granted')) {
+           setShowPermissionsScreen(false);
+         }
        } catch (error: any) {
          console.error('Erreur GPS:', error);
          if (error.code === 1) {
@@ -345,16 +356,20 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
        }
      };
 
-    const requestNfcPermission = async () => {
-      try {
-        const NDEFReader = (window as any).NDEFReader;
-        const ndef = new NDEFReader();
-        await ndef.scan();
-        setNfcPermission('granted');
-      } catch (error) {
-        setNfcPermission('denied');
-      }
-    };
+         const requestNfcPermission = async () => {
+       try {
+         const NDEFReader = (window as any).NDEFReader;
+         const ndef = new NDEFReader();
+         await ndef.scan();
+         setNfcPermission('granted');
+         // Masquer l'écran de permissions si NFC est maintenant accordé et GPS aussi
+         if (nfcPermission === 'granted' && gpsPermission === 'granted') {
+           setShowPermissionsScreen(false);
+         }
+       } catch (error) {
+         setNfcPermission('denied');
+       }
+     };
 
     return (
       <div style={{
@@ -487,7 +502,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
          )}
 
          <button 
-           onClick={() => setPermissionsChecked(true)}
+           onClick={() => setShowPermissionsScreen(false)}
            style={{
              padding: '12px 24px',
              background: '#1976d2',
@@ -505,10 +520,10 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
     );
   };
 
-  if (loading) return <div>Chargement...</div>;
-  
-     // Afficher la vérification des permissions si pas encore vérifiées
-   if (!permissionsChecked) {
+     if (loading) return <div>Chargement...</div>;
+   
+   // Afficher l'écran de permissions seulement si nécessaire
+   if (showPermissionsScreen) {
      return <PermissionsCheck />;
    }
 
