@@ -79,6 +79,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   };
 
+  // Filtrer et trier les utilisateurs selon les critères
+  const filteredUsers = data.statutCourant
+    .filter(user => {
+      const matchesSearch = searchTerm === '' || 
+        user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesService = selectedService === '' || user.service === selectedService;
+      const matchesRole = selectedRole === '' || user.role === selectedRole;
+      
+      return matchesSearch && matchesService && matchesRole;
+    })
+    .sort((a, b) => {
+      // D'abord par statut
+      const statusA = getStatusPriority(a.status);
+      const statusB = getStatusPriority(b.status);
+      
+      if (statusA !== statusB) {
+        return statusA - statusB;
+      }
+      
+      // Puis par prénom
+      return (a.prenom || '').localeCompare(b.prenom || '');
+    });
+
   // Calculer les KPIs en temps réel basé sur les données filtrées
   const calculateKPIs = () => {
     // Utiliser les utilisateurs filtrés pour les KPIs de présence
@@ -231,32 +257,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       default: return 4; // Non badgé ou autres
     }
   };
-
-  // Filtrer et trier les utilisateurs selon les critères
-  const filteredUsers = data.statutCourant
-    .filter(user => {
-      const matchesSearch = searchTerm === '' || 
-        user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesService = selectedService === '' || user.service === selectedService;
-      const matchesRole = selectedRole === '' || user.role === selectedRole;
-      
-      return matchesSearch && matchesService && matchesRole;
-    })
-    .sort((a, b) => {
-      // D'abord par statut
-      const statusA = getStatusPriority(a.status);
-      const statusB = getStatusPriority(b.status);
-      
-      if (statusA !== statusB) {
-        return statusA - statusB;
-      }
-      
-      // Puis par prénom
-      return (a.prenom || '').localeCompare(b.prenom || '');
-    });
 
   // Calculer les options disponibles pour les filtres
   const getAvailableOptions = () => {
