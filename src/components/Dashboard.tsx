@@ -81,7 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   // Calculer les KPIs en temps réel basé sur les statuts courants
   const calculateKPIs = () => {
-    const presents = data.statutCourant.filter(u => u.status === 'Présent').length || 0;
+    const presents = data.statutCourant.filter(u => u.status === 'Entré').length || 0;
     const enPause = data.statutCourant.filter(u => u.status === 'En pause').length || 0;
     const retardCumule = data.dashboardJour?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
     const travailNetMoyen = data.dashboardJour?.length > 0 
@@ -217,7 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   // Fonction pour obtenir l'ordre de priorité du statut
   const getStatusPriority = (status: string) => {
     switch (status) {
-      case 'Présent': return 1;
+      case 'Entré': return 1;
       case 'En pause': return 2;
       case 'Sorti': return 3;
       default: return 4; // Non badgé ou autres
@@ -258,7 +258,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   }));
 
   const occupationData = filteredUsers
-    .filter(u => u.status === 'Présent')
+    .filter(u => u.status === 'Entré')
     .reduce((acc, user) => {
       const lieu = user.lieux || 'Non défini';
       acc[lieu] = (acc[lieu] || 0) + 1;
@@ -579,11 +579,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
                       {user.service}
                     </div>
-                    {user.lieux && (
-                      <div style={{ fontSize: 12, color: '#888' }}>
-                        📍 {user.lieux}
-                      </div>
-                    )}
+                                         {user.lieux && (
+                       <div style={{ fontSize: 12, color: '#888' }}>
+                         {user.lieux}
+                       </div>
+                     )}
                   </div>
                                      <div style={{ 
                      display: 'flex',
@@ -591,26 +591,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                      gap: 8,
                      padding: '8px 12px',
                      borderRadius: 8,
-                     background: user.status === 'Présent' ? 'rgba(76, 175, 80, 0.1)' : 
+                     background: user.status === 'Entré' ? 'rgba(76, 175, 80, 0.1)' : 
                                 user.status === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
+                                user.status === 'Sorti' ? 'rgba(244, 67, 54, 0.1)' :
                                 'rgba(204, 204, 204, 0.1)',
-                     border: `1px solid ${user.status === 'Présent' ? '#4caf50' : 
-                                        user.status === 'En pause' ? '#ff9800' : '#cccccc'}`
+                     border: `1px solid ${user.status === 'Entré' ? '#4caf50' : 
+                                        user.status === 'En pause' ? '#ff9800' : 
+                                        user.status === 'Sorti' ? '#f44336' : '#cccccc'}`
                    }}>
                      <div style={{
                        width: 8,
                        height: 8,
                        borderRadius: '50%',
-                       backgroundColor: user.status === 'Présent' ? '#4caf50' : 
-                                      user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                       backgroundColor: user.status === 'Entré' ? '#4caf50' : 
+                                      user.status === 'En pause' ? '#ff9800' : 
+                                      user.status === 'Sorti' ? '#f44336' : '#cccccc'
                      }} />
                      <span style={{ 
                        fontSize: 14,
                        fontWeight: 600,
-                       color: user.status === 'Présent' ? '#4caf50' : 
-                              user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                       color: user.status === 'Entré' ? '#4caf50' : 
+                              user.status === 'En pause' ? '#ff9800' : 
+                              user.status === 'Sorti' ? '#f44336' : '#cccccc'
                      }}>
-                       {user.status === 'Présent' ? 'Actif' : 
+                       {user.status === 'Entré' ? 'Entré' : 
                         user.status === 'En pause' ? 'En pause' :
                         user.status === 'Sorti' ? 'Sorti' : 
                         (user.status || 'Non badgé')}
