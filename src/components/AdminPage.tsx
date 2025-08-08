@@ -686,7 +686,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   // Afficher le tableau de bord
   if (adminSection === 'dashboard') {
-    return <Dashboard />;
+    return <Dashboard onBack={() => setAdminSection(null)} />;
   }
 
   // Supprimer le formulaire d'ajout d'horaires standards séparé

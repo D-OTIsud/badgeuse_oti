@@ -16,7 +16,11 @@ interface DashboardData {
   };
 }
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onBack: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [data, setData] = useState<DashboardData>({
     statutCourant: [],
     dashboardJour: [],
@@ -49,13 +53,7 @@ const Dashboard: React.FC = () => {
   };
 
   const fetchData = async () => {
-    setLoading(true);
     try {
-      // Récupérer les statuts courants
-      const { data: statutData } = await supabase
-        .from('appbadge_v_statut_courant')
-        .select('*');
-
       // Récupérer les données du dashboard jour
       const { data: dashboardData } = await supabase
         .from('appbadge_v_dashboard_jour')
@@ -69,9 +67,9 @@ const Dashboard: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      // Calculer les KPIs
-      const presents = statutData?.filter(u => u.statut_presence === 'Présent').length || 0;
-      const enPause = statutData?.filter(u => u.statut_presence === 'En pause').length || 0;
+      // Calculer les KPIs à partir des données du dashboard
+      const presents = data.statutCourant.filter(u => u.statut_presence === 'Présent').length || 0;
+      const enPause = data.statutCourant.filter(u => u.statut_presence === 'En pause').length || 0;
       const retardCumule = dashboardData?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
       const travailNetMoyen = dashboardData?.length > 0 
         ? dashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / dashboardData.length 
@@ -83,8 +81,8 @@ const Dashboard: React.FC = () => {
         ? (dashboardData.filter(item => (item.retard_minutes || 0) === 0).length / dashboardData.length) * 100 
         : 0;
 
-      setData({
-        statutCourant: statutData || [],
+      setData(prev => ({
+        ...prev,
         dashboardJour: dashboardData || [],
         anomalies: anomaliesData || [],
         kpis: {
@@ -95,18 +93,70 @@ const Dashboard: React.FC = () => {
           pauseMoyenne: Math.round(pauseMoyenne),
           tauxPonctualite: Math.round(tauxPonctualite)
         }
-      });
+      }));
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
     }
-    setLoading(false);
   };
 
+  // Initialisation et mise à jour périodique (5 minutes)
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Auto-refresh toutes les 30s
+    const interval = setInterval(fetchData, 300000); // 5 minutes
     return () => clearInterval(interval);
   }, [period]);
+
+  // Temps réel pour les statuts courants
+  useEffect(() => {
+    // Récupérer les statuts initiaux
+    const fetchStatuts = async () => {
+      const { data: statutData } = await supabase
+        .from('appbadge_v_statut_courant')
+        .select('*');
+      
+      if (statutData) {
+        setData(prev => ({
+          ...prev,
+          statutCourant: statutData
+        }));
+        setLoading(false);
+      }
+    };
+
+    fetchStatuts();
+
+    // Abonnement temps réel
+    const channel = supabase
+      .channel('statut_courant_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'appbadge_v_statut_courant' 
+        }, 
+        (payload) => {
+          // Mettre à jour les statuts en temps réel
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            setData(prev => ({
+              ...prev,
+              statutCourant: prev.statutCourant.map(user => 
+                user.id === payload.new.id ? payload.new : user
+              )
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            setData(prev => ({
+              ...prev,
+              statutCourant: prev.statutCourant.filter(user => user.id !== payload.old.id)
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -124,6 +174,19 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Filtrer les utilisateurs selon les critères
+  const filteredUsers = data.statutCourant.filter(user => {
+    const matchesSearch = searchTerm === '' || 
+      user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesService = selectedService === '' || user.service === selectedService;
+    const matchesRole = selectedRole === '' || user.role === selectedRole;
+    
+    return matchesSearch && matchesService && matchesRole;
+  });
+
   // Données pour les graphiques
   const chartData = data.dashboardJour.map(item => ({
     jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
@@ -131,7 +194,7 @@ const Dashboard: React.FC = () => {
     travailNet: item.travail_net_minutes || 0
   }));
 
-  const occupationData = data.statutCourant
+  const occupationData = filteredUsers
     .filter(u => u.statut_presence === 'Présent')
     .reduce((acc, user) => {
       const lieu = user.lieux || 'Non défini';
@@ -194,9 +257,29 @@ const Dashboard: React.FC = () => {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
-          Tableau de bord — Présences & Retards
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button 
+            onClick={onBack}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              color: 'white',
+              padding: '8px 12px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            ← Retour
+          </button>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
+            Tableau de bord — Présences & Retards
+          </h1>
+        </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button style={{
             background: 'rgba(255,255,255,0.2)',
@@ -377,17 +460,25 @@ const Dashboard: React.FC = () => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-            Status en direct
+            Status en direct ({filteredUsers.length} utilisateurs)
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {data.statutCourant.slice(0, 5).map((user, index) => (
-              <div key={index} style={{
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 12,
+            maxHeight: 400,
+            overflowY: 'auto',
+            paddingRight: 8
+          }}>
+            {filteredUsers.map((user, index) => (
+              <div key={user.id || index} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
                 padding: 12,
                 borderRadius: 8,
-                background: '#f8f9fa'
+                background: '#f8f9fa',
+                border: '1px solid #e9ecef'
               }}>
                 <div style={{ position: 'relative' }}>
                   <div style={{
@@ -402,7 +493,20 @@ const Dashboard: React.FC = () => {
                     color: '#bbb',
                     border: `3px solid ${colors.avatarRing}`
                   }}>
-                    👤
+                    {user.avatar ? (
+                      <img 
+                        src={user.avatar} 
+                        alt="avatar" 
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          borderRadius: '50%', 
+                          objectFit: 'cover' 
+                        }} 
+                      />
+                    ) : (
+                      '👤'
+                    )}
                   </div>
                 </div>
                 <div style={{ flex: 1 }}>
@@ -412,6 +516,11 @@ const Dashboard: React.FC = () => {
                   <div style={{ color: colors.textLight, fontSize: 12 }}>
                     {user.email}
                   </div>
+                  {user.lieux && (
+                    <div style={{ color: colors.textLight, fontSize: 11 }}>
+                      📍 {user.lieux}
+                    </div>
+                  )}
                 </div>
                 <div style={{
                   display: 'flex',
@@ -426,6 +535,16 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             ))}
+            {filteredUsers.length === 0 && (
+              <div style={{ 
+                textAlign: 'center', 
+                color: colors.textLight, 
+                padding: '20px',
+                fontSize: 14 
+              }}>
+                Aucun utilisateur trouvé avec les filtres actuels
+              </div>
+            )}
           </div>
         </div>
 
@@ -459,6 +578,16 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             ))}
+            {data.anomalies.length === 0 && (
+              <div style={{ 
+                textAlign: 'center', 
+                color: colors.textLight, 
+                padding: '20px',
+                fontSize: 14 
+              }}>
+                Aucune anomalie détectée
+              </div>
+            )}
           </div>
         </div>
 
