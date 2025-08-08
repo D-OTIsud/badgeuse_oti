@@ -39,6 +39,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [availableServices, setAvailableServices] = useState<string[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
   // Couleurs du thème OTI du SUD
   const colors = {
@@ -67,37 +69,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      // Calculer les KPIs à partir des données du dashboard
-      const presents = data.statutCourant.filter(u => u.statut_presence === 'Présent').length || 0;
-      const enPause = data.statutCourant.filter(u => u.statut_presence === 'En pause').length || 0;
-      const retardCumule = dashboardData?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
-      const travailNetMoyen = dashboardData?.length > 0 
-        ? dashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / dashboardData.length 
-        : 0;
-      const pauseMoyenne = dashboardData?.length > 0 
-        ? dashboardData.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / dashboardData.length 
-        : 0;
-      const tauxPonctualite = dashboardData?.length > 0 
-        ? (dashboardData.filter(item => (item.retard_minutes || 0) === 0).length / dashboardData.length) * 100 
-        : 0;
-
       setData(prev => ({
         ...prev,
         dashboardJour: dashboardData || [],
-        anomalies: anomaliesData || [],
-        kpis: {
-          presents,
-          enPause,
-          retardCumule,
-          travailNetMoyen: Math.round(travailNetMoyen),
-          pauseMoyenne: Math.round(pauseMoyenne),
-          tauxPonctualite: Math.round(tauxPonctualite)
-        }
+        anomalies: anomaliesData || []
       }));
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
     }
   };
+
+  // Calculer les KPIs en temps réel basé sur les statuts courants
+  const calculateKPIs = () => {
+    const presents = data.statutCourant.filter(u => u.statut_presence === 'Présent').length || 0;
+    const enPause = data.statutCourant.filter(u => u.statut_presence === 'En pause').length || 0;
+    const retardCumule = data.dashboardJour?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
+    const travailNetMoyen = data.dashboardJour?.length > 0 
+      ? data.dashboardJour.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / data.dashboardJour.length 
+      : 0;
+    const pauseMoyenne = data.dashboardJour?.length > 0 
+      ? data.dashboardJour.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / data.dashboardJour.length 
+      : 0;
+    const tauxPonctualite = data.dashboardJour?.length > 0 
+      ? (data.dashboardJour.filter(item => (item.retard_minutes || 0) === 0).length / data.dashboardJour.length) * 100 
+      : 0;
+
+    return {
+      presents,
+      enPause,
+      retardCumule,
+      travailNetMoyen: Math.round(travailNetMoyen),
+      pauseMoyenne: Math.round(pauseMoyenne),
+      tauxPonctualite: Math.round(tauxPonctualite)
+    };
+  };
+
+  // KPIs calculés en temps réel
+  const kpis = calculateKPIs();
 
   // Initialisation et mise à jour périodique (5 minutes)
   useEffect(() => {
@@ -106,10 +114,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     return () => clearInterval(interval);
   }, [period]);
 
-  // Temps réel pour les statuts courants
+  // Temps réel pour les statuts courants et récupération des services/rôles
   useEffect(() => {
-    // Récupérer les statuts initiaux
-    const fetchStatuts = async () => {
+    // Récupérer les statuts initiaux et les services/rôles disponibles
+    const fetchStatutsAndOptions = async () => {
       const { data: statutData } = await supabase
         .from('appbadge_v_statut_courant')
         .select('*');
@@ -119,11 +127,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           ...prev,
           statutCourant: statutData
         }));
+        
+        // Extraire les services et rôles uniques
+        const services = [...new Set(statutData.map(user => user.service).filter(Boolean))];
+        const roles = [...new Set(statutData.map(user => user.role).filter(Boolean))];
+        
+        setAvailableServices(services.sort());
+        setAvailableRoles(roles.sort());
         setLoading(false);
       }
     };
 
-    fetchStatuts();
+    fetchStatutsAndOptions();
 
     // Abonnement temps réel
     const channel = supabase
@@ -135,19 +150,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           table: 'appbadge_v_statut_courant' 
         }, 
         (payload) => {
+          console.log('Changement détecté:', payload.eventType, payload.new);
+          
           // Mettre à jour les statuts en temps réel
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            setData(prev => ({
-              ...prev,
-              statutCourant: prev.statutCourant.map(user => 
+            setData(prev => {
+              const updatedStatuts = prev.statutCourant.map(user => 
                 user.id === payload.new.id ? payload.new : user
-              )
-            }));
+              );
+              
+              // Mettre à jour les services et rôles disponibles
+              const services = [...new Set(updatedStatuts.map(user => user.service).filter(Boolean))];
+              const roles = [...new Set(updatedStatuts.map(user => user.role).filter(Boolean))];
+              
+              setAvailableServices(services.sort());
+              setAvailableRoles(roles.sort());
+              
+              return {
+                ...prev,
+                statutCourant: updatedStatuts
+              };
+            });
           } else if (payload.eventType === 'DELETE') {
-            setData(prev => ({
-              ...prev,
-              statutCourant: prev.statutCourant.filter(user => user.id !== payload.old.id)
-            }));
+            setData(prev => {
+              const updatedStatuts = prev.statutCourant.filter(user => user.id !== payload.old.id);
+              
+              // Mettre à jour les services et rôles disponibles
+              const services = [...new Set(updatedStatuts.map(user => user.service).filter(Boolean))];
+              const roles = [...new Set(updatedStatuts.map(user => user.role).filter(Boolean))];
+              
+              setAvailableServices(services.sort());
+              setAvailableRoles(roles.sort());
+              
+              return {
+                ...prev,
+                statutCourant: updatedStatuts
+              };
+            });
           }
         }
       )
@@ -348,9 +387,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             }}
           >
             <option value="">Tous les services</option>
-            <option value="IT">IT</option>
-            <option value="RH">RH</option>
-            <option value="Finance">Finance</option>
+            {availableServices.map(service => (
+              <option key={service} value={service}>{service}</option>
+            ))}
           </select>
 
           <select
@@ -364,9 +403,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             }}
           >
             <option value="">Tous les rôles</option>
-            <option value="Admin">Admin</option>
-            <option value="Manager">Manager</option>
-            <option value="A-E">A-E</option>
+            {availableRoles.map(role => (
+              <option key={role} value={role}>{role}</option>
+            ))}
           </select>
 
           <input
@@ -401,7 +440,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{data.kpis.presents}</div>
+                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
         </div>
 
@@ -414,7 +453,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{data.kpis.enPause}</div>
+                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
         </div>
 
@@ -427,7 +466,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{data.kpis.retardCumule}</div>
+                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
         </div>
 
@@ -440,7 +479,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{data.kpis.travailNetMoyen}</div>
+                     <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
         </div>
       </div>
@@ -522,17 +561,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     </div>
                   )}
                 </div>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  color: getStatusColor(user.statut_presence),
-                  fontWeight: 600,
-                  fontSize: 14
-                }}>
-                  <span style={{ fontSize: 16 }}>{getStatusIcon(user.statut_presence)}</span>
-                  {user.statut_presence}
-                </div>
+                                 <div style={{
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: 8,
+                   color: getStatusColor(user.statut_presence),
+                   fontWeight: 600,
+                   fontSize: 14,
+                   transition: 'all 0.3s ease',
+                   padding: '4px 8px',
+                   borderRadius: 6,
+                   background: getStatusColor(user.statut_presence) === colors.present ? 'rgba(76, 175, 80, 0.1)' : 
+                              getStatusColor(user.statut_presence) === colors.pause ? 'rgba(255, 152, 0, 0.1)' : 
+                              'rgba(204, 204, 204, 0.1)'
+                 }}>
+                   <span style={{ fontSize: 16 }}>{getStatusIcon(user.statut_presence)}</span>
+                   {user.statut_presence}
+                 </div>
               </div>
             ))}
             {filteredUsers.length === 0 && (
