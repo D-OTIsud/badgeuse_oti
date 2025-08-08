@@ -79,19 +79,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   };
 
-  // Calculer les KPIs en temps réel basé sur les statuts courants
+  // Calculer les KPIs en temps réel basé sur les données filtrées
   const calculateKPIs = () => {
-    const presents = data.statutCourant.filter(u => u.status === 'Entré').length || 0;
-    const enPause = data.statutCourant.filter(u => u.status === 'En pause').length || 0;
-    const retardCumule = data.dashboardJour?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
-    const travailNetMoyen = data.dashboardJour?.length > 0 
-      ? data.dashboardJour.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / data.dashboardJour.length 
+    // Utiliser les utilisateurs filtrés pour les KPIs de présence
+    const presents = filteredUsers.filter(u => u.status === 'Entré').length || 0;
+    const enPause = filteredUsers.filter(u => u.status === 'En pause').length || 0;
+    
+    // Pour les KPIs basés sur dashboardJour, filtrer selon les utilisateurs sélectionnés
+    const userIds = filteredUsers.map(u => u.id);
+    const filteredDashboardData = data.dashboardJour.filter(item => 
+      userIds.includes(item.utilisateur_id)
+    );
+    
+    const retardCumule = filteredDashboardData?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
+    const travailNetMoyen = filteredDashboardData?.length > 0 
+      ? filteredDashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / filteredDashboardData.length 
       : 0;
-    const pauseMoyenne = data.dashboardJour?.length > 0 
-      ? data.dashboardJour.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / data.dashboardJour.length 
+    const pauseMoyenne = filteredDashboardData?.length > 0 
+      ? filteredDashboardData.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / filteredDashboardData.length 
       : 0;
-    const tauxPonctualite = data.dashboardJour?.length > 0 
-      ? (data.dashboardJour.filter(item => (item.retard_minutes || 0) === 0).length / data.dashboardJour.length) * 100 
+    const tauxPonctualite = filteredDashboardData?.length > 0 
+      ? (filteredDashboardData.filter(item => (item.retard_minutes || 0) === 0).length / filteredDashboardData.length) * 100 
       : 0;
 
     return {
@@ -250,8 +258,57 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       return (a.prenom || '').localeCompare(b.prenom || '');
     });
 
-  // Données pour les graphiques
-  const chartData = data.dashboardJour.map(item => ({
+  // Calculer les options disponibles pour les filtres
+  const getAvailableOptions = () => {
+    // D'abord filtrer par recherche
+    const searchFiltered = data.statutCourant.filter(user => {
+      const matchesSearch = searchTerm === '' || 
+        user.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    });
+
+    // Calculer les services disponibles
+    const availableServicesForFilter = [...new Set(searchFiltered.map(user => user.service).filter(Boolean))].sort();
+
+    // Calculer les rôles disponibles
+    let availableRolesForFilter;
+    if (selectedService === '') {
+      // Si aucun service sélectionné, tous les rôles
+      availableRolesForFilter = [...new Set(searchFiltered.map(user => user.role).filter(Boolean))].sort();
+    } else {
+      // Si service sélectionné, seulement les rôles de ce service
+      const serviceFiltered = searchFiltered.filter(user => user.service === selectedService);
+      availableRolesForFilter = [...new Set(serviceFiltered.map(user => user.role).filter(Boolean))].sort();
+    }
+
+    // Calculer les services disponibles en fonction du rôle sélectionné
+    let availableServicesForRole;
+    if (selectedRole === '') {
+      // Si aucun rôle sélectionné, tous les services
+      availableServicesForRole = availableServicesForFilter;
+    } else {
+      // Si rôle sélectionné, seulement les services qui ont ce rôle
+      const roleFiltered = searchFiltered.filter(user => user.role === selectedRole);
+      availableServicesForRole = [...new Set(roleFiltered.map(user => user.service).filter(Boolean))].sort();
+    }
+
+    return {
+      services: availableServicesForRole,
+      roles: availableRolesForFilter
+    };
+  };
+
+  const { services: availableServicesForFilter, roles: availableRolesForFilter } = getAvailableOptions();
+
+  // Données pour les graphiques (filtrées selon les utilisateurs sélectionnés)
+  const userIds = filteredUsers.map(u => u.id);
+  const filteredDashboardData = data.dashboardJour.filter(item => 
+    userIds.includes(item.utilisateur_id)
+  );
+
+  const chartData = filteredDashboardData.map(item => ({
     jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
     retard: item.retard_minutes || 0,
     travailNet: item.travail_net_minutes || 0
@@ -270,7 +327,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     value: count
   }));
 
-  const arrivalData = data.dashboardJour.reduce((acc, item) => {
+  const arrivalData = filteredDashboardData.reduce((acc, item) => {
     const retard = item.retard_minutes || 0;
     let bucket = '0';
     if (retard > 0 && retard <= 5) bucket = '1-5';
@@ -400,37 +457,49 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             </button>
           ))}
           
-          <select
-            value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: '1px solid #ddd',
-              fontSize: 14
-            }}
-          >
-            <option value="">Tous les services</option>
-            {availableServices.map(service => (
-              <option key={service} value={service}>{service}</option>
-            ))}
-          </select>
+                     <select
+             value={selectedService}
+             onChange={(e) => {
+               setSelectedService(e.target.value);
+               // Réinitialiser le rôle si le service change
+               if (e.target.value !== selectedService) {
+                 setSelectedRole('');
+               }
+             }}
+             style={{
+               padding: '8px 12px',
+               borderRadius: 8,
+               border: '1px solid #ddd',
+               fontSize: 14
+             }}
+           >
+             <option value="">Tous les services</option>
+             {availableServicesForFilter.map(service => (
+               <option key={service} value={service}>{service}</option>
+             ))}
+           </select>
 
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: '1px solid #ddd',
-              fontSize: 14
-            }}
-          >
-            <option value="">Tous les rôles</option>
-            {availableRoles.map(role => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
+           <select
+             value={selectedRole}
+             onChange={(e) => {
+               setSelectedRole(e.target.value);
+               // Réinitialiser le service si le rôle change
+               if (e.target.value !== selectedRole) {
+                 setSelectedService('');
+               }
+             }}
+             style={{
+               padding: '8px 12px',
+               borderRadius: 8,
+               border: '1px solid #ddd',
+               fontSize: 14
+             }}
+           >
+             <option value="">Tous les rôles</option>
+             {availableRolesForFilter.map(role => (
+               <option key={role} value={role}>{role}</option>
+             ))}
+           </select>
 
           <input
             type="text"
@@ -607,18 +676,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                                       user.status === 'En pause' ? '#ff9800' : 
                                       user.status === 'Sorti' ? '#f44336' : '#cccccc'
                      }} />
-                     <span style={{ 
-                       fontSize: 14,
-                       fontWeight: 600,
-                       color: user.status === 'Entré' ? '#4caf50' : 
-                              user.status === 'En pause' ? '#ff9800' : 
-                              user.status === 'Sorti' ? '#f44336' : '#cccccc'
-                     }}>
-                       {user.status === 'Entré' ? 'Entré' : 
-                        user.status === 'En pause' ? 'En pause' :
-                        user.status === 'Sorti' ? 'Sorti' : 
-                        (user.status || 'Non badgé')}
-                     </span>
+                                           <span style={{ 
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: user.status === 'Entré' ? '#4caf50' : 
+                               user.status === 'En pause' ? '#ff9800' : 
+                               user.status === 'Sorti' ? '#f44336' : '#cccccc'
+                      }}>
+                        {user.status === 'Entré' ? 'Présent' : 
+                         user.status === 'En pause' ? 'En pause' :
+                         user.status === 'Sorti' ? 'Sorti' : 
+                         (user.status || 'Non badgé')}
+                      </span>
                    </div>
                 </div>
              ))}
