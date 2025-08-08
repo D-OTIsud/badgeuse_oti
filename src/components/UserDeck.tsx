@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { Utilisateur } from '../App';
+import LottieLoader from './LottieLoader';
 
 // Logo NFC SVG
 const NfcLogo = () => (
@@ -53,6 +54,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   const [nfcMessage, setNfcMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const nfcAbortRef = useRef<AbortController | null>(null);
+  const [nfcLoading, setNfcLoading] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -128,6 +130,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
             return;
           }
           setNfcMessage('Tag scanné. Numéro de série : ' + uid);
+          setNfcLoading(true);
           
           // Chercher le badge actif avec ce uid_tag
           const { data: badges, error: badgeError } = await supabase
@@ -180,6 +183,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                     type_action: 'entrée',
                   };
                   const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                  setNfcLoading(false);
                   if (!insertError) {
                     setSuccess(`Badge enregistré (entrée) pour ${user.prenom} ${user.nom}`);
                     setTimeout(() => setSuccess(null), 3000);
@@ -188,6 +192,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                     setNfcMessage("Erreur lors de l'enregistrement du badge.");
                   }
                 } else {
+                  setNfcLoading(false);
                   // Après premier badgeage : rediriger vers le formulaire pour choisir le type d'action
                   onSelect(user);
                 }
@@ -210,6 +215,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                   insertData.type_action = 'entrée';
                 }
                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                setNfcLoading(false);
                 if (!insertError) {
                   setSuccess(`Badge enregistré pour ${user.prenom} ${user.nom}`);
                   setTimeout(() => setSuccess(null), 3000);
@@ -227,6 +233,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                   lieux: 'Télétravail',
                 };
                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                setNfcLoading(false);
                 if (!insertError) {
                   setSuccess(`Badge enregistré (Télétravail) pour ${user.prenom} ${user.nom}`);
                   setTimeout(() => setSuccess(null), 3000);
@@ -236,6 +243,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 }
               } else {
                 // IP non autorisée : rediriger vers le formulaire avec commentaire obligatoire
+                setNfcLoading(false);
                 onSelect(user);
               }
             }
@@ -265,7 +273,20 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   if (loading) return <div>Chargement...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', position: 'relative' }}>
+      {nfcLoading && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(255,255,255,0.7)',
+          zIndex: 3000
+        }}>
+          <LottieLoader />
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
         <div style={{ position: 'relative', width: '100%', maxWidth: 700 }}>
           <input

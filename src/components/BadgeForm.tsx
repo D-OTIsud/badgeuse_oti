@@ -63,8 +63,11 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const isAE = utilisateur.role === 'A-E';
   const isFirstBadgeAE = isAE && !utilisateur.lieux;
 
+  // Détection des utilisateurs avec précision GPS réduite
+  const isReducedPrecision = isAE || utilisateur.role === 'Manager';
+
   // GPS options selon le rôle
-  const gpsOptions = isAE ? { enableHighAccuracy: false, timeout: 10000 } : { enableHighAccuracy: true, timeout: 10000 };
+  const gpsOptions = isReducedPrecision ? { enableHighAccuracy: false, timeout: 10000 } : { enableHighAccuracy: true, timeout: 10000 };
 
   // Masquer le champ type d'action si le lieu est connu (locationName défini ou Admin/Manager sur réseau inconnu)
   const lieuConnu = (isManagerOrAdmin && !isIPAuthorized) || (isIPAuthorized && locationName);
@@ -106,14 +109,14 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         setGeoError('La géolocalisation n\'est pas supportée par ce navigateur.');
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          // Précision réduite si A-E
-          const lat = isAE ? Number(pos.coords.latitude.toFixed(3)) : pos.coords.latitude;
-          const lon = isAE ? Number(pos.coords.longitude.toFixed(3)) : pos.coords.longitude;
-          setLatitude(lat);
-          setLongitude(lon);
-        },
+              navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            // Précision réduite si A-E ou Manager
+            const lat = isReducedPrecision ? Number(pos.coords.latitude.toFixed(3)) : pos.coords.latitude;
+            const lon = isReducedPrecision ? Number(pos.coords.longitude.toFixed(3)) : pos.coords.longitude;
+            setLatitude(lat);
+            setLongitude(lon);
+          },
         (err) => {
           setGeoError("Impossible d'obtenir la position GPS : " + err.message);
         },
@@ -166,8 +169,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           }
           navigator.geolocation.getCurrentPosition(resolve, reject, gpsOptions);
         });
-        finalLatitude = isAE ? Number(position.coords.latitude.toFixed(3)) : position.coords.latitude;
-        finalLongitude = isAE ? Number(position.coords.longitude.toFixed(3)) : position.coords.longitude;
+        finalLatitude = isReducedPrecision ? Number(position.coords.latitude.toFixed(3)) : position.coords.latitude;
+        finalLongitude = isReducedPrecision ? Number(position.coords.longitude.toFixed(3)) : position.coords.longitude;
       } catch (error) {
         console.error('Erreur lors de la récupération GPS:', error);
       }

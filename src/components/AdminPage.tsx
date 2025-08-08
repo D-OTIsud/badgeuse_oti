@@ -64,6 +64,11 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const showSuccessAndReturn = (message: string) => {
     setSuccessMessage(message);
     setShowSuccess(true);
+    // Abort le scan NFC en cours pour permettre de nouveaux scans
+    if (nfcAbortRef.current) {
+      nfcAbortRef.current.abort();
+      nfcAbortRef.current = null;
+    }
     setTimeout(() => {
       setShowSuccess(false);
       setAdminSection(null); // Revenir à la page d'administration
@@ -71,6 +76,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       setNfcTag(''); // Réinitialiser le tag NFC
       setSelectedUser(''); // Réinitialiser la sélection d'utilisateur
       setLieu(''); // Réinitialiser le lieu
+      setIsAssociating(false); // Réinitialiser l'état de scan
     }, 2000);
   };
 
@@ -187,7 +193,8 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           setMessage("Erreur lors de l'association du badge.");
         }
         setIsAssociating(false);
-        if (nfcAbortRef.current) nfcAbortRef.current.abort();
+        // Ne pas abort ici pour permettre de nouveaux scans
+        // if (nfcAbortRef.current) nfcAbortRef.current.abort();
       };
     } catch (e) {
       setMessage('Erreur lors du scan NFC.');
@@ -223,6 +230,13 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEffect(() => {
     if (adminSection === 'associer-tag') {
       setNfcTag('');
+      setMessage('');
+      setIsAssociating(false);
+      // Abort tout scan NFC en cours
+      if (nfcAbortRef.current) {
+        nfcAbortRef.current.abort();
+        nfcAbortRef.current = null;
+      }
     }
   }, [adminSection]);
 

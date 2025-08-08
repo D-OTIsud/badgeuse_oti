@@ -15,6 +15,9 @@ export type Utilisateur = {
   email: string;
   status?: string | null;
   avatar?: string | null;
+  role?: string;
+  lieux?: string | null;
+  numero_badge?: string;
 };
 
 export type BadgeageContext = {
