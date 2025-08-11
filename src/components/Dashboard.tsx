@@ -1939,6 +1939,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           }}>
             <h3 style={{ margin: '0 0 20px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
               📊 KPI par utilisateur - {getPeriodLabel()}
+              {filteredUsers.length !== data.kpiBundle.utilisateurs.length && (
+                <span style={{ fontSize: 14, color: '#666', fontWeight: 400, marginLeft: 8 }}>
+                  ({filteredUsers.length} sur {data.kpiBundle.utilisateurs.length} utilisateurs)
+                </span>
+              )}
+              <div style={{ fontSize: 12, color: '#888', fontWeight: 400, marginTop: 4 }}>
+                Données KPI de la période : {period === 'jour' ? 'Jour' : period === 'semaine' ? 'Semaine' : period === 'mois' ? 'Mois' : 'Année'}
+                {period === 'semaine' && selectedWeek > 0 && ` ${selectedWeek}`}
+                {period === 'mois' && selectedMonth > 0 && ` ${selectedMonth}`}
+                {period === 'annee' && ` ${selectedYear}`}
+                {kpiLoading && (
+                  <span style={{ color: '#1976d2', marginLeft: 8 }}>
+                    🔄 Chargement...
+                  </span>
+                )}
+              </div>
             </h3>
             
             <div style={{
@@ -1948,160 +1964,204 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               maxHeight: '400px',
               overflowY: 'auto'
             }}>
-              {data.kpiBundle.utilisateurs
-                .filter((user: any) => user.utilisateur_id || user.id)
-                .map((user: any, index: number) => {
-                  const userKPI = user;
-                  const travailNet = userKPI.travail_net_minutes || 0;
-                  const retard = userKPI.retard_minutes || 0;
-                  const pause = userKPI.pause_total_minutes || 0;
-                  const departAnticipe = userKPI.depart_anticipe_minutes || 0;
+              {(() => {
+                // Filtrer les utilisateurs KPI selon les mêmes critères que filteredUsers
+                const filteredKPIs = data.kpiBundle.utilisateurs.filter((userKPI: any) => {
+                  const userId = userKPI.utilisateur_id || userKPI.id;
+                  const matchingUser = filteredUsers.find(u => u.id === userId);
                   
-                  // Calculer le score de performance (0-100)
-                  const scorePerformance = Math.max(0, Math.min(100, 
-                    Math.round((travailNet - retard - departAnticipe) / Math.max(travailNet, 1) * 100)
-                  ));
+                  if (!matchingUser) return false;
                   
-                  // Couleur du score
-                  const getScoreColor = (score: number) => {
-                    if (score >= 80) return '#4caf50';
-                    if (score >= 60) return '#ff9800';
-                    return '#f44336';
-                  };
+                  // Appliquer les mêmes filtres
+                  const matchesSearch = searchTerm === '' || 
+                    matchingUser.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    matchingUser.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    matchingUser.email?.toLowerCase().includes(searchTerm.toLowerCase());
                   
-                  return (
-                    <div key={userKPI.utilisateur_id || userKPI.id || index} 
-                         style={{
-                           border: '1px solid #e0e0e0',
-                           borderRadius: 8,
-                           padding: 12,
-                           boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                           background: '#fff',
-                           display: 'flex',
-                           alignItems: 'center',
-                           gap: 12,
-                           transition: 'box-shadow 0.2s, transform 0.2s',
-                           cursor: 'pointer',
-                           marginBottom: 6,
-                         }}
-                         onMouseEnter={(e) => {
-                           e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                           e.currentTarget.style.transform = 'translateY(-1px)';
-                         }}
-                         onMouseLeave={(e) => {
-                           e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)';
-                           e.currentTarget.style.transform = 'translateY(0)';
-                         }}
-                         onClick={() => {
-                           setSelectedUserForKPIDetails(userKPI);
-                           setShowKPIDetailsPopup(true);
-                         }}>
-                      
-                      {/* Avatar */}
-                      {(() => {
-                        const userId = userKPI.utilisateur_id || userKPI.id;
-                        const avatarLink = userId ? avatarLinks[userId] : null;
+                  const matchesService = selectedService === '' || matchingUser.service === selectedService;
+                  const matchesRole = selectedRole === '' || matchingUser.role === selectedRole;
+                  
+                  return matchesSearch && matchesService && matchesRole;
+                });
+                
+                // Log pour vérifier que les bonnes données sont utilisées
+                console.log(`UserKPIDeck - Période: ${period}, Utilisateurs KPI filtrés:`, filteredKPIs.length, 'sur', data.kpiBundle.utilisateurs.length);
+                
+                return filteredKPIs
+                  .filter((user: any) => user.utilisateur_id || user.id)
+                  .map((user: any, index: number) => {
+                    const userKPI = user;
+                    const travailNet = userKPI.travail_net_minutes || 0;
+                    const retard = userKPI.retard_minutes || 0;
+                    const pause = userKPI.pause_total_minutes || 0;
+                    const departAnticipe = userKPI.depart_anticipe_minutes || 0;
+                    
+                    // Calculer le score de performance (0-100)
+                    const scorePerformance = Math.max(0, Math.min(100, 
+                      Math.round((travailNet - retard - departAnticipe) / Math.max(travailNet, 1) * 100)
+                    ));
+                    
+                    const getScoreColor = (score: number) => {
+                      if (score >= 80) return '#4caf50'; // Green
+                      if (score >= 60) return '#ff9800'; // Orange
+                      return '#f44336'; // Red
+                    };
+                    
+                    return (
+                      <div key={userKPI.utilisateur_id || userKPI.id || index} 
+                           style={{
+                             border: '1px solid #e0e0e0',
+                             borderRadius: 8,
+                             padding: 12,
+                             boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                             background: '#fff',
+                             display: 'flex',
+                             alignItems: 'center',
+                             gap: 12,
+                             transition: 'box-shadow 0.2s, transform 0.2s',
+                             cursor: 'pointer',
+                             marginBottom: 6,
+                           }}
+                           onMouseEnter={(e) => {
+                             e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                             e.currentTarget.style.transform = 'translateY(-1px)';
+                           }}
+                           onMouseLeave={(e) => {
+                             e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)';
+                             e.currentTarget.style.transform = 'translateY(0)';
+                           }}
+                           onClick={() => {
+                             setSelectedUserForKPIDetails(userKPI);
+                             setShowKPIDetailsPopup(true);
+                           }}>
                         
-                        if (avatarLink) {
-                          return (
-                            <img src={avatarLink} alt="avatar" style={{ 
-                              width: 36, 
-                              height: 36, 
-                              borderRadius: '50%', 
-                              objectFit: 'cover', 
-                              border: '1px solid #e0e0e0',
-                              flexShrink: 0
-                            }} />
-                          );
-                        } else {
-                          return (
-                            <div style={{ 
-                              width: 36, 
-                              height: 36, 
-                              borderRadius: '50%', 
-                              background: '#f4f6fa', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              fontSize: 16, 
-                              color: '#bbb', 
-                              border: '1px solid #e0e0e0',
-                              flexShrink: 0
-                            }}>
-                              👤
-                            </div>
-                          );
-                        }
-                      })()}
-                      
-                      {/* Informations utilisateur */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ 
-                          fontWeight: '600', 
-                          fontSize: 14, 
-                          marginBottom: 2, 
-                          color: colors.text,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {userKPI.prenom || ''} {userKPI.nom || ''}
-                        </div>
-                        <div style={{ 
-                          color: '#666', 
-                          fontSize: 12, 
-                          marginBottom: 1,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {userKPI.service || 'Service non défini'}
-                        </div>
-                        {userKPI.lieu && (
+                        {/* Avatar */}
+                        {(() => {
+                          const userId = userKPI.utilisateur_id || userKPI.id;
+                          const avatarLink = userId ? avatarLinks[userId] : null;
+                          
+                          if (avatarLink) {
+                            return (
+                              <img src={avatarLink} alt="avatar" style={{ 
+                                width: 36, 
+                                height: 36, 
+                                borderRadius: '50%', 
+                                objectFit: 'cover', 
+                                border: '1px solid #e0e0e0',
+                                flexShrink: 0
+                              }} />
+                            );
+                          } else {
+                            return (
+                              <div style={{ 
+                                width: 36, 
+                                height: 36, 
+                                borderRadius: '50%', 
+                                background: '#f4f6fa', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontSize: 16, 
+                                color: '#bbb', 
+                                border: '1px solid #e0e0e0',
+                                flexShrink: 0
+                              }}>
+                                👤
+                              </div>
+                            );
+                          }
+                        })()}
+                        
+                        {/* Informations utilisateur */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ 
-                            fontSize: 11, 
-                            color: '#999',
+                            fontWeight: '600', 
+                            fontSize: 14,
+                            marginBottom: 2, 
+                            color: colors.text,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
                           }}>
-                            📍 {userKPI.lieu}
+                            {userKPI.prenom || ''} {userKPI.nom || ''}
                           </div>
-                        )}
+                          <div style={{ 
+                            color: '#666', 
+                            fontSize: 12,
+                            marginBottom: 1,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {userKPI.service || 'Service non défini'}
+                          </div>
+                          {userKPI.lieu && (
+                            <div style={{ 
+                              fontSize: 11,
+                              color: '#999',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              📍 {userKPI.lieu}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Indicateur de performance compact */}
+                        <div style={{ 
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 40,
+                          height: 40, 
+                          borderRadius: '50%',
+                          background: getScoreColor(scorePerformance),
+                          color: 'white',
+                          fontSize: 12,
+                          fontWeight: 'bold',
+                          flexShrink: 0,
+                          boxShadow: `0 2px 8px ${getScoreColor(scorePerformance)}40`
+                        }}>
+                          {scorePerformance}%
+                        </div>
                       </div>
-                      
-                      {/* Score de performance compact */}
-                      <div style={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        background: getScoreColor(scorePerformance),
-                        color: 'white',
-                        fontSize: 12,
-                        fontWeight: 'bold',
-                        flexShrink: 0,
-                        boxShadow: `0 2px 8px ${getScoreColor(scorePerformance)}40`
-                      }}>
-                        {scorePerformance}%
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+              })()}
             </div>
             
-            {data.kpiBundle.utilisateurs.length === 0 && (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px',
-                color: '#7f8c8d',
-                fontStyle: 'italic'
-              }}>
-                Aucune donnée KPI utilisateur disponible pour cette période
-              </div>
-            )}
+            {(() => {
+              const filteredKPIs = data.kpiBundle.utilisateurs.filter((userKPI: any) => {
+                const userId = userKPI.utilisateur_id || userKPI.id;
+                const matchingUser = filteredUsers.find(u => u.id === userId);
+                
+                if (!matchingUser) return false;
+                
+                const matchesSearch = searchTerm === '' || 
+                  matchingUser.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  matchingUser.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  matchingUser.email?.toLowerCase().includes(searchTerm.toLowerCase());
+                
+                const matchesService = selectedService === '' || matchingUser.service === selectedService;
+                const matchesRole = selectedRole === '' || matchingUser.role === selectedRole;
+                
+                return matchesSearch && matchesService && matchesRole;
+              });
+              
+              if (filteredKPIs.length === 0) {
+                return (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '20px', 
+                    color: '#666',
+                    fontSize: 14
+                  }}>
+                    Aucun utilisateur ne correspond aux filtres sélectionnés
+                  </div>
+                );
+              }
+            })()}
           </div>
         )}
       </div>
