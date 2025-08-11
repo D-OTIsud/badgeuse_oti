@@ -92,11 +92,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     
     switch (period) {
       case 'jour':
-        // Pour le jour, utiliser l'année sélectionnée
-        const selectedYearDate = new Date(selectedYear, currentMonth, currentDate);
-        startDate = new Date(selectedYearDate);
-        endDate = new Date(selectedYearDate);
-        endDate.setDate(selectedYearDate.getDate() + 1);
+        // Pour le jour, utiliser la date actuelle (pas selectedYear)
+        startDate = new Date(now);
+        endDate = new Date(now);
+        endDate.setDate(now.getDate() + 1);
         break;
         
       case 'semaine':
@@ -145,10 +144,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       // Déterminer quelle fonction SQL utiliser selon la période
       switch (period) {
         case 'jour':
-          // Utiliser la nouvelle API pour une date spécifique
+          // Utiliser appbadge_kpi_bundle_between avec start_date = aujourd'hui et end_date = aujourd'hui + 1
           kpiData = await supabaseAPI.getKPIBundleBetween(
             startDate.toISOString().split('T')[0], 
-            startDate.toISOString().split('T')[0]
+            endDate.toISOString().split('T')[0]
           );
           break;
         case 'semaine':
