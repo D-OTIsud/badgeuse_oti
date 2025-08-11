@@ -81,3 +81,21 @@ coverage/
 # Fichiers de déploiement
 .vercel
 .netlify
+
+# =====================================================
+# FICHIERS VITE SPÉCIFIQUES
+# =====================================================
+
+# Variables d'environnement Vite
+.env
+.env.*
+!.env.example
+
+# Cache Vite
+.vite/
+vite.config.ts.timestamp-*
+
+# Build Vite
+dist/
+dist-ssr/
+*.local

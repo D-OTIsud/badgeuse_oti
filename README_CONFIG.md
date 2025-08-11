@@ -1,12 +1,12 @@
-# Configuration Supabase - Badgeuse OTI
+# Configuration Supabase - Badgeuse OTI (Vite)
 
 ## 📁 Fichiers de configuration créés
 
-### 1. `supabase_config.env` - Variables d'environnement
-Fichier contenant toutes vos clés Supabase et configurations.
+### 1. `supabase_config.env` - Variables d'environnement Vite
+Fichier contenant toutes vos clés Supabase avec le préfixe `VITE_`.
 
 ### 2. `supabase.config.ts` - Configuration TypeScript
-Fichier de configuration avec classe utilitaire pour les appels API.
+Fichier de configuration avec classe utilitaire pour les appels API, utilisant `import.meta.env`.
 
 ### 3. `.gitignore` - Protection des clés
 Empêche le commit accidentel de vos clés sensibles.
@@ -27,30 +27,32 @@ cp supabase_config.env .env.local
 
 ```env
 # URL de votre instance Supabase
-SUPABASE_URL=https://supabertel.otisud.re
+VITE_SUPABASE_URL=https://supabertel.otisud.re
 
 # Clé anonyme (anon key) - OBLIGATOIRE
-SUPABASE_ANON_KEY=votre_vraie_clé_anon_ici
+VITE_SUPABASE_ANON_KEY=votre_vraie_clé_anon_ici
 
 # Clé de service (service_role key) - OPTIONNEL
-SUPABASE_SERVICE_ROLE_KEY=votre_vraie_clé_service_role_ici
+VITE_SUPABASE_SERVICE_ROLE_KEY=votre_vraie_clé_service_role_ici
 
 # Clé JWT secrète - OPTIONNEL
-SUPABASE_JWT_SECRET=votre_vraie_jwt_secret_ici
+VITE_SUPABASE_JWT_SECRET=votre_vraie_jwt_secret_ici
 ```
+
+**⚠️ IMPORTANT :** Avec Vite, toutes les variables d'environnement doivent commencer par `VITE_` pour être accessibles côté client.
 
 ### Étape 3 : Récupérer vos clés Supabase
 1. Allez sur [supabase.com](https://supabase.com)
 2. Connectez-vous à votre projet
 3. Allez dans **Settings** → **API**
 4. Copiez :
-   - **Project URL** → `SUPABASE_URL`
-   - **anon public** → `SUPABASE_ANON_KEY`
-   - **service_role** → `SUPABASE_SERVICE_ROLE_KEY`
+   - **Project URL** → `VITE_SUPABASE_URL`
+   - **anon public** → `VITE_SUPABASE_ANON_KEY`
+   - **service_role** → `VITE_SUPABASE_SERVICE_ROLE_KEY`
 
 ## 💻 Utilisation dans votre code
 
-### Option 1 : Utiliser la classe SupabaseAPI
+### Option 1 : Utiliser la classe SupabaseAPI (Recommandé)
 
 ```typescript
 import { supabaseAPI } from './supabase.config';
@@ -70,14 +72,20 @@ const kpiMonth = await supabaseAPI.getKPIBundleMonth(2025, 1, {
 });
 ```
 
-### Option 2 : Utiliser directement fetch
+### Option 2 : Utiliser directement les variables Vite
 
 ```typescript
-import { SUPABASE_CONFIG } from './supabase.config';
+// Accès direct aux variables d'environnement
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const response = await fetch(`${SUPABASE_CONFIG.rpcEndpoint}/appbadge_kpi_bundle_year`, {
+const response = await fetch(`${supabaseUrl}/rest/v1/rpc/appbadge_kpi_bundle_year`, {
   method: 'POST',
-  headers: SUPABASE_CONFIG.defaultHeaders,
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': anonKey,
+    'Authorization': `Bearer ${anonKey}`
+  },
   body: JSON.stringify({
     p_year: 2025,
     p_utilisateur_id: null,
@@ -94,11 +102,10 @@ const data = await response.json();
 
 ```typescript
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_CONFIG } from './supabase.config';
 
 const supabase = createClient(
-  SUPABASE_CONFIG.url,
-  SUPABASE_CONFIG.anonKey
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
 // Appel vers une fonction RPC
@@ -115,22 +122,22 @@ const { data, error } = await supabase.rpc('appbadge_kpi_bundle_year', {
 
 ### Développement (.env.local)
 ```env
-SUPABASE_URL=https://supabertel.otisud.re
-SUPABASE_ANON_KEY=votre_clé_dev
+VITE_SUPABASE_URL=https://supabertel.otisud.re
+VITE_SUPABASE_ANON_KEY=votre_clé_dev
 NODE_ENV=development
 ```
 
 ### Production (.env.production)
 ```env
-SUPABASE_URL=https://supabertel.otisud.re
-SUPABASE_ANON_KEY=votre_clé_prod
+VITE_SUPABASE_URL=https://supabertel.otisud.re
+VITE_SUPABASE_ANON_KEY=votre_clé_prod
 NODE_ENV=production
 ```
 
 ## 🛡️ Sécurité
 
 ### ✅ À faire
-- Utiliser des variables d'environnement
+- Utiliser des variables d'environnement avec préfixe `VITE_`
 - Limiter l'accès aux clés sensibles
 - Utiliser des clés différentes par environnement
 - Vérifier les permissions RLS dans Supabase
@@ -140,6 +147,7 @@ NODE_ENV=production
 - Exposer les clés dans le code client
 - Utiliser la clé service_role côté client
 - Partager les clés publiquement
+- Oublier le préfixe `VITE_` pour les variables côté client
 
 ## 🧪 Test de la configuration
 
@@ -169,6 +177,18 @@ fetch('https://supabertel.otisud.re/rest/v1/rpc/appbadge_kpi_bundle_year', {
 .catch(error => console.error('Erreur:', error));
 ```
 
+### Test des variables Vite
+```typescript
+// Dans votre composant React/Vue
+console.log('URL Supabase:', import.meta.env.VITE_SUPABASE_URL);
+console.log('Clé anon:', import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+// Vérifiez que les variables sont bien définies
+if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.error('VITE_SUPABASE_ANON_KEY n\'est pas définie !');
+}
+```
+
 ## 🚨 Dépannage
 
 ### Erreur "Les fonctions SQL ne sont pas encore disponibles"
@@ -180,6 +200,7 @@ fetch('https://supabertel.otisud.re/rest/v1/rpc/appbadge_kpi_bundle_year', {
 ### Erreur 401 (Unauthorized)
 - Vérifiez votre clé anon
 - Vérifiez que la clé n'a pas expiré
+- Vérifiez que `VITE_SUPABASE_ANON_KEY` est bien définie
 
 ### Erreur 403 (Forbidden)
 - Vérifiez les politiques RLS
@@ -189,6 +210,11 @@ fetch('https://supabertel.otisud.re/rest/v1/rpc/appbadge_kpi_bundle_year', {
 - Vérifiez l'URL de votre instance
 - Vérifiez que les fonctions existent
 
+### Variables d'environnement non définies
+- Vérifiez que vos variables commencent par `VITE_`
+- Vérifiez que le fichier `.env` est bien chargé
+- Redémarrez votre serveur de développement
+
 ## 📞 Support
 
 Si vous avez des problèmes :
@@ -196,11 +222,19 @@ Si vous avez des problèmes :
 2. Vérifiez les logs Supabase
 3. Testez avec curl ou Postman
 4. Consultez la documentation Supabase
+5. Vérifiez que vos variables Vite sont bien définies
 
 ## 🔄 Mise à jour
 
 Pour mettre à jour la configuration :
 1. Modifiez `supabase_config.env`
 2. Copiez vers `.env` ou `.env.local`
-3. Redémarrez votre application
+3. Redémarrez votre serveur de développement
 4. Testez avec une fonction simple
+
+## 🌟 Avantages de Vite
+
+- **Hot Reload** : Les changements dans `.env` sont automatiquement pris en compte
+- **Sécurité** : Seules les variables `VITE_` sont exposées côté client
+- **Performance** : Variables d'environnement optimisées pour le build
+- **Développement** : Support natif des fichiers `.env.local`

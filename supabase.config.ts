@@ -4,26 +4,28 @@
 
 export const SUPABASE_CONFIG = {
   // URL de votre instance Supabase
-  url: 'https://supabertel.otisud.re',
+  url: import.meta.env.VITE_SUPABASE_URL || 'https://supabertel.otisud.re',
   
   // Clé anonyme (anon key) - pour les requêtes publiques
-  anonKey: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc1Mjc0NzkwMCwiZXhwIjo0OTA4NDIxNTAwLCJyb2xlIjoiYW5vbiJ9.p-LvFNOTu4TAM_D0XhOGK-ufG3cSimz0krDzxDpBIxg',
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
   
   // Clé de service (service_role key) - pour les opérations admin
-  serviceRoleKey: 'votre_clé_service_role_ici',
+  serviceRoleKey: import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
   
   // Configuration de l'API
-  apiBaseUrl: 'https://supabertel.otisud.re/rest/v1',
+  apiBaseUrl: import.meta.env.VITE_SUPABASE_URL ? `${import.meta.env.VITE_SUPABASE_URL}/rest/v1` : 'https://supabertel.otisud.re/rest/v1',
   apiVersion: 'v1',
   
   // Configuration des fonctions RPC
-  rpcEndpoint: 'https://supabertel.otisud.re/rest/v1/rpc',
+  rpcEndpoint: import.meta.env.VITE_SUPABASE_URL ? `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc` : 'https://supabertel.otisud.re/rest/v1/rpc',
   
   // Configuration des headers par défaut
-  defaultHeaders: {
-    'Content-Type': 'application/json',
-    'apikey': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc1Mjc0NzkwMCwiZXhwIjo0OTA4NDIxNTAwLCJyb2xlIjoiYW5vbiJ9.p-LvFNOTu4TAM_D0XhOGK-ufG3cSimz0krDzxDpBIxg',
-    'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc1Mjc0NzkwMCwiZXhwIjo0OTA4NDIxNTAwLCJyb2xlIjoiYW5vbiJ9.p-LvFNOTu4TAM_D0XhOGK-ufG3cSimz0krDzxDpBIxg'
+  get defaultHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'apikey': this.anonKey,
+      'Authorization': `Bearer ${this.anonKey}`
+    };
   }
 };
 
