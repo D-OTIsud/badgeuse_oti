@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { supabaseAPI } from '../../supabase.config';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ChartsContainer } from './charts';
-import './charts/charts.css';
+// import { ChartsContainer } from './charts';
+// import './charts/charts.css';
 
 interface DashboardData {
   statutCourant: any[];
@@ -1802,6 +1802,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
          )}
 
         {/* Nouveaux graphiques avancés */}
+        {/* Temporairement désactivé - travail en cours composant par composant */}
+        {/*
         {data.kpiBundle && (
           <div style={{
             background: 'white',
@@ -1826,6 +1828,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             />
           </div>
         )}
+        */}
       </div>
 
       {/* Footer avec statut des données SQL */}
