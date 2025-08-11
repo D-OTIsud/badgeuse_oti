@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { supabaseAPI } from '../../supabase.config';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-// import { ChartsContainer } from './charts';
-// import './charts/charts.css';
 
 interface DashboardData {
   statutCourant: any[];
@@ -963,16 +960,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   for (const count of Object.values(occupationData)) {
     totalUsers += count as number;
   }
-  
-  const occupationChartData = Object.entries(occupationData).map(([lieu, count]) => {
-    const percentage = totalUsers > 0 ? Math.round((count as number) / totalUsers * 100) : 0;
-    return {
-      name: `${lieu} (${count} - ${percentage}%)`,
-      value: count,
-      percentage: percentage,
-      color: lieuxColors[lieu] || '#F0F0F2' // Utiliser la couleur personnalisée ou la couleur par défaut
-    };
-  });
 
   const arrivalData = filteredDashboardData.reduce((acc, item) => {
     const retard = item.retard_minutes || 0;
@@ -1885,34 +1872,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
                 Occupation par lieu
               </h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={occupationChartData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={60}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {occupationChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: any, name: any, props: any) => [
-                      `${value} utilisateurs (${props.payload.percentage}%)`,
-                      props.payload.name.split(' (')[0]
-                    ]}
-                  />
-                  <Legend 
-                    formatter={(value: any, entry: any) => {
-                      const data = entry.payload;
-                      return `${data.name.split(' (')[0]} - ${data.value} (${data.percentage}%)`;
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div style={{ 
+                height: 200, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: '#666',
+                fontSize: 14
+              }}>
+                Graphique temporairement désactivé - travail en cours composant par composant
+              </div>
             </div>
           )}
 
