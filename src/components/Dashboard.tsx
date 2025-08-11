@@ -1890,32 +1890,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             </div>
           )}
 
-                 {/* Arrivées vs horaire - Uniquement pour la période "jour" */}
-         {(period === 'jour' || period === 'semaine' || period === 'mois' || period === 'annee') && (
-           <div style={{
-             background: 'white',
-             borderRadius: 12,
-             padding: 24,
-             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-           }}>
-             <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-               Arrivées vs. horaire
-               {kpiArrivalData && (
-                 <span style={{ fontSize: 12, color: colors.primary, marginLeft: 8, fontWeight: 400 }}>
-                   (SQL)
-                 </span>
-               )}
-             </h3>
-             <ResponsiveContainer width="100%" height={200}>
-               <BarChart data={kpiArrivalData || arrivalChartData}>
-                 <CartesianGrid strokeDasharray="3 3" />
-                 <XAxis dataKey="time" />
-                 <Tooltip />
-                 <Bar dataKey="count" fill={colors.primary} />
-               </BarChart>
-             </ResponsiveContainer>
-           </div>
-         )}
+
 
         {/* Nouveaux graphiques avancés */}
         {/* Temporairement désactivé - travail en cours composant par composant */}
@@ -1960,9 +1935,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '16px',
-              maxHeight: '500px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '12px',
+              maxHeight: '400px',
               overflowY: 'auto'
             }}>
               {data.kpiBundle.utilisateurs
@@ -1986,34 +1961,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     return '#f44336';
                   };
                   
-                  // Icône du score
-                  const getScoreIcon = (score: number) => {
-                    if (score >= 80) return '🟢';
-                    if (score >= 60) return '🟡';
-                    return '🔴';
-                  };
-                  
                   return (
                     <div key={userKPI.utilisateur_id || userKPI.id || index} 
                          style={{
                            border: '1px solid #e0e0e0',
-                           borderRadius: 12,
-                           padding: 16,
-                           boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                           borderRadius: 8,
+                           padding: 12,
+                           boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
                            background: '#fff',
                            display: 'flex',
                            alignItems: 'center',
-                           gap: 16,
+                           gap: 12,
                            transition: 'box-shadow 0.2s, transform 0.2s',
                            cursor: 'pointer',
-                           marginBottom: 8,
+                           marginBottom: 6,
                          }}
                          onMouseEnter={(e) => {
-                           e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
-                           e.currentTarget.style.transform = 'translateY(-2px)';
+                           e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                           e.currentTarget.style.transform = 'translateY(-1px)';
                          }}
                          onMouseLeave={(e) => {
-                           e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)';
+                           e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)';
                            e.currentTarget.style.transform = 'translateY(0)';
                          }}
                          onClick={() => {
@@ -2023,60 +1991,73 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                       
                       {/* Avatar */}
                       <div style={{ 
-                        width: 48, 
-                        height: 48, 
+                        width: 36, 
+                        height: 36, 
                         borderRadius: '50%', 
                         background: '#f4f6fa', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        fontSize: 20, 
+                        fontSize: 16, 
                         color: '#bbb', 
-                        border: '2px solid #1976d2',
-                        boxShadow: '0 2px 8px rgba(25,118,210,0.15)',
+                        border: '1px solid #e0e0e0',
                         flexShrink: 0
                       }}>
                         👤
                       </div>
                       
                       {/* Informations utilisateur */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: colors.text }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontWeight: '600', 
+                          fontSize: 14, 
+                          marginBottom: 2, 
+                          color: colors.text,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                           {userKPI.prenom || ''} {userKPI.nom || ''}
                         </div>
-                        <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
+                        <div style={{ 
+                          color: '#666', 
+                          fontSize: 12, 
+                          marginBottom: 1,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                           {userKPI.service || 'Service non défini'}
                         </div>
                         {userKPI.lieu && (
-                          <div style={{ fontSize: 12, color: '#888' }}>
+                          <div style={{ 
+                            fontSize: 11, 
+                            color: '#999',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
                             📍 {userKPI.lieu}
                           </div>
                         )}
                       </div>
                       
-                      {/* Score de performance */}
+                      {/* Score de performance compact */}
                       <div style={{ 
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 8,
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        background: `rgba(${scorePerformance >= 80 ? '76, 175, 80' : scorePerformance >= 60 ? '255, 152, 0' : '244, 67, 54'}, 0.1)`,
-                        border: `1px solid ${getScoreColor(scorePerformance)}`,
-                        flexShrink: 0
+                        justifyContent: 'center',
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        background: getScoreColor(scorePerformance),
+                        color: 'white',
+                        fontSize: 12,
+                        fontWeight: 'bold',
+                        flexShrink: 0,
+                        boxShadow: `0 2px 8px ${getScoreColor(scorePerformance)}40`
                       }}>
-                        <div style={{
-                          fontSize: '18px'
-                        }}>
-                          {getScoreIcon(scorePerformance)}
-                        </div>
-                        <span style={{ 
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: getScoreColor(scorePerformance)
-                        }}>
-                          {scorePerformance}%
-                        </span>
+                        {scorePerformance}%
                       </div>
                     </div>
                   );
