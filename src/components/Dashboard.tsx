@@ -66,6 +66,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   // TODO: Cache des avatars pour éviter de les recharger (à implémenter plus tard)
   // const [avatarCache, setAvatarCache] = useState<{[key: string]: string}>({});
+  
+  // Cache simple des liens d'avatars
+  const [avatarLinks, setAvatarLinks] = useState<{[key: string]: string}>({});
 
   // Couleurs du thème OTI du SUD
   const colors = {
@@ -226,6 +229,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         // if (kpiStructure.users || kpiStructure.utilisateurs) {
         //   loadUserAvatars(kpiStructure.users || kpiStructure.utilisateurs);
         // }
+        
+        // Charger les liens d'avatars des utilisateurs
+        if (kpiStructure.users || kpiStructure.utilisateurs) {
+          loadAvatarLinks(kpiStructure.users || kpiStructure.utilisateurs);
+        }
       }
       
     } catch (error) {
@@ -983,6 +991,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   // const loadUserAvatars = useCallback(async (users: any[]) => {
   //   // ... implémentation à venir
   // }, [avatarCache, supabase]);
+  
+  // Fonction simple pour charger les liens d'avatars
+  const loadAvatarLinks = async (users: any[]) => {
+    const newLinks: {[key: string]: string} = {};
+    
+    for (const user of users) {
+      const userId = user.utilisateur_id || user.id;
+      if (userId && !avatarLinks[userId]) {
+        try {
+          // Récupérer le lien de l'avatar depuis la table utilisateurs
+          const { data: userData } = await supabase
+            .from('appbadge_utilisateurs')
+            .select('avatar')
+            .eq('id', userId)
+            .single();
+          
+          if (userData?.avatar) {
+            newLinks[userId] = userData.avatar;
+          }
+        } catch (error) {
+          console.log(`Pas d'avatar pour l'utilisateur ${userId}`);
+        }
+      }
+    }
+    
+    if (Object.keys(newLinks).length > 0) {
+      setAvatarLinks(prev => ({ ...prev, ...newLinks }));
+    }
+  };
 
   if (loading) {
     return (
@@ -1961,21 +1998,41 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                          }}>
                       
                       {/* Avatar */}
-                      <div style={{ 
-                        width: 36, 
-                        height: 36, 
-                        borderRadius: '50%', 
-                        background: '#f4f6fa', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontSize: 16, 
-                        color: '#bbb', 
-                        border: '1px solid #e0e0e0',
-                        flexShrink: 0
-                      }}>
-                        👤
-                      </div>
+                      {(() => {
+                        const userId = userKPI.utilisateur_id || userKPI.id;
+                        const avatarLink = userId ? avatarLinks[userId] : null;
+                        
+                        if (avatarLink) {
+                          return (
+                            <img src={avatarLink} alt="avatar" style={{ 
+                              width: 36, 
+                              height: 36, 
+                              borderRadius: '50%', 
+                              objectFit: 'cover', 
+                              border: '1px solid #e0e0e0',
+                              flexShrink: 0
+                            }} />
+                          );
+                        } else {
+                          return (
+                            <div style={{ 
+                              width: 36, 
+                              height: 36, 
+                              borderRadius: '50%', 
+                              background: '#f4f6fa', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              fontSize: 16, 
+                              color: '#bbb', 
+                              border: '1px solid #e0e0e0',
+                              flexShrink: 0
+                            }}>
+                              👤
+                            </div>
+                          );
+                        }
+                      })()}
                       
                       {/* Informations utilisateur */}
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2130,22 +2187,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               paddingBottom: '12px',
               borderBottom: '1px solid #e0e0e0'
             }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                background: '#f4f6fa',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
-                color: '#bbb',
-                border: '2px solid #1976d2',
-                margin: '0 auto 12px auto',
-                boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
-              }}>
-                👤
-              </div>
+              {(() => {
+                const userId = selectedUserForKPIDetails.utilisateur_id || selectedUserForKPIDetails.id;
+                const avatarLink = userId ? avatarLinks[userId] : null;
+                
+                if (avatarLink) {
+                  return (
+                    <img src={avatarLink} alt="avatar" style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid #1976d2',
+                      margin: '0 auto 12px auto',
+                      boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
+                    }} />
+                  );
+                } else {
+                  return (
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: '#f4f6fa',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      color: '#bbb',
+                      border: '2px solid #1976d2',
+                      margin: '0 auto 12px auto',
+                      boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
+                    }}>
+                      👤
+                    </div>
+                  );
+                }
+              })()}
               <h2 style={{
                 margin: '0 0 6px 0',
                 fontSize: '18px',
