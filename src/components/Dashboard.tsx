@@ -114,9 +114,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           endDate = new Date(mondayOfCurrentWeek);
           endDate.setDate(mondayOfCurrentWeek.getDate() + 7);
         } else {
-          // Semaine ISO spécifique
+          // Semaine ISO spécifique - toujours dans l'année actuelle
           const targetWeek = selectedWeek;
-          const targetYear = selectedYear;
+          const targetYear = currentYear; // Toujours utiliser l'année actuelle
           // Calculer le premier jour de l'année
           const yearStart = new Date(targetYear, 0, 1);
           // Trouver le premier lundi de l'année
@@ -134,10 +134,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         break;
         
       case 'mois':
-        // Utiliser le mois spécifique sélectionné
-        const firstDayOfSelectedMonth = new Date(selectedYear, selectedMonth - 1, 1); // selectedMonth est 1-12
+        // Utiliser le mois spécifique sélectionné mais toujours dans l'année actuelle
+        const firstDayOfSelectedMonth = new Date(currentYear, selectedMonth - 1, 1); // selectedMonth est 1-12
         startDate = new Date(firstDayOfSelectedMonth);
-        endDate = new Date(selectedYear, selectedMonth, 1); // Mois suivant
+        endDate = new Date(currentYear, selectedMonth, 1); // Mois suivant
         break;
         
       case 'annee':
@@ -177,14 +177,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           if (selectedWeek === 0) {
             // Semaine actuelle
             const weekNumber = getISOWeekNumber(startDate);
-            kpiData = await supabaseAPI.getKPIBundleISOWeek(selectedYear, weekNumber);
+            kpiData = await supabaseAPI.getKPIBundleISOWeek(new Date().getFullYear(), weekNumber);
           } else {
-            // Semaine ISO spécifique
-            kpiData = await supabaseAPI.getKPIBundleISOWeek(selectedYear, selectedWeek);
+            // Semaine ISO spécifique - toujours dans l'année actuelle
+            kpiData = await supabaseAPI.getKPIBundleISOWeek(new Date().getFullYear(), selectedWeek);
           }
           break;
         case 'mois':
-          kpiData = await supabaseAPI.getKPIBundleMonth(selectedYear, selectedMonth);
+          // Toujours utiliser l'année actuelle pour les mois
+          kpiData = await supabaseAPI.getKPIBundleMonth(new Date().getFullYear(), selectedMonth);
           break;
         case 'annee':
           kpiData = await supabaseAPI.getKPIBundleYear(selectedYear);
@@ -255,6 +256,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   // New functions to fetch available filter options
   const fetchAvailableYears = async () => {
     try {
+      // Skip if already loaded and not forcing refresh
+      if (availableYears.length > 0 && !filterOptionsLoading) {
+        console.log('Years already loaded, skipping fetch');
+        return;
+      }
+      
+      console.log('fetchAvailableYears called');
       setFilterOptionsLoading(true);
       // Fetch years from the last 5 years to current year
       const currentYear = new Date().getFullYear();
@@ -313,7 +321,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     
     // Set current month as default
     const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
-    setSelectedMonth(0); // Reset to current month
+    setSelectedMonth(currentMonth); // Set to current month by default
   };
 
   const fetchAvailableWeeks = () => {
@@ -324,9 +332,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     // Generate weeks for the current year (typically 52-53 weeks)
     const weeks: {value: number, label: string}[] = [];
     for (let week = 1; week <= 53; week++) {
+      // Calculate the start date of the week
+      const yearStart = new Date(currentYear, 0, 1);
+      const firstMonday = new Date(yearStart);
+      const firstMondayDay = yearStart.getDay();
+      const daysToAdd = firstMondayDay === 0 ? 1 : (8 - firstMondayDay);
+      firstMonday.setDate(yearStart.getDate() + daysToAdd);
+      
+      const weekStart = new Date(firstMonday);
+      weekStart.setDate(firstMonday.getDate() + (week - 1) * 7);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      const weekLabel = `Semaine ${week} (${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })})`;
+      
       weeks.push({
         value: week,
-        label: `Semaine ${week}`
+        label: weekLabel
       });
     }
     
@@ -386,7 +409,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           endDateWeek.setDate(endDate.getDate() - 1);
           return `Semaine du ${startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${endDateWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
         } else {
-          return `Semaine ${selectedWeek} - ${selectedYear}`;
+          return `Semaine ${selectedWeek} - ${new Date().getFullYear()}`;
         }
         
       case 'mois':
@@ -395,12 +418,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
           ];
-          return `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+          return `${monthNames[selectedMonth - 1]} ${new Date().getFullYear()}`;
         } else {
-          return startDate.toLocaleDateString('fr-FR', { 
-            month: 'long', 
-            year: 'numeric' 
-          });
+          // When selectedMonth is 0, show current month
+          const currentMonth = new Date().getMonth();
+          const monthNames = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+          ];
+          return `${monthNames[currentMonth]} ${new Date().getFullYear()}`;
         }
         
       case 'annee':
@@ -602,21 +628,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   };
 
-     // Initialisation et mise à jour périodique (1 minute au lieu de 5)
-   useEffect(() => {
-     fetchData();
-     fetchKPIData(); // Récupérer les KPIs via les fonctions SQL
-     testSQLFunctions(); // Tester la disponibilité des fonctions SQL
-     fetchLieuxColors(); // Récupérer les couleurs des lieux
-     fetchAvailableYears(); // Récupérer les années disponibles
-     fetchAvailableMonths(); // Récupérer les mois disponibles
-     fetchAvailableWeeks(); // Récupérer les semaines disponibles
-     const interval = setInterval(() => {
-       fetchData();
-       fetchKPIData(); // Rafraîchir aussi les KPIs
-     }, 60000); // 1 minute
-     return () => clearInterval(interval);
-   }, [period, selectedWeek, selectedMonth, selectedYear]);
+       // Initialisation et mise à jour périodique (1 minute au lieu de 5)
+  useEffect(() => {
+    fetchData();
+    fetchKPIData(); // Récupérer les KPIs via les fonctions SQL
+    testSQLFunctions(); // Tester la disponibilité des fonctions SQL
+    fetchLieuxColors(); // Récupérer les couleurs des lieux
+    fetchAvailableMonths(); // Récupérer les mois disponibles
+    fetchAvailableWeeks(); // Récupérer les semaines disponibles
+    const interval = setInterval(() => {
+      fetchData();
+      fetchKPIData(); // Rafraîchir aussi les KPIs
+    }, 60000); // 1 minute
+    return () => clearInterval(interval);
+  }, [period, selectedWeek, selectedMonth, selectedYear]);
+
+  // Fetch available years only once on mount and when year changes
+  useEffect(() => {
+    fetchAvailableYears();
+  }, [selectedYear]);
+
+  // Reset month to current month when year changes to current year
+  useEffect(() => {
+    if (selectedYear === new Date().getFullYear()) {
+      setSelectedMonth(new Date().getMonth() + 1);
+    }
+  }, [selectedYear]);
+
+  // Reset week to current week when year changes to current year
+  useEffect(() => {
+    if (selectedYear === new Date().getFullYear()) {
+      setSelectedWeek(0); // Reset to current week
+    }
+  }, [selectedYear]);
 
   // Temps réel pour les utilisateurs et récupération des services/rôles
   useEffect(() => {
@@ -1065,7 +1109,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                  if (p.toLowerCase() === 'semaine') {
                    setSelectedWeek(0); // Semaine actuelle
                  } else if (p.toLowerCase() === 'mois') {
-                   setSelectedMonth(new Date().getMonth() + 1); // Mois actuel (1-12)
+                   // Don't auto-set month, let user choose from dropdown
+                   setSelectedMonth(0); // Reset to "Ce mois" (current month)
                  } else if (p.toLowerCase() === 'annee') {
                    // Garder l'année sélectionnée ou utiliser l'année actuelle
                    if (!availableYears.includes(selectedYear)) {
@@ -1076,10 +1121,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                    setSelectedYear(new Date().getFullYear());
                  }
                  
-                 // Rafraîchir les options de filtres si nécessaire
-                 if (p.toLowerCase() === 'annee') {
-                   await fetchAvailableYears();
-                 }
+
                }}
                style={{
                  background: period === p.toLowerCase() ? colors.primary : 'white',
@@ -1102,7 +1144,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                <span style={{ fontSize: 14, color: colors.textLight }}>Semaine :</span>
                <select
                  value={selectedWeek}
-                 onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                 onChange={(e) => {
+                   const newWeek = Number(e.target.value);
+                   setSelectedWeek(newWeek);
+                 }}
                  disabled={filterOptionsLoading}
                  style={{
                    padding: '6px 10px',
@@ -1125,6 +1170,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                    </>
                  )}
                </select>
+               
+               {/* Display selected week info when not "Cette semaine" */}
+               {selectedWeek > 0 && (
+                 <div style={{ 
+                   fontSize: 12, 
+                   color: colors.textLight,
+                   fontStyle: 'italic'
+                 }}>
+                   Semaine {selectedWeek} - {new Date().getFullYear()}
+                 </div>
+               )}
              </div>
            )}
            
@@ -1133,7 +1189,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                <span style={{ fontSize: 14, color: colors.textLight }}>Mois :</span>
                <select
                  value={selectedMonth}
-                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                 onChange={(e) => {
+                   const newMonth = Number(e.target.value);
+                   setSelectedMonth(newMonth);
+                 }}
                  disabled={filterOptionsLoading}
                  style={{
                    padding: '6px 10px',
@@ -1147,7 +1206,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                    <option>Chargement...</option>
                  ) : (
                    <>
-                     <option value={0}>Ce mois</option>
+                     <option value={0}>
+                       Ce mois
+                     </option>
                      {availableMonths.map(month => (
                        <option key={month.value} value={month.value}>
                          {month.label}
@@ -1156,6 +1217,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                    </>
                  )}
                </select>
+               
+               {/* Display selected month name when not "Ce mois" */}
+               {selectedMonth > 0 && (
+                 <div style={{ 
+                   fontSize: 12, 
+                   color: colors.textLight,
+                   fontStyle: 'italic'
+                 }}>
+                   {availableMonths.find(m => m.value === selectedMonth)?.label} {new Date().getFullYear()}
+                 </div>
+               )}
              </div>
            )}
            
