@@ -199,7 +199,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           kpiData = await supabaseAPI.getKPIBundleMonth(new Date().getFullYear(), monthToUse);
           break;
         case 'annee':
-          kpiData = await supabaseAPI.getKPIBundleYear(selectedYear);
+          // Utiliser appbadge_kpi_bundle_between avec les dates de début et fin d'année
+          // startDate = 1er janvier, endDate = 1er janvier de l'année suivante
+          kpiData = await supabaseAPI.getKPIBundleBetween(
+            startDate.toISOString().split('T')[0], 
+            endDate.toISOString().split('T')[0]
+          );
           break;
         default:
           kpiData = await supabaseAPI.getKPIBundleBetween(
@@ -209,6 +214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       }
       
       console.log(`KPIs récupérés pour la période ${period}:`, kpiData);
+      console.log(`Dates utilisées - startDate: ${startDate.toISOString().split('T')[0]}, endDate: ${endDate.toISOString().split('T')[0]}`);
       
       // Traitement des données KPI
       if (kpiData && kpiData.length > 0) {
