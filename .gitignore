@@ -1,0 +1,83 @@
+# =====================================================
+# GITIGNORE - BADGEUSE OTI
+# =====================================================
+
+# Variables d'environnement et clés sensibles
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+supabase_config.env
+
+# Fichiers de configuration avec clés
+config/keys.ts
+config/keys.js
+config/supabase.ts
+config/supabase.js
+
+# Fichiers de clés
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dépendances
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build
+dist/
+build/
+out/
+
+# Cache
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
+
+# Fichiers temporaires
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Fichiers de sauvegarde
+*.bak
+*.backup
+*.old
+
+# Fichiers de test
+coverage/
+.nyc_output/
+*.lcov
+
+# Fichiers de déploiement
+.vercel
+.netlify
