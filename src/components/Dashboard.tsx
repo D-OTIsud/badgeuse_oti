@@ -91,30 +91,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   };
 
-  // Récupérer les couleurs des lieux depuis la table appbadge_horaires_standards
-  const fetchLieuxColors = async () => {
-    try {
-      const { data: lieuxData, error } = await supabase
-        .from('appbadge_horaires_standards')
-        .select('lieux, color');
-
-      if (error) {
-        console.error('Erreur lors de la récupération des couleurs des lieux:', error);
-        return;
-      }
-
-      const colorsMap: Record<string, string> = {};
-      lieuxData?.forEach(item => {
-        colorsMap[item.lieux] = item.color || '#F0F0F2'; // Couleur par défaut si null
-      });
-
-      setLieuxColors(colorsMap);
-      console.log('Couleurs des lieux récupérées:', colorsMap);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des couleurs des lieux:', error);
-    }
-  };
-
   // Filtrer et trier les utilisateurs selon les critères
   const filteredUsers = data.statutCourant
     .filter(user => {
