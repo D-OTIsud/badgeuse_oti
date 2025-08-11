@@ -323,9 +323,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     ];
     setAvailableMonths(months);
     
-    // Set current month as default
-    const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
-    setSelectedMonth(currentMonth); // Set to current month by default
+    // Set current month as default only if no month is currently selected
+    if (selectedMonth === 0) {
+      const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
+      setSelectedMonth(currentMonth); // Set to current month by default
+    }
   };
 
   const fetchAvailableWeeks = () => {
@@ -359,8 +361,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     
     setAvailableWeeks(weeks);
     
-    // Set current week as default
-    setSelectedWeek(0); // Reset to current week
+    // Set current week as default only if no week is currently selected
+    if (selectedWeek === 0) {
+      setSelectedWeek(0); // Keep current week (0 means current week)
+    }
   };
 
   // Function to refresh all filter options
@@ -1109,20 +1113,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                key={p}
                onClick={async () => {
                  setPeriod(p.toLowerCase() as any);
-                 // Réinitialiser les sous-filtres lors du changement de période
-                 if (p.toLowerCase() === 'semaine') {
-                   setSelectedWeek(0); // Semaine actuelle
-                 } else if (p.toLowerCase() === 'mois') {
-                   // Don't auto-set month, let user choose from dropdown
-                   setSelectedMonth(0); // Reset to "Ce mois" (current month)
-                 } else if (p.toLowerCase() === 'annee') {
+                 // Ne pas réinitialiser les sous-filtres lors du changement de période
+                 // Garder les valeurs sélectionnées pour permettre la sélection d'autres périodes
+                 if (p.toLowerCase() === 'annee') {
                    // Garder l'année sélectionnée ou utiliser l'année actuelle
                    if (!availableYears.includes(selectedYear)) {
                      setSelectedYear(new Date().getFullYear());
                    }
                  } else {
-                   // Jour - réinitialiser l'année
-                   setSelectedYear(new Date().getFullYear());
+                   // Pour jour, semaine, mois - garder les valeurs actuelles
+                   // L'utilisateur peut les changer manuellement
                  }
                  
 
@@ -1150,6 +1150,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                  value={selectedWeek}
                  onChange={(e) => {
                    const newWeek = Number(e.target.value);
+                   console.log('Week changed from', selectedWeek, 'to', newWeek);
                    setSelectedWeek(newWeek);
                  }}
                  disabled={filterOptionsLoading}
@@ -1173,19 +1174,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                      ))}
                    </>
                  )}
-                 
-                 {/* Display selected week info in the select itself */}
-                 {selectedWeek > 0 && (
-                   <div style={{ 
-                     fontSize: 12, 
-                     color: colors.textLight,
-                     fontStyle: 'italic',
-                     marginTop: 4
-                   }}>
-                     Sélectionné: Semaine {selectedWeek} - {new Date().getFullYear()}
-                   </div>
-                 )}
                </select>
+               
+               {/* Display selected week info below the select */}
+               {selectedWeek > 0 && (
+                 <div style={{ 
+                   fontSize: 12, 
+                   color: colors.textLight,
+                   fontStyle: 'italic',
+                   marginTop: 4
+                 }}>
+                     Sélectionné: Semaine {selectedWeek} - {new Date().getFullYear()}
+                 </div>
+               )}
              </div>
            )}
            
@@ -1196,6 +1197,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                  value={selectedMonth}
                  onChange={(e) => {
                    const newMonth = Number(e.target.value);
+                   console.log('Month changed from', selectedMonth, 'to', newMonth);
                    setSelectedMonth(newMonth);
                  }}
                  disabled={filterOptionsLoading}
