@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { supabaseAPI } from '../../supabase.config';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ChartsContainer } from './charts';
+import './charts/charts.css';
 
 interface DashboardData {
   statutCourant: any[];
@@ -1798,6 +1800,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
              </ResponsiveContainer>
            </div>
          )}
+
+        {/* Nouveaux graphiques avancés */}
+        {data.kpiBundle && (
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            padding: 24,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            gridColumn: '1 / -1' // Prend toute la largeur
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', color: colors.text, fontSize: 20, fontWeight: 600 }}>
+              📊 Graphiques avancés - {getPeriodLabel()}
+            </h3>
+            <ChartsContainer
+              period={period}
+              kpiData={data.kpiBundle}
+              users={data.statutCourant}
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              selectedWeek={selectedWeek}
+              startDate={getDateRangeForPeriod().startDate}
+              endDate={getDateRangeForPeriod().endDate}
+              supabaseAPI={supabaseAPI}
+            />
+          </div>
+        )}
       </div>
 
       {/* Footer avec statut des données SQL */}
