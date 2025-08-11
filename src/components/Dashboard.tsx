@@ -412,74 +412,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   // KPIs calculés en temps réel
   const kpis = calculateKPIs();
 
-  // Fonction pour mettre à jour le statut des utilisateurs basé sur les derniers badgeages
-  const updateUserStatusFromBadgeages = useCallback(async () => {
-    try {
-      // Récupérer les derniers badgeages pour chaque utilisateur avec une requête plus optimisée
-      const { data: latestBadgeages, error } = await supabase
-        .from('appbadge_badgeages')
-        .select('utilisateur_id, type_action, created_at')
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Dernières 24h
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erreur lors de la récupération des badgeages:', error);
-        return;
-      }
-
-      // Grouper les badgeages par utilisateur et prendre le plus récent
-      const userLatestBadgeages = new Map();
-      latestBadgeages?.forEach(badgeage => {
-        if (!userLatestBadgeages.has(badgeage.utilisateur_id) || 
-            new Date(badgeage.created_at) > new Date(userLatestBadgeages.get(badgeage.utilisateur_id).created_at)) {
-          userLatestBadgeages.set(badgeage.utilisateur_id, badgeage);
-        }
-      });
-
-      // Mettre à jour le statut des utilisateurs basé sur leurs derniers badgeages
-      setData(prev => {
-        const updatedUsers = prev.statutCourant.map(user => {
-          const latestBadgeage = userLatestBadgeages.get(user.id);
-          if (latestBadgeage) {
-            let newStatus = user.status;
-            
-            // Déterminer le statut basé sur le type d'action
-            switch (latestBadgeage.type_action) {
-              case 'entrée':
-                newStatus = 'Entré';
-                break;
-              case 'sortie':
-                newStatus = 'Sorti';
-                break;
-              case 'pause':
-                newStatus = 'En pause';
-                break;
-              case 'retour':
-                newStatus = 'Entré';
-                break;
-              default:
-                newStatus = user.status;
-            }
-            
-            // Ne mettre à jour que si le statut a changé
-            if (newStatus !== user.status) {
-              console.log(`Mise à jour statut ${user.prenom} ${user.nom}: ${user.status} → ${newStatus}`);
-              return { ...user, status: newStatus };
-            }
-          }
-          return user;
-        });
-
-        return {
-          ...prev,
-          statutCourant: updatedUsers
-        };
-      });
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-    }
-  }, []);
-
   const fetchData = async (forceRefresh = false) => {
     try {
       if (forceRefresh) {
@@ -523,8 +455,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         anomalies: anomaliesData || []
       }));
 
-      // Mettre à jour le statut des utilisateurs
-      await updateUserStatusFromBadgeages();
+      // Le statut des utilisateurs est maintenant géré directement via l'abonnement temps réel sur appbadge_utilisateurs
       
       setLastUpdate(new Date());
       
@@ -551,7 +482,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
        fetchKPIData(); // Rafraîchir aussi les KPIs
      }, 60000); // 1 minute
      return () => clearInterval(interval);
-   }, [period, selectedWeek, selectedMonth, selectedYear, updateUserStatusFromBadgeages]);
+   }, [period, selectedWeek, selectedMonth, selectedYear]);
 
   // Temps réel pour les utilisateurs et récupération des services/rôles
   useEffect(() => {
@@ -632,36 +563,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       )
       .subscribe();
 
-    // Abonnement temps réel sur la table badgeages pour mettre à jour les statuts
-    const badgeagesChannel = supabase
-      .channel('badgeages_changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'appbadge_badgeages' 
-        }, 
-        async (payload) => {
-          console.log('Changement badgeage détecté:', payload.eventType, payload.new);
-          
-          if (payload.eventType === 'INSERT') {
-            // Mettre à jour immédiatement le statut de l'utilisateur
-            await updateUserStatusFromBadgeages();
-            
-            // Rafraîchir les données du dashboard
-            setTimeout(() => {
-              fetchData();
-            }, 1000);
-          }
-        }
-      )
-      .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
-      supabase.removeChannel(badgeagesChannel);
     };
-  }, [updateUserStatusFromBadgeages]);
+  }, []);
 
   // Calculer les options disponibles pour les filtres
   const getAvailableOptions = () => {
