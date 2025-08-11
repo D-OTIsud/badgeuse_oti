@@ -14,6 +14,12 @@ interface DashboardData {
     pauseMoyenne: number;
     tauxPonctualite: number;
   };
+  // New KPI bundle data from SQL functions
+  kpiBundle?: {
+    global: any;
+    utilisateurs: any[];
+    metadata: any;
+  };
 }
 
 interface DashboardProps {
@@ -36,7 +42,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois'>('jour');
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiError, setKpiError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois' | 'annee'>('jour');
   const [selectedWeek, setSelectedWeek] = useState<number>(0); // 0 = semaine actuelle, -1 = semaine précédente, etc.
   const [selectedMonth, setSelectedMonth] = useState<number>(0); // 0 = mois actuel, -1 = mois précédent, etc.
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -103,18 +111,121 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         break;
         
       case 'mois':
-        const selectedMonthDate = new Date(selectedYear, currentMonth + selectedMonth, 1);
-        startDate = new Date(selectedMonthDate);
-        endDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + 1, 0);
-        endDate.setDate(endDate.getDate() + 1); // +1 pour inclure le dernier jour
+        // Calculer le premier jour du mois sélectionné
+        const firstDayOfSelectedMonth = new Date(currentYear, currentMonth + selectedMonth, 1);
+        startDate = new Date(firstDayOfSelectedMonth);
+        endDate = new Date(currentYear, currentMonth + selectedMonth + 1, 1);
+        break;
+        
+      case 'annee':
+        // Pour l'année, utiliser l'année sélectionnée
+        startDate = new Date(selectedYear, 0, 1); // 1er janvier
+        endDate = new Date(selectedYear + 1, 0, 1); // 1er janvier de l'année suivante
         break;
         
       default:
-        startDate = new Date(currentYear, currentMonth, currentDate);
-        endDate = new Date(currentYear, currentMonth, currentDate + 1);
+        startDate = new Date();
+        endDate = new Date();
+        endDate.setDate(startDate.getDate() + 1);
     }
     
     return { startDate, endDate };
+  };
+
+  // Nouvelle fonction pour récupérer les KPIs via les fonctions SQL
+  const fetchKPIData = async () => {
+    try {
+      setKpiLoading(true);
+      setKpiError(null); // Clear previous errors
+      const { startDate, endDate } = getDateRangeForPeriod();
+      
+      let functionName: string;
+      let params: any[] = [];
+      
+      // Déterminer quelle fonction SQL utiliser selon la période
+      switch (period) {
+        case 'jour':
+          functionName = 'appbadge_kpi_bundle';
+          params = [startDate.toISOString().split('T')[0]];
+          break;
+        case 'semaine':
+          functionName = 'appbadge_kpi_bundle_iso_week';
+          const weekNumber = getISOWeekNumber(startDate);
+          params = [selectedYear, weekNumber];
+          break;
+        case 'mois':
+          functionName = 'appbadge_kpi_bundle_month';
+          params = [selectedYear, startDate.getMonth() + 1];
+          break;
+        case 'annee':
+          functionName = 'appbadge_kpi_bundle_year';
+          params = [selectedYear];
+          break;
+        default:
+          functionName = 'appbadge_kpi_bundle';
+          params = [startDate.toISOString().split('T')[0]];
+      }
+      
+      console.log(`Appel de la fonction SQL: ${functionName} avec paramètres:`, params);
+      console.log(`Période: ${period}, Date de début: ${startDate.toISOString()}, Date de fin: ${endDate.toISOString()}`);
+      
+      // Appeler la fonction SQL via Supabase
+      const { data: kpiData, error } = await supabase.rpc(functionName, ...params);
+      
+      if (error) {
+        console.error(`Erreur lors de l'appel de ${functionName}:`, error);
+        setKpiError(`Erreur lors de la récupération des KPIs: ${error.message}`);
+        return;
+      }
+      
+      console.log(`Données KPIs de ${functionName}:`, kpiData);
+      
+      // Mettre à jour les données avec le bundle KPI
+      setData(prev => ({
+        ...prev,
+        kpiBundle: kpiData
+      }));
+      
+    } catch (error) {
+      console.error('Erreur lors de la récupération des KPIs:', error);
+      setKpiError('Erreur générale lors de la récupération des KPIs.');
+    } finally {
+      setKpiLoading(false);
+    }
+  };
+
+  // Fonction utilitaire pour calculer le numéro de semaine ISO
+  const getISOWeekNumber = (date: Date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return weekNo;
+  };
+
+  // Fonction pour tester la disponibilité des fonctions SQL
+  const testSQLFunctions = async () => {
+    try {
+      console.log('Test de disponibilité des fonctions SQL...');
+      
+      // Tester la fonction de base
+      const { data: testData, error: testError } = await supabase.rpc('appbadge_kpi_bundle', '2024-01-01');
+      
+      if (testError) {
+        console.error('Fonction SQL non disponible:', testError);
+        setKpiError('Les fonctions SQL ne sont pas encore disponibles dans la base de données.');
+        return false;
+      }
+      
+      console.log('Fonction SQL disponible:', testData);
+      return true;
+      
+    } catch (error) {
+      console.error('Erreur lors du test des fonctions SQL:', error);
+      setKpiError('Impossible de tester les fonctions SQL.');
+      return false;
+    }
   };
 
   const getPeriodLabel = () => {
@@ -139,6 +250,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           month: 'long', 
           year: 'numeric' 
         });
+        
+      case 'annee':
+        return `Année ${selectedYear}`;
         
       default:
         return '';
@@ -197,7 +311,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
 
   // Calculer les KPIs en temps réel basé sur les données filtrées
   const calculateKPIs = useCallback(() => {
-    // Utiliser les utilisateurs filtrés pour les KPIs de présence
+    // Si nous avons des données KPI du bundle SQL, les utiliser en priorité
+    if (data.kpiBundle?.global) {
+      const globalKPIs = data.kpiBundle.global;
+      
+      // Filtrer les utilisateurs selon les critères sélectionnés
+      const filteredUserIds = filteredUsers.map(u => u.id);
+      const filteredUtilisateursKPIs = data.kpiBundle.utilisateurs?.filter(u => 
+        filteredUserIds.includes(u.utilisateur_id)
+      ) || [];
+      
+      // Calculer les totaux filtrés
+      const totalRetard = filteredUtilisateursKPIs.reduce((sum, u) => sum + (u.retard_minutes || 0), 0);
+      const totalTravailNet = filteredUtilisateursKPIs.reduce((sum, u) => sum + (u.travail_net_minutes || 0), 0);
+      const totalPause = filteredUtilisateursKPIs.reduce((sum, u) => sum + (u.pause_total_minutes || 0), 0);
+      const countPonctuel = filteredUtilisateursKPIs.filter(u => (u.retard_minutes || 0) === 0).length;
+      
+      return {
+        presents: filteredUsers.filter(u => u.status === 'Entré').length || 0,
+        enPause: filteredUsers.filter(u => u.status === 'En pause').length || 0,
+        retardCumule: totalRetard,
+        travailNetMoyen: filteredUtilisateursKPIs.length > 0 ? Math.round(totalTravailNet / filteredUtilisateursKPIs.length) : 0,
+        pauseMoyenne: filteredUtilisateursKPIs.length > 0 ? Math.round(totalPause / filteredUtilisateursKPIs.length) : 0,
+        tauxPonctualite: filteredUtilisateursKPIs.length > 0 ? Math.round((countPonctuel / filteredUtilisateursKPIs.length) * 100) : 0
+      };
+    }
+    
+    // Fallback vers l'ancienne méthode si pas de bundle KPI
     const presents = filteredUsers.filter(u => u.status === 'Entré').length || 0;
     const enPause = filteredUsers.filter(u => u.status === 'En pause').length || 0;
     
@@ -207,16 +347,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       userIds.includes(item.utilisateur_id)
     );
     
-    const retardCumule = filteredDashboardData?.reduce((sum, item) => sum + (item.retard_minutes || 0), 0) || 0;
-    const travailNetMoyen = filteredDashboardData?.length > 0 
-      ? filteredDashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / filteredDashboardData.length 
-      : 0;
-    const pauseMoyenne = filteredDashboardData?.length > 0 
-      ? filteredDashboardData.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / filteredDashboardData.length 
-      : 0;
-    const tauxPonctualite = filteredDashboardData?.length > 0 
-      ? (filteredDashboardData.filter(item => (item.retard_minutes || 0) === 0).length / filteredDashboardData.length) * 100 
-      : 0;
+    // Calculer les KPIs selon la période
+    let retardCumule = 0;
+    let travailNetMoyen = 0;
+    let pauseMoyenne = 0;
+    let tauxPonctualite = 0;
+    
+    if (filteredDashboardData.length > 0) {
+      retardCumule = filteredDashboardData.reduce((sum, item) => sum + (item.retard_minutes || 0), 0);
+      travailNetMoyen = filteredDashboardData.reduce((sum, item) => sum + (item.travail_net_minutes || 0), 0) / filteredDashboardData.length;
+      pauseMoyenne = filteredDashboardData.reduce((sum, item) => sum + (item.pause_total_minutes || 0), 0) / filteredDashboardData.length;
+      tauxPonctualite = (filteredDashboardData.filter(item => (item.retard_minutes || 0) === 0).length / filteredDashboardData.length) * 100;
+    }
 
     return {
       presents,
@@ -226,7 +368,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       pauseMoyenne: Math.round(pauseMoyenne),
       tauxPonctualite: Math.round(tauxPonctualite)
     };
-  }, [filteredUsers, data.dashboardJour]);
+  }, [filteredUsers, data.dashboardJour, data.kpiBundle]);
+
+  // Calculer le nombre de jours avec données (jours uniques)
+  const calculateJoursAvecDonnees = useCallback(() => {
+    // Si nous avons des données KPI du bundle SQL, les utiliser
+    if (data.kpiBundle?.metadata?.jours_avec_donnees !== undefined) {
+      return data.kpiBundle.metadata.jours_avec_donnees;
+    }
+    
+    // Fallback vers l'ancienne méthode
+    const userIds = filteredUsers.map(u => u.id);
+    const filteredDashboardData = data.dashboardJour.filter(item => 
+      userIds.includes(item.utilisateur_id)
+    );
+    
+    // Extraire les jours uniques
+    const joursUniques = new Set(filteredDashboardData.map(item => item.jour_local));
+    return joursUniques.size;
+  }, [filteredUsers, data.dashboardJour, data.kpiBundle]);
 
   // KPIs calculés en temps réel
   const kpis = calculateKPIs();
@@ -362,8 +522,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
      // Initialisation et mise à jour périodique (1 minute au lieu de 5)
    useEffect(() => {
      fetchData();
+     fetchKPIData(); // Récupérer les KPIs via les fonctions SQL
+     testSQLFunctions(); // Tester la disponibilité des fonctions SQL
      fetchLieuxColors(); // Récupérer les couleurs des lieux
-     const interval = setInterval(fetchData, 60000); // 1 minute
+     const interval = setInterval(() => {
+       fetchData();
+       fetchKPIData(); // Rafraîchir aussi les KPIs
+     }, 60000); // 1 minute
      return () => clearInterval(interval);
    }, [period, selectedWeek, selectedMonth, selectedYear, updateUserStatusFromBadgeages]);
 
@@ -527,14 +692,154 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     userIds.includes(item.utilisateur_id)
   );
 
-  const chartData = filteredDashboardData.map(item => ({
-    jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-    retard: item.retard_minutes || 0,
-    travailNet: item.travail_net_minutes || 0
-  }));
+  // Adapter les données du graphique selon la période sélectionnée
+  const getChartData = () => {
+    if (filteredDashboardData.length === 0) return [];
+    
+    switch (period) {
+      case 'jour':
+        // Par heure pour le jour
+        const hourlyData = filteredDashboardData.reduce((acc, item: any) => {
+          const hour = new Date(item.jour_local).getHours();
+          const key = `${hour}h`;
+          if (!acc[key]) {
+            acc[key] = { heure: key, retard: 0, travailNet: 0, count: 0 };
+          }
+          acc[key].retard += item.retard_minutes || 0;
+          acc[key].travailNet += item.travail_net_minutes || 0;
+          acc[key].count += 1;
+          return acc;
+        }, {} as Record<string, any>);
+        
+        return Object.values(hourlyData).map((item: any) => ({
+          jour: item.heure,
+          retard: item.retard,
+          travailNet: item.travailNet
+        }));
+        
+      case 'semaine':
+        // Par jour pour la semaine
+        return filteredDashboardData.map((item: any) => ({
+          jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit' }),
+          retard: item.retard_minutes || 0,
+          travailNet: item.travail_net_minutes || 0
+        }));
+        
+      case 'mois':
+        // Par semaine pour le mois
+        const weeklyData = filteredDashboardData.reduce((acc, item: any) => {
+          const date = new Date(item.jour_local);
+          const weekNumber = Math.ceil((date.getDate() + new Date(date.getFullYear(), date.getMonth(), 1).getDay()) / 7);
+          const key = `Semaine ${weekNumber}`;
+          if (!acc[key]) {
+            acc[key] = { semaine: key, retard: 0, travailNet: 0, count: 0 };
+          }
+          acc[key].retard += item.retard_minutes || 0;
+          acc[key].travailNet += item.travail_net_minutes || 0;
+          acc[key].count += 1;
+          return acc;
+        }, {} as Record<string, any>);
+        
+        return Object.values(weeklyData).map((item: any) => ({
+          jour: item.semaine,
+          retard: item.retard,
+          travailNet: item.travailNet
+        }));
+        
+      case 'annee':
+        // Par mois pour l'année
+        const monthlyData = filteredDashboardData.reduce((acc, item: any) => {
+          const month = new Date(item.jour_local).getMonth();
+          const monthName = new Date(0, month).toLocaleDateString('fr-FR', { month: 'short' });
+          if (!acc[monthName]) {
+            acc[monthName] = { mois: monthName, retard: 0, travailNet: 0, count: 0 };
+          }
+          acc[monthName].retard += item.retard_minutes || 0;
+          acc[monthName].travailNet += item.travail_net_minutes || 0;
+          acc[monthName].count += 1;
+          return acc;
+        }, {} as Record<string, any>);
+        
+        return Object.values(monthlyData).map((item: any) => ({
+          jour: item.mois,
+          retard: item.retard,
+          travailNet: item.travailNet
+        }));
+        
+      default:
+        return filteredDashboardData.map((item: any) => ({
+          jour: new Date(item.jour_local).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+          retard: item.retard_minutes || 0,
+          travailNet: item.travail_net_minutes || 0
+        }));
+    }
+  };
+
+  // Nouvelle fonction pour obtenir les données de graphique depuis le bundle KPI
+  const getKPIChartData = () => {
+    if (!data.kpiBundle?.utilisateurs) {
+      return null;
+    }
+
+    const filteredUserIds = filteredUsers.map(u => u.id);
+    const filteredUtilisateursKPIs = data.kpiBundle.utilisateurs.filter(u => 
+      filteredUserIds.includes(u.utilisateur_id)
+    );
+
+    if (filteredUtilisateursKPIs.length === 0) {
+      return null;
+    }
+
+    // Grouper par utilisateur pour le graphique
+    return filteredUtilisateursKPIs.map((userKPI: any) => ({
+      nom: userKPI.nom || userKPI.prenom || 'Utilisateur',
+      retard: userKPI.retard_minutes || 0,
+      travailNet: userKPI.travail_net_minutes || 0,
+      pause: userKPI.pause_total_minutes || 0
+    }));
+  };
+
+  // Fonction pour obtenir les données d'arrivée depuis le bundle KPI
+  const getKPIArrivalData = () => {
+    if (!data.kpiBundle?.utilisateurs) {
+      return null;
+    }
+
+    const filteredUserIds = filteredUsers.map(u => u.id);
+    const filteredUtilisateursKPIs = data.kpiBundle.utilisateurs.filter(u => 
+      filteredUserIds.includes(u.utilisateur_id)
+    );
+
+    if (filteredUtilisateursKPIs.length === 0) {
+      return null;
+    }
+
+    // Calculer les buckets de retard
+    const arrivalData = filteredUtilisateursKPIs.reduce((acc, userKPI) => {
+      const retard = userKPI.retard_minutes || 0;
+      let bucket = '0';
+      if (retard > 0 && retard <= 5) bucket = '1-5';
+      else if (retard > 5 && retard <= 10) bucket = '6-10';
+      else if (retard > 10) bucket = '10+';
+      
+      acc[bucket] = (acc[bucket] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return [
+      { time: '0', count: arrivalData['0'] || 0 },
+      { time: '1-5', count: arrivalData['1-5'] || 0 },
+      { time: '6-10', count: arrivalData['6-10'] || 0 },
+      { time: '10+', count: arrivalData['10+'] || 0 }
+    ];
+  };
+
+  const chartData = getChartData();
+  const kpiChartData = getKPIChartData();
+  const kpiArrivalData = getKPIArrivalData();
 
   const occupationData = filteredUsers
-    .filter(u => u.status === 'Entré')
+    .filter(u => u.status === 'Entré' || u.status === 'En pause')
     .reduce((acc, user) => {
       const lieu = user.lieux || 'Non défini';
       acc[lieu] = (acc[lieu] || 0) + 1;
@@ -687,7 +992,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
        }}>
          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
            <span style={{ fontWeight: 600, color: colors.text }}>Période :</span>
-           {['Jour', 'Semaine', 'Mois'].map((p) => (
+           {['Jour', 'Semaine', 'Mois', 'Année'].map((p) => (
              <button
                key={p}
                onClick={() => {
@@ -695,6 +1000,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                  // Réinitialiser les sous-filtres lors du changement de période
                  setSelectedWeek(0);
                  setSelectedMonth(0);
+                 // Réinitialiser l'année si on change de période
+                 if (p.toLowerCase() !== 'annee') {
+                   setSelectedYear(new Date().getFullYear());
+                 }
                }}
                style={{
                  background: period === p.toLowerCase() ? colors.primary : 'white',
@@ -756,26 +1065,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
              </div>
            )}
            
-                       {/* Filtre année */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, color: colors.textLight }}>Année :</span>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #ddd',
-                  fontSize: 13
-                }}
-              >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                  <option key={year} value={year}>
-                    {year === new Date().getFullYear() ? `${year} (actuelle)` : year}
-                  </option>
-                ))}
-              </select>
-            </div>
+           {period === 'annee' && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <span style={{ fontSize: 14, color: colors.textLight }}>Année :</span>
+               <select
+                 value={selectedYear}
+                 onChange={(e) => setSelectedYear(Number(e.target.value))}
+                 style={{
+                   padding: '6px 10px',
+                   borderRadius: 6,
+                   border: '1px solid #ddd',
+                   fontSize: 13
+                 }}
+               >
+                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                   <option key={year} value={year}>
+                     {year === new Date().getFullYear() ? `${year} (actuelle)` : year}
+                   </option>
+                 ))}
+               </select>
+             </div>
+           )}
           
           <select
             value={selectedService}
@@ -837,174 +1147,278 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         </div>
       </div>
 
-             {/* KPIs - Affichage conditionnel selon la période */}
-       {period === 'jour' ? (
-         // KPIs temps réel uniquement pour la période "jour"
+             {/* Section des KPIs */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: 16,
+        marginBottom: 24
+      }}>
+        {/* Indicateur de chargement des KPIs */}
+        {kpiLoading && (
+          <div style={{
+            background: colors.background,
+            border: `2px solid ${colors.primary}`,
+            padding: 24,
+            borderRadius: 12,
+            textAlign: 'center',
+            gridColumn: '1 / -1'
+          }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>🔄</div>
+            <div style={{ fontSize: 14, color: colors.textLight }}>Chargement des KPIs...</div>
+          </div>
+        )}
+
+        {/* Affichage des erreurs KPI */}
+        {kpiError && (
+          <div style={{
+            background: '#fee',
+            border: '2px solid #f44336',
+            padding: 16,
+            borderRadius: 12,
+            textAlign: 'center',
+            gridColumn: '1 / -1',
+            color: '#d32f2f'
+          }}>
+            <div style={{ fontSize: 16, marginBottom: 8 }}>⚠️ Erreur KPI</div>
+            <div style={{ fontSize: 14, marginBottom: 12 }}>{kpiError}</div>
+            <button 
+              onClick={() => fetchKPIData()}
+              style={{
+                background: '#f44336',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 14
+              }}
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
+
+        {/* Bouton de rafraîchissement des KPIs */}
+        <div style={{
+          background: colors.background,
+          border: `1px solid ${colors.primary}`,
+          padding: 16,
+          borderRadius: 12,
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          <button 
+            onClick={() => fetchKPIData()}
+            disabled={kpiLoading}
+            style={{
+              background: colors.primary,
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: 8,
+              cursor: kpiLoading ? 'not-allowed' : 'pointer',
+              fontSize: 14,
+              fontWeight: 500,
+              opacity: kpiLoading ? 0.6 : 1
+            }}
+          >
+            {kpiLoading ? 'Actualisation...' : 'Actualiser KPIs'}
+          </button>
+          <div style={{ fontSize: 12, color: colors.textLight }}>
+            Données SQL
+          </div>
+        </div>
+
+        {/* Bouton de test des fonctions SQL */}
+        <div style={{
+          background: '#f0f8ff',
+          border: '1px solid #4AA3FF',
+          padding: 16,
+          borderRadius: 12,
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          <button 
+            onClick={testSQLFunctions}
+            style={{
+              background: '#4AA3FF',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 500
+            }}
+          >
+            Tester SQL
+          </button>
+          <div style={{ fontSize: 12, color: colors.textLight }}>
+            Vérifier disponibilité
+          </div>
+        </div>
+
+        {/* Note sur la priorité des données */}
+        <div style={{
+          background: '#fff3cd',
+          border: '1px solid #ffeaa7',
+          padding: 12,
+          borderRadius: 8,
+          textAlign: 'center',
+          gridColumn: '1 / -1',
+          fontSize: 12,
+          color: '#856404'
+        }}>
+          <strong>Priorité des données:</strong> Les fonctions SQL sont utilisées en priorité si disponibles, sinon fallback vers les données dashboard.
+        </div>
+
+        {/* KPIs spécifiques au jour en cours */}
+        {period === 'jour' ? (
+           // KPIs temps réel uniquement pour la période "jour"
+           <>
+             <div style={{
+               background: colors.primary,
+               color: 'white',
+               padding: 24,
+               borderRadius: 12,
+               textAlign: 'center',
+               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+               position: 'relative'
+             }}>
+               <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
+               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
+               <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
+               <div style={{ 
+                 position: 'absolute', 
+                 top: 8, 
+                 right: 8, 
+                 width: 8, 
+                 height: 8, 
+                 borderRadius: '50%', 
+                 background: '#4caf50',
+                 animation: 'pulse 2s infinite'
+               }} />
+             </div>
+
+             <div style={{
+               background: colors.primary,
+               color: 'white',
+               padding: 24,
+               borderRadius: 12,
+               textAlign: 'center',
+               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+               position: 'relative'
+             }}>
+               <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
+               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
+               <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
+               <div style={{ 
+                 position: 'absolute', 
+                 top: 8, 
+                 right: 8, 
+                 width: 8, 
+                 height: 8, 
+                 borderRadius: '50%', 
+                 background: '#ff9800',
+                 animation: 'pulse 2s infinite'
+               }} />
+             </div>
+           </>
+         ) : null}
+
+         {/* KPIs communs à toutes les périodes */}
          <div style={{
-           display: 'grid',
-           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-           gap: 16,
-           padding: '0 24px 24px'
+           background: colors.primary,
+           color: 'white',
+           padding: 24,
+           borderRadius: 12,
+           textAlign: 'center',
+           boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+           position: 'relative'
          }}>
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
-             <div style={{ 
-               position: 'absolute', 
-               top: 8, 
-               right: 8, 
-               width: 8, 
-               height: 8, 
-               borderRadius: '50%', 
-               background: '#4caf50',
-               animation: 'pulse 2s infinite'
-             }} />
-           </div>
-
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
-             <div style={{ 
-               position: 'absolute', 
-               top: 8, 
-               right: 8, 
-               width: 8, 
-               height: 8, 
-               borderRadius: '50%', 
-               background: '#ff9800',
-               animation: 'pulse 2s infinite'
-             }} />
-           </div>
-
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
-             <div style={{ 
-               position: 'absolute', 
-               top: 8, 
-               right: 8, 
-               width: 8, 
-               height: 8, 
-               borderRadius: '50%', 
-               background: '#ff9800',
-               animation: 'pulse 2s infinite'
-             }} />
-           </div>
-
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
-             <div style={{ 
-               position: 'absolute', 
-               top: 8, 
-               right: 8, 
-               width: 8, 
-               height: 8, 
-               borderRadius: '50%', 
-               background: '#4caf50',
-               animation: 'pulse 2s infinite'
-             }} />
-           </div>
+           <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
+           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
+           <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
          </div>
-       ) : (
-         // KPIs historiques pour les périodes semaine/mois
+
          <div style={{
-           display: 'grid',
-           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-           gap: 16,
-           padding: '0 24px 24px'
+           background: colors.primary,
+           color: 'white',
+           padding: 24,
+           borderRadius: 12,
+           textAlign: 'center',
+           boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+           position: 'relative'
          }}>
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>📅</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{filteredDashboardData.length}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Jours avec données</div>
-           </div>
+           <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
+           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
+           <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
+         </div>
 
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
-           </div>
+         {period !== 'jour' && (
+           <>
+             <div style={{
+               background: colors.primary,
+               color: 'white',
+               padding: 24,
+               borderRadius: 12,
+               textAlign: 'center',
+               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+               position: 'relative'
+             }}>
+               <div style={{ fontSize: 48, marginBottom: 8 }}>📅</div>
+               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{calculateJoursAvecDonnees()}</div>
+               <div style={{ fontSize: 14, opacity: 0.9 }}>Jours avec données</div>
+             </div>
 
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
-           </div>
+             <div style={{
+               background: colors.primary,
+               color: 'white',
+               padding: 24,
+               borderRadius: 12,
+               textAlign: 'center',
+               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+               position: 'relative'
+             }}>
+               <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
+               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.tauxPonctualite}</div>
+               <div style={{ fontSize: 14, opacity: 0.9 }}>Taux de ponctualité (%)</div>
+             </div>
+           </>
+         )}
+       </div>
 
-           <div style={{
-             background: colors.primary,
-             color: 'white',
-             padding: 24,
-             borderRadius: 12,
-             textAlign: 'center',
-             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-             position: 'relative'
-           }}>
-             <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
-             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.tauxPonctualite}</div>
-             <div style={{ fontSize: 14, opacity: 0.9 }}>Taux de ponctualité (%)</div>
-           </div>
+       {/* Debug info pour les KPIs SQL */}
+       {data.kpiBundle && (
+         <div style={{
+           background: '#f8f9fa',
+           border: '1px solid #dee2e6',
+           borderRadius: 8,
+           padding: 16,
+           margin: '0 24px 16px',
+           fontSize: 12,
+           color: colors.textLight
+         }}>
+           <strong>Données SQL disponibles:</strong> 
+           {data.kpiBundle.global ? ' ✅ Global' : ' ❌ Global'} | 
+           {data.kpiBundle.utilisateurs ? `✅ Utilisateurs (${data.kpiBundle.utilisateurs.length})` : ' ❌ Utilisateurs'} | 
+           {data.kpiBundle.metadata ? ' ✅ Metadata' : ' ❌ Metadata'}
+           
+           {data.kpiBundle.global && (
+             <div style={{ marginTop: 8 }}>
+               <strong>Résumé global:</strong> 
+               Travail: {data.kpiBundle.global.travail_total_minutes || 0}min | 
+               Pause: {data.kpiBundle.global.pause_total_minutes || 0}min | 
+               Retard: {data.kpiBundle.global.retard_minutes || 0}min
+             </div>
+           )}
          </div>
        )}
 
@@ -1017,21 +1431,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       }}>
         Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')} | 
         <button 
-          onClick={() => fetchData(true)}
-          disabled={refreshing}
+          onClick={() => {
+            fetchData(true);
+            fetchKPIData();
+          }}
+          disabled={refreshing || kpiLoading}
           style={{
             background: 'none',
             border: 'none',
-            color: refreshing ? colors.textLight : colors.primary,
+            color: (refreshing || kpiLoading) ? colors.textLight : colors.primary,
             textDecoration: 'underline',
-            cursor: refreshing ? 'not-allowed' : 'pointer',
+            cursor: (refreshing || kpiLoading) ? 'not-allowed' : 'pointer',
             marginLeft: 8,
             display: 'flex',
             alignItems: 'center',
             gap: 4
           }}
         >
-          {refreshing ? (
+          {(refreshing || kpiLoading) ? (
             <>
               <div style={{ 
                 width: 12, 
@@ -1244,28 +1661,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Graphique Retards & travail */}
-        <div style={{
-          background: 'white',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-            Retards & travail — tendances
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="jour" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="retard" stroke="#ff9800" name="Retard (min)" />
-              <Line type="monotone" dataKey="travailNet" stroke={colors.primary} name="Travail net (min)" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        {/* Graphique Retards & travail - Affichage conditionnel selon la période */}
+        {(period === 'jour' || period === 'semaine' || period === 'mois' || period === 'annee') && (
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            padding: 24,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
+              Retards & travail — tendances
+              {kpiChartData && (
+                <span style={{ fontSize: 12, color: colors.primary, marginLeft: 8, fontWeight: 400 }}>
+                  (SQL)
+                </span>
+              )}
+            </h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={kpiChartData || chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="nom" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="retard" stroke="#ff9800" name="Retard (min)" />
+                <Line type="monotone" dataKey="travailNet" stroke={colors.primary} name="Travail net (min)" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
                                    {/* Occupation par lieu - Uniquement pour la période "jour" */}
           {period === 'jour' && (
@@ -1310,7 +1734,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           )}
 
                  {/* Arrivées vs horaire - Uniquement pour la période "jour" */}
-         {period === 'jour' && (
+         {(period === 'jour' || period === 'semaine' || period === 'mois' || period === 'annee') && (
            <div style={{
              background: 'white',
              borderRadius: 12,
@@ -1319,12 +1743,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
            }}>
              <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
                Arrivées vs. horaire
+               {kpiArrivalData && (
+                 <span style={{ fontSize: 12, color: colors.primary, marginLeft: 8, fontWeight: 400 }}>
+                   (SQL)
+                 </span>
+               )}
              </h3>
              <ResponsiveContainer width="100%" height={200}>
-               <BarChart data={arrivalChartData}>
+               <BarChart data={kpiArrivalData || arrivalChartData}>
                  <CartesianGrid strokeDasharray="3 3" />
                  <XAxis dataKey="time" />
-                 <YAxis />
                  <Tooltip />
                  <Bar dataKey="count" fill={colors.primary} />
                </BarChart>
