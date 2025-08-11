@@ -1990,21 +1990,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                          }}>
                       
                       {/* Avatar */}
-                      <div style={{ 
-                        width: 36, 
-                        height: 36, 
-                        borderRadius: '50%', 
-                        background: '#f4f6fa', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontSize: 16, 
-                        color: '#bbb', 
-                        border: '1px solid #e0e0e0',
-                        flexShrink: 0
-                      }}>
-                        👤
-                      </div>
+                      {userKPI.avatar ? (
+                        <img src={userKPI.avatar} alt="avatar" style={{ 
+                          width: 36, 
+                          height: 36, 
+                          borderRadius: '50%', 
+                          objectFit: 'cover', 
+                          border: '1px solid #e0e0e0',
+                          flexShrink: 0
+                        }} />
+                      ) : (
+                        <div style={{ 
+                          width: 36, 
+                          height: 36, 
+                          borderRadius: '50%', 
+                          background: '#f4f6fa', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: 16, 
+                          color: '#bbb', 
+                          border: '1px solid #e0e0e0',
+                          flexShrink: 0
+                        }}>
+                          👤
+                        </div>
+                      )}
                       
                       {/* Informations utilisateur */}
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2159,36 +2170,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             {/* En-tête du popup */}
             <div style={{
               textAlign: 'center',
-              marginBottom: '32px',
-              paddingBottom: '24px',
+              marginBottom: '24px',
+              paddingBottom: '20px',
               borderBottom: '1px solid #e0e0e0'
             }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: '#f4f6fa',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '32px',
-                color: '#bbb',
-                border: '3px solid #1976d2',
-                margin: '0 auto 16px auto',
-                boxShadow: '0 4px 16px rgba(25,118,210,0.2)'
-              }}>
-                👤
-              </div>
+              {selectedUserForKPIDetails.avatar ? (
+                <img src={selectedUserForKPIDetails.avatar} alt="avatar" style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid #1976d2',
+                  margin: '0 auto 16px auto',
+                  boxShadow: '0 4px 16px rgba(25,118,210,0.2)'
+                }} />
+              ) : (
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  background: '#f4f6fa',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  color: '#bbb',
+                  border: '2px solid #1976d2',
+                  margin: '0 auto 16px auto',
+                  boxShadow: '0 4px 16px rgba(25,118,210,0.2)'
+                }}>
+                  👤
+                </div>
+              )}
               <h2 style={{
                 margin: '0 0 8px 0',
-                fontSize: '24px',
+                fontSize: '20px',
                 fontWeight: '600',
                 color: colors.text
               }}>
                 {selectedUserForKPIDetails.prenom || ''} {selectedUserForKPIDetails.nom || ''}
               </h2>
               <div style={{
-                fontSize: '16px',
+                fontSize: '14px',
                 color: '#7f8c8d',
                 marginBottom: '4px'
               }}>
@@ -2196,7 +2219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               </div>
               {selectedUserForKPIDetails.lieu && (
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: '#95a5a6'
                 }}>
                   📍 {selectedUserForKPIDetails.lieu}
@@ -2204,40 +2227,40 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               )}
             </div>
             
-            {/* KPIs détaillés */}
+            {/* KPIs détaillés - Taille réduite */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '20px',
-              marginBottom: '32px'
+              gap: '16px',
+              marginBottom: '24px'
             }}>
               {/* Travail net */}
               <div style={{
                 background: '#e8f5e8',
-                padding: '24px',
-                borderRadius: '12px',
+                padding: '16px',
+                borderRadius: '8px',
                 textAlign: 'center',
                 border: '1px solid #c8e6c9'
               }}>
                 <div style={{
-                  fontSize: '32px',
+                  fontSize: '24px',
                   fontWeight: 'bold',
                   color: '#2e7d32',
-                  marginBottom: '8px'
+                  marginBottom: '6px'
                 }}>
                   {Math.floor((selectedUserForKPIDetails.travail_net_minutes || 0) / 60)}h{((selectedUserForKPIDetails.travail_net_minutes || 0) % 60).toString().padStart(2, '0')}
                 </div>
                 <div style={{
-                  fontSize: '16px',
+                  fontSize: '14px',
                   color: '#388e3c',
                   fontWeight: '500'
                 }}>
                   Travail net
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: '#4caf50',
-                  marginTop: '8px'
+                  marginTop: '6px'
                 }}>
                   {selectedUserForKPIDetails.travail_net_minutes || 0} minutes
                 </div>
@@ -2246,32 +2269,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               {/* Retard */}
               <div style={{
                 background: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#ffebee' : '#f1f8e9',
-                padding: '24px',
-                borderRadius: '12px',
+                padding: '16px',
+                borderRadius: '8px',
                 textAlign: 'center',
                 border: `1px solid ${(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#ffcdd2' : '#c8e6c9'}`
               }}>
                 <div style={{
-                  fontSize: '32px',
+                  fontSize: '24px',
                   fontWeight: 'bold',
                   color: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#c62828' : '#2e7d32',
-                  marginBottom: '8px'
+                  marginBottom: '6px'
                 }}>
                   {(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? 
                     `+${Math.floor((selectedUserForKPIDetails.retard_minutes || 0) / 60)}h${((selectedUserForKPIDetails.retard_minutes || 0) % 60).toString().padStart(2, '0')}` : 
                     'À l\'heure'}
                 </div>
                 <div style={{
-                  fontSize: '16px',
+                  fontSize: '14px',
                   color: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#d32f2f' : '#388e3c',
                   fontWeight: '500'
                 }}>
                   {(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? 'Retard' : 'Ponctuel'}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#f44336' : '#4caf50',
-                  marginTop: '8px'
+                  marginTop: '6px'
                 }}>
                   {(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? 
                     `${selectedUserForKPIDetails.retard_minutes || 0} minutes` : 
@@ -2282,30 +2305,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               {/* Pause */}
               <div style={{
                 background: '#fff3e0',
-                padding: '24px',
-                borderRadius: '12px',
+                padding: '16px',
+                borderRadius: '8px',
                 textAlign: 'center',
                 border: '1px solid #ffe0b2'
               }}>
                 <div style={{
-                  fontSize: '32px',
+                  fontSize: '24px',
                   fontWeight: 'bold',
                   color: '#ef6c00',
-                  marginBottom: '8px'
+                  marginBottom: '6px'
                 }}>
                   {Math.floor((selectedUserForKPIDetails.pause_total_minutes || 0) / 60)}h{((selectedUserForKPIDetails.pause_total_minutes || 0) % 60).toString().padStart(2, '0')}
                 </div>
                 <div style={{
-                  fontSize: '16px',
+                  fontSize: '14px',
                   color: '#f57c00',
                   fontWeight: '500'
                 }}>
                   Pause totale
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: '#ff9800',
-                  marginTop: '8px'
+                  marginTop: '6px'
                 }}>
                   {selectedUserForKPIDetails.pause_total_minutes || 0} minutes
                 </div>
@@ -2314,32 +2337,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               {/* Départ anticipé */}
               <div style={{
                 background: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#ffebee' : '#f1f8e9',
-                padding: '24px',
-                borderRadius: '12px',
+                padding: '16px',
+                borderRadius: '8px',
                 textAlign: 'center',
                 border: `1px solid ${(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#ffcdd2' : '#c8e6c9'}`
               }}>
                 <div style={{
-                  fontSize: '32px',
+                  fontSize: '24px',
                   fontWeight: 'bold',
                   color: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#c62828' : '#2e7d32',
-                  marginBottom: '8px'
+                  marginBottom: '6px'
                 }}>
                   {(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? 
                     `-${Math.floor((selectedUserForKPIDetails.depart_anticipe_minutes || 0) / 60)}h${((selectedUserForKPIDetails.depart_anticipe_minutes || 0) % 60).toString().padStart(2, '0')}` : 
                     'Normal'}
                 </div>
                 <div style={{
-                  fontSize: '16px',
+                  fontSize: '14px',
                   color: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#d32f2f' : '#388e3c',
                   fontWeight: '500'
                 }}>
                   {(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? 'Départ anticipé' : 'Départ normal'}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#f44336' : '#4caf50',
-                  marginTop: '8px'
+                  marginTop: '6px'
                 }}>
                   {(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? 
                     `${selectedUserForKPIDetails.depart_anticipe_minutes || 0} minutes` : 
@@ -2351,13 +2374,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             {/* Score de performance détaillé */}
             <div style={{
               background: '#f8f9fa',
-              padding: '24px',
-              borderRadius: '12px',
+              padding: '20px',
+              borderRadius: '8px',
               textAlign: 'center'
             }}>
               <h3 style={{
                 margin: '0 0 16px 0',
-                fontSize: '18px',
+                fontSize: '16px',
                 color: colors.text
               }}>
                 Score de Performance Global
@@ -2386,23 +2409,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                 return (
                   <>
                     <div style={{
-                      fontSize: '48px',
-                      marginBottom: '16px'
+                      fontSize: '36px',
+                      marginBottom: '12px'
                     }}>
                       {getScoreIcon(scorePerformance)}
                     </div>
                     <div style={{
-                      fontSize: '36px',
+                      fontSize: '28px',
                       fontWeight: 'bold',
                       color: getScoreColor(scorePerformance),
-                      marginBottom: '16px'
+                      marginBottom: '12px'
                     }}>
                       {scorePerformance}%
                     </div>
                     <div style={{
-                      fontSize: '16px',
+                      fontSize: '14px',
                       color: '#7f8c8d',
-                      marginBottom: '24px'
+                      marginBottom: '20px'
                     }}>
                       {scorePerformance >= 80 ? 'Excellente performance' : 
                        scorePerformance >= 60 ? 'Performance correcte' : 
@@ -2412,9 +2435,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     {/* Barre de progression */}
                     <div style={{
                       width: '100%',
-                      height: '12px',
+                      height: '10px',
                       background: '#e0e0e0',
-                      borderRadius: '6px',
+                      borderRadius: '5px',
                       overflow: 'hidden',
                       marginBottom: '16px'
                     }}>
@@ -2422,19 +2445,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                         width: `${scorePerformance}%`,
                         height: '100%',
                         background: getScoreColor(scorePerformance),
-                        borderRadius: '6px',
+                        borderRadius: '5px',
                         transition: 'width 0.5s ease'
                       }} />
                     </div>
                     
                     {/* Détail du calcul */}
                     <div style={{
-                      fontSize: '14px',
+                      fontSize: '12px',
                       color: '#7f8c8d',
-                      lineHeight: '1.5'
+                      lineHeight: '1.4'
                     }}>
                       <div>Calcul : (Travail net - Retards - Départs anticipés) / Travail net × 100</div>
-                      <div style={{ marginTop: '8px' }}>
+                      <div style={{ marginTop: '6px' }}>
                         = ({travailNet} - {retard} - {departAnticipe}) / {travailNet} × 100 = {scorePerformance}%
                       </div>
                     </div>
