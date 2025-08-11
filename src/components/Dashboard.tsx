@@ -1943,6 +1943,287 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </div>
         )}
         */}
+
+        {/* UserKPIDeck - KPI par utilisateur pour toutes les périodes */}
+        {data.kpiBundle?.utilisateurs && data.kpiBundle.utilisateurs.length > 0 && (
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            padding: 24,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
+              📊 KPI par utilisateur - {getPeriodLabel()}
+            </h3>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '20px',
+              maxHeight: '600px',
+              overflowY: 'auto'
+            }}>
+              {data.kpiBundle.utilisateurs
+                .filter((user: any) => user.utilisateur_id || user.id)
+                .map((user: any, index: number) => {
+                  const userKPI = user;
+                  const travailNet = userKPI.travail_net_minutes || 0;
+                  const retard = userKPI.retard_minutes || 0;
+                  const pause = userKPI.pause_total_minutes || 0;
+                  const departAnticipe = userKPI.depart_anticipe_minutes || 0;
+                  
+                  // Calculer le score de performance (0-100)
+                  const scorePerformance = Math.max(0, Math.min(100, 
+                    Math.round((travailNet - retard - departAnticipe) / Math.max(travailNet, 1) * 100)
+                  ));
+                  
+                  // Couleur du score
+                  const getScoreColor = (score: number) => {
+                    if (score >= 80) return '#4caf50';
+                    if (score >= 60) return '#ff9800';
+                    return '#f44336';
+                  };
+                  
+                  // Icône du score
+                  const getScoreIcon = (score: number) => {
+                    if (score >= 80) return '🟢';
+                    if (score >= 60) return '🟡';
+                    return '🔴';
+                  };
+                  
+                  return (
+                    <div key={userKPI.utilisateur_id || userKPI.id || index} style={{
+                      background: 'white',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '12px',
+                      padding: '20px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    }}>
+                      
+                      {/* En-tête de la carte */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '16px'
+                      }}>
+                        <div>
+                          <div style={{
+                            fontSize: '18px',
+                            fontWeight: '600',
+                            color: colors.text,
+                            marginBottom: '4px'
+                          }}>
+                            {userKPI.prenom || ''} {userKPI.nom || ''}
+                          </div>
+                          <div style={{
+                            fontSize: '14px',
+                            color: '#7f8c8d',
+                            marginBottom: '2px'
+                          }}>
+                            {userKPI.service || 'Service non défini'}
+                          </div>
+                          {userKPI.lieu && (
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#95a5a6'
+                            }}>
+                              📍 {userKPI.lieu}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Score de performance */}
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <div style={{
+                            fontSize: '24px'
+                          }}>
+                            {getScoreIcon(scorePerformance)}
+                          </div>
+                          <div style={{
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: getScoreColor(scorePerformance)
+                          }}>
+                            {scorePerformance}%
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* KPIs détaillés */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px'
+                      }}>
+                        {/* Travail net */}
+                        <div style={{
+                          background: '#e8f5e8',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                          border: '1px solid #c8e6c9'
+                        }}>
+                          <div style={{
+                            fontSize: '20px',
+                            fontWeight: 'bold',
+                            color: '#2e7d32',
+                            marginBottom: '4px'
+                          }}>
+                            {Math.floor(travailNet / 60)}h{(travailNet % 60).toString().padStart(2, '0')}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#388e3c'
+                          }}>
+                            Travail net
+                          </div>
+                        </div>
+                        
+                        {/* Retard */}
+                        <div style={{
+                          background: retard > 0 ? '#ffebee' : '#f1f8e9',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                          border: `1px solid ${retard > 0 ? '#ffcdd2' : '#c8e6c9'}`
+                        }}>
+                          <div style={{
+                            fontSize: '20px',
+                            fontWeight: 'bold',
+                            color: retard > 0 ? '#c62828' : '#2e7d32',
+                            marginBottom: '4px'
+                          }}>
+                            {retard > 0 ? `+${Math.floor(retard / 60)}h${(retard % 60).toString().padStart(2, '0')}` : 'À l\'heure'}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: retard > 0 ? '#d32f2f' : '#388e3c'
+                          }}>
+                            {retard > 0 ? 'Retard' : 'Ponctuel'}
+                          </div>
+                        </div>
+                        
+                        {/* Pause */}
+                        <div style={{
+                          background: '#fff3e0',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                          border: '1px solid #ffe0b2'
+                        }}>
+                          <div style={{
+                            fontSize: '20px',
+                            fontWeight: 'bold',
+                            color: '#ef6c00',
+                            marginBottom: '4px'
+                          }}>
+                            {Math.floor(pause / 60)}h{(pause % 60).toString().padStart(2, '0')}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#f57c00'
+                          }}>
+                            Pause
+                          </div>
+                        </div>
+                        
+                        {/* Départ anticipé */}
+                        <div style={{
+                          background: departAnticipe > 0 ? '#ffebee' : '#f1f8e9',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          textAlign: 'center',
+                          border: `1px solid ${departAnticipe > 0 ? '#ffcdd2' : '#c8e6c9'}`
+                        }}>
+                          <div style={{
+                            fontSize: '20px',
+                            fontWeight: 'bold',
+                            color: departAnticipe > 0 ? '#c62828' : '#2e7d32',
+                            marginBottom: '4px'
+                          }}>
+                            {departAnticipe > 0 ? `-${Math.floor(departAnticipe / 60)}h${(departAnticipe % 60).toString().padStart(2, '0')}` : 'Normal'}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: departAnticipe > 0 ? '#d32f2f' : '#388e3c'
+                          }}>
+                            {departAnticipe > 0 ? 'Départ anticipé' : 'Départ normal'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Barre de progression du score */}
+                      <div style={{
+                        marginTop: '16px'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '6px'
+                        }}>
+                          <span style={{
+                            fontSize: '12px',
+                            color: '#7f8c8d'
+                          }}>
+                            Performance
+                          </span>
+                          <span style={{
+                            fontSize: '12px',
+                            color: getScoreColor(scorePerformance),
+                            fontWeight: '600'
+                          }}>
+                            {scorePerformance}%
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '100%',
+                          height: '6px',
+                          background: '#e0e0e0',
+                          borderRadius: '3px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${scorePerformance}%`,
+                            height: '100%',
+                            background: getScoreColor(scorePerformance),
+                            borderRadius: '3px',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            
+            {data.kpiBundle.utilisateurs.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#7f8c8d',
+                fontStyle: 'italic'
+              }}>
+                Aucune donnée KPI utilisateur disponible pour cette période
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Footer avec statut des données SQL */}
