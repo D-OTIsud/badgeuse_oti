@@ -83,8 +83,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     
     switch (period) {
       case 'jour':
-        startDate = new Date(currentYear, currentMonth, currentDate);
-        endDate = new Date(currentYear, currentMonth, currentDate + 1);
+        // Pour le jour, utiliser l'année sélectionnée
+        const selectedYearDate = new Date(selectedYear, currentMonth, currentDate);
+        startDate = new Date(selectedYearDate);
+        endDate = new Date(selectedYearDate);
+        endDate.setDate(selectedYearDate.getDate() + 1);
         break;
         
       case 'semaine':
@@ -100,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         break;
         
       case 'mois':
-        const selectedMonthDate = new Date(currentYear, currentMonth + selectedMonth, 1);
+        const selectedMonthDate = new Date(selectedYear, currentMonth + selectedMonth, 1);
         startDate = new Date(selectedMonthDate);
         endDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + 1, 0);
         endDate.setDate(endDate.getDate() + 1); // +1 pour inclure le dernier jour
@@ -753,24 +756,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
              </div>
            )}
            
-           {/* Filtre année */}
-           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-             <span style={{ fontSize: 14, color: colors.textLight }}>Année :</span>
-             <select
-               value={selectedYear}
-               onChange={(e) => setSelectedYear(Number(e.target.value))}
-               style={{
-                 padding: '6px 10px',
-                 borderRadius: 6,
-                 border: '1px solid #ddd',
-                 fontSize: 13
-               }}
-             >
-               {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                 <option key={year} value={year}>{year}</option>
-               ))}
-             </select>
-           </div>
+                       {/* Filtre année */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, color: colors.textLight }}>Année :</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #ddd',
+                  fontSize: 13
+                }}
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                  <option key={year} value={year}>
+                    {year === new Date().getFullYear() ? `${year} (actuelle)` : year}
+                  </option>
+                ))}
+              </select>
+            </div>
           
           <select
             value={selectedService}
@@ -832,109 +837,176 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: 16,
-        padding: '0 24px 24px'
-      }}>
-        <div style={{
-          background: colors.primary,
-          color: 'white',
-          padding: 24,
-          borderRadius: 12,
-          textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-          position: 'relative'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
-          <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
-          <div style={{ 
-            position: 'absolute', 
-            top: 8, 
-            right: 8, 
-            width: 8, 
-            height: 8, 
-            borderRadius: '50%', 
-            background: '#4caf50',
-            animation: 'pulse 2s infinite'
-          }} />
-        </div>
+             {/* KPIs - Affichage conditionnel selon la période */}
+       {period === 'jour' ? (
+         // KPIs temps réel uniquement pour la période "jour"
+         <div style={{
+           display: 'grid',
+           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+           gap: 16,
+           padding: '0 24px 24px'
+         }}>
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
+             <div style={{ 
+               position: 'absolute', 
+               top: 8, 
+               right: 8, 
+               width: 8, 
+               height: 8, 
+               borderRadius: '50%', 
+               background: '#4caf50',
+               animation: 'pulse 2s infinite'
+             }} />
+           </div>
 
-        <div style={{
-          background: colors.primary,
-          color: 'white',
-          padding: 24,
-          borderRadius: 12,
-          textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-          position: 'relative'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
-          <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
-          <div style={{ 
-            position: 'absolute', 
-            top: 8, 
-            right: 8, 
-            width: 8, 
-            height: 8, 
-            borderRadius: '50%', 
-            background: '#ff9800',
-            animation: 'pulse 2s infinite'
-          }} />
-        </div>
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
+             <div style={{ 
+               position: 'absolute', 
+               top: 8, 
+               right: 8, 
+               width: 8, 
+               height: 8, 
+               borderRadius: '50%', 
+               background: '#ff9800',
+               animation: 'pulse 2s infinite'
+             }} />
+           </div>
 
-        <div style={{
-          background: colors.primary,
-          color: 'white',
-          padding: 24,
-          borderRadius: 12,
-          textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-          position: 'relative'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
-          <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
-          <div style={{ 
-            position: 'absolute', 
-            top: 8, 
-            right: 8, 
-            width: 8, 
-            height: 8, 
-            borderRadius: '50%', 
-            background: '#ff9800',
-            animation: 'pulse 2s infinite'
-          }} />
-        </div>
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
+             <div style={{ 
+               position: 'absolute', 
+               top: 8, 
+               right: 8, 
+               width: 8, 
+               height: 8, 
+               borderRadius: '50%', 
+               background: '#ff9800',
+               animation: 'pulse 2s infinite'
+             }} />
+           </div>
 
-        <div style={{
-          background: colors.primary,
-          color: 'white',
-          padding: 24,
-          borderRadius: 12,
-          textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-          position: 'relative'
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-          <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
-          <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
-          <div style={{ 
-            position: 'absolute', 
-            top: 8, 
-            right: 8, 
-            width: 8, 
-            height: 8, 
-            borderRadius: '50%', 
-            background: '#4caf50',
-            animation: 'pulse 2s infinite'
-          }} />
-        </div>
-      </div>
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
+             <div style={{ 
+               position: 'absolute', 
+               top: 8, 
+               right: 8, 
+               width: 8, 
+               height: 8, 
+               borderRadius: '50%', 
+               background: '#4caf50',
+               animation: 'pulse 2s infinite'
+             }} />
+           </div>
+         </div>
+       ) : (
+         // KPIs historiques pour les périodes semaine/mois
+         <div style={{
+           display: 'grid',
+           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+           gap: 16,
+           padding: '0 24px 24px'
+         }}>
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>📅</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{filteredDashboardData.length}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Jours avec données</div>
+           </div>
+
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
+           </div>
+
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
+           </div>
+
+           <div style={{
+             background: colors.primary,
+             color: 'white',
+             padding: 24,
+             borderRadius: 12,
+             textAlign: 'center',
+             boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+             position: 'relative'
+           }}>
+             <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
+             <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.tauxPonctualite}</div>
+             <div style={{ fontSize: 14, opacity: 0.9 }}>Taux de ponctualité (%)</div>
+           </div>
+         </div>
+       )}
 
       {/* Indicateur de dernière mise à jour */}
       <div style={{
@@ -984,148 +1056,150 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         gap: 24,
         padding: '0 24px 24px'
       }}>
-        {/* Statuts en direct */}
-        <div style={{
-          background: 'white',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            marginBottom: 16 
-          }}>
-            <h3 style={{ margin: 0, color: colors.text, fontSize: 18, fontWeight: 600 }}>
-              Status en direct ({filteredUsers.length} utilisateurs)
-            </h3>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 8,
-              fontSize: 12,
-              color: colors.textLight
-            }}>
-              <div style={{ 
-                width: 8, 
-                height: 8, 
-                borderRadius: '50%', 
-                background: '#4caf50',
-                animation: 'pulse 2s infinite'
-              }} />
-              Temps réel
-            </div>
-          </div>
-          <div style={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            maxHeight: 400,
-            overflowY: 'auto',
-            paddingRight: 8
-          }}>
-            {filteredUsers.map((user, index) => (
-              <div key={user.id || index} style={{
-                border: '1px solid #e0e0e0',
-                borderRadius: 12,
-                padding: 16,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                background: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                transition: 'box-shadow 0.2s',
-                marginBottom: 8,
-              }}>
-                {user.avatar ? (
-                  <img src={user.avatar} alt="avatar" style={{ 
-                    width: 48, 
-                    height: 48, 
-                    borderRadius: '50%', 
-                    objectFit: 'cover', 
-                    border: '2px solid #1976d2',
-                    boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-                  }} />
-                ) : (
-                  <div style={{ 
-                    width: 48, 
-                    height: 48, 
-                    borderRadius: '50%', 
-                    background: '#f4f6fa', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    fontSize: 20, 
-                    color: '#bbb', 
-                    border: '2px solid #1976d2',
-                    boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-                  }}>
-                    👤
-                  </div>
-                )}
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: colors.text }}>
-                    {user.prenom} {user.nom}
-                  </div>
-                  <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
-                    {user.service}
-                  </div>
-                  {user.lieux && (
-                    <div style={{ fontSize: 12, color: '#888' }}>
-                      {user.lieux}
-                    </div>
-                  )}
-                </div>
-                <div style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  background: user.status === 'Entré' ? 'rgba(76, 175, 80, 0.1)' : 
-                             user.status === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
-                             user.status === 'Sorti' ? 'rgba(244, 67, 54, 0.1)' :
-                             'rgba(204, 204, 204, 0.1)',
-                  border: `1px solid ${user.status === 'Entré' ? '#4caf50' : 
-                                     user.status === 'En pause' ? '#ff9800' : 
-                                     user.status === 'Sorti' ? '#f44336' : '#cccccc'}`
-                }}>
-                  <div style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    backgroundColor: user.status === 'Entré' ? '#4caf50' : 
-                                   user.status === 'En pause' ? '#ff9800' : 
-                                   user.status === 'Sorti' ? '#f44336' : '#cccccc'
-                  }} />
-                  <span style={{ 
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: user.status === 'Entré' ? '#4caf50' : 
-                           user.status === 'En pause' ? '#ff9800' : 
-                           user.status === 'Sorti' ? '#f44336' : '#cccccc'
-                  }}>
-                    {user.status === 'Entré' ? 'Présent' : 
-                     user.status === 'En pause' ? 'En pause' :
-                     user.status === 'Sorti' ? 'Sorti' : 
-                     (user.status || 'Non badgé')}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {filteredUsers.length === 0 && (
-              <div style={{ 
-                textAlign: 'center', 
-                color: colors.textLight, 
-                padding: '20px',
-                fontSize: 14 
-              }}>
-                Aucun utilisateur trouvé avec les filtres actuels
-              </div>
-            )}
-          </div>
-        </div>
+                 {/* Statuts en direct - Uniquement pour la période "jour" */}
+         {period === 'jour' && (
+           <div style={{
+             background: 'white',
+             borderRadius: 12,
+             padding: 24,
+             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+           }}>
+             <div style={{ 
+               display: 'flex', 
+               justifyContent: 'space-between', 
+               alignItems: 'center', 
+               marginBottom: 16 
+             }}>
+               <h3 style={{ margin: 0, color: colors.text, fontSize: 18, fontWeight: 600 }}>
+                 Status en direct ({filteredUsers.length} utilisateurs)
+               </h3>
+               <div style={{ 
+                 display: 'flex', 
+                 alignItems: 'center', 
+                 gap: 8,
+                 fontSize: 12,
+                 color: colors.textLight
+               }}>
+                 <div style={{ 
+                   width: 8, 
+                   height: 8, 
+                   borderRadius: '50%', 
+                   background: '#4caf50',
+                   animation: 'pulse 2s infinite'
+                 }} />
+                 Temps réel
+               </div>
+             </div>
+             <div style={{ 
+               display: 'flex',
+               flexDirection: 'column',
+               gap: 12,
+               maxHeight: 400,
+               overflowY: 'auto',
+               paddingRight: 8
+             }}>
+               {filteredUsers.map((user, index) => (
+                 <div key={user.id || index} style={{
+                   border: '1px solid #e0e0e0',
+                   borderRadius: 12,
+                   padding: 16,
+                   boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                   background: '#fff',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: 16,
+                   transition: 'box-shadow 0.2s',
+                   marginBottom: 8,
+                 }}>
+                   {user.avatar ? (
+                     <img src={user.avatar} alt="avatar" style={{ 
+                       width: 48, 
+                       height: 48, 
+                       borderRadius: '50%', 
+                       objectFit: 'cover', 
+                       border: '2px solid #1976d2',
+                       boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                     }} />
+                   ) : (
+                     <div style={{ 
+                       width: 48, 
+                       height: 48, 
+                       borderRadius: '50%', 
+                       background: '#f4f6fa', 
+                       display: 'flex', 
+                       alignItems: 'center', 
+                       justifyContent: 'center', 
+                       fontSize: 20, 
+                       color: '#bbb', 
+                       border: '2px solid #1976d2',
+                       boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                     }}>
+                       👤
+                     </div>
+                   )}
+                   <div style={{ flex: 1 }}>
+                     <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: colors.text }}>
+                       {user.prenom} {user.nom}
+                     </div>
+                     <div style={{ color: '#555', fontSize: 14, marginBottom: 2 }}>
+                       {user.service}
+                     </div>
+                     {user.lieux && (
+                       <div style={{ fontSize: 12, color: '#888' }}>
+                         {user.lieux}
+                       </div>
+                     )}
+                   </div>
+                   <div style={{ 
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 8,
+                     padding: '8px 12px',
+                     borderRadius: 8,
+                     background: user.status === 'Entré' ? 'rgba(76, 175, 80, 0.1)' : 
+                                user.status === 'En pause' ? 'rgba(255, 152, 0, 0.1)' : 
+                                user.status === 'Sorti' ? 'rgba(244, 67, 54, 0.1)' :
+                                'rgba(204, 204, 204, 0.1)',
+                     border: `1px solid ${user.status === 'Entré' ? '#4caf50' : 
+                                        user.status === 'En pause' ? '#ff9800' : 
+                                        user.status === 'Sorti' ? '#f44336' : '#cccccc'}`
+                   }}>
+                     <div style={{
+                       width: 8,
+                       height: 8,
+                       borderRadius: '50%',
+                       backgroundColor: user.status === 'Entré' ? '#4caf50' : 
+                                      user.status === 'En pause' ? '#ff9800' : 
+                                      user.status === 'Sorti' ? '#f44336' : '#cccccc'
+                     }} />
+                     <span style={{ 
+                       fontSize: 14,
+                       fontWeight: 600,
+                       color: user.status === 'Entré' ? '#4caf50' : 
+                              user.status === 'En pause' ? '#ff9800' : 
+                              user.status === 'Sorti' ? '#f44336' : '#cccccc'
+                     }}>
+                       {user.status === 'Entré' ? 'Présent' : 
+                        user.status === 'En pause' ? 'En pause' :
+                        user.status === 'Sorti' ? 'Sorti' : 
+                        (user.status || 'Non badgé')}
+                     </span>
+                   </div>
+                 </div>
+               ))}
+               {filteredUsers.length === 0 && (
+                 <div style={{ 
+                   textAlign: 'center', 
+                   color: colors.textLight, 
+                   padding: '20px',
+                   fontSize: 14 
+                 }}>
+                   Aucun utilisateur trouvé avec les filtres actuels
+                 </div>
+               )}
+             </div>
+           </div>
+         )}
 
         {/* Anomalies */}
         <div style={{
@@ -1193,66 +1267,70 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </ResponsiveContainer>
         </div>
 
-                 {/* Occupation par lieu */}
-         <div style={{
-           background: 'white',
-           borderRadius: 12,
-           padding: 24,
-           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-         }}>
-           <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-             Occupation par lieu
-           </h3>
-           <ResponsiveContainer width="100%" height={200}>
-             <PieChart>
-               <Pie
-                 data={occupationChartData}
-                 cx="50%"
-                 cy="50%"
-                 outerRadius={60}
-                 fill="#8884d8"
-                 dataKey="value"
-               >
-                 {occupationChartData.map((entry, index) => (
-                   <Cell key={`cell-${index}`} fill={entry.color} />
-                 ))}
-               </Pie>
-               <Tooltip 
-                 formatter={(value: any, name: any, props: any) => [
-                   `${value} utilisateurs (${props.payload.percentage}%)`,
-                   props.payload.name.split(' (')[0]
-                 ]}
-               />
-               <Legend 
-                 formatter={(value: any, entry: any) => {
-                   const data = entry.payload;
-                   return `${data.name.split(' (')[0]} - ${data.value} (${data.percentage}%)`;
-                 }}
-               />
-             </PieChart>
-           </ResponsiveContainer>
-         </div>
+                                   {/* Occupation par lieu - Uniquement pour la période "jour" */}
+          {period === 'jour' && (
+            <div style={{
+              background: 'white',
+              borderRadius: 12,
+              padding: 24,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
+                Occupation par lieu
+              </h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={occupationChartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={60}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {occupationChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: any, name: any, props: any) => [
+                      `${value} utilisateurs (${props.payload.percentage}%)`,
+                      props.payload.name.split(' (')[0]
+                    ]}
+                  />
+                  <Legend 
+                    formatter={(value: any, entry: any) => {
+                      const data = entry.payload;
+                      return `${data.name.split(' (')[0]} - ${data.value} (${data.percentage}%)`;
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
-        {/* Arrivées vs horaire */}
-        <div style={{
-          background: 'white',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-            Arrivées vs. horaire
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={arrivalChartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill={colors.primary} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                 {/* Arrivées vs horaire - Uniquement pour la période "jour" */}
+         {period === 'jour' && (
+           <div style={{
+             background: 'white',
+             borderRadius: 12,
+             padding: 24,
+             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+           }}>
+             <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
+               Arrivées vs. horaire
+             </h3>
+             <ResponsiveContainer width="100%" height={200}>
+               <BarChart data={arrivalChartData}>
+                 <CartesianGrid strokeDasharray="3 3" />
+                 <XAxis dataKey="time" />
+                 <YAxis />
+                 <Tooltip />
+                 <Bar dataKey="count" fill={colors.primary} />
+               </BarChart>
+             </ResponsiveContainer>
+           </div>
+         )}
       </div>
     </div>
   );
