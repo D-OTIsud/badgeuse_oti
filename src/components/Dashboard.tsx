@@ -1176,17 +1176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                  )}
                </select>
                
-               {/* Display selected week info below the select */}
-               {selectedWeek > 0 && (
-                 <div style={{ 
-                   fontSize: 12, 
-                   color: colors.textLight,
-                   fontStyle: 'italic',
-                   marginTop: 4
-                 }}>
-                     Sélectionné: Semaine {selectedWeek} - {new Date().getFullYear()}
-                 </div>
-               )}
+
              </div>
            )}
            
@@ -1224,17 +1214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                    </>
                  )}
                  
-                 {/* Display selected month info in the select itself */}
-                 {selectedMonth > 0 && (
-                   <div style={{ 
-                     fontSize: 12, 
-                     color: colors.textLight,
-                     fontStyle: 'italic',
-                     marginTop: 4
-                   }}>
-                     Sélectionné: {availableMonths.find(m => m.value === selectedMonth)?.label} {new Date().getFullYear()}
-                   </div>
-                 )}
+
                </select>
              </div>
            )}
