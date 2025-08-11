@@ -135,9 +135,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         
       case 'mois':
         // Utiliser le mois spécifique sélectionné mais toujours dans l'année actuelle
-        const firstDayOfSelectedMonth = new Date(currentYear, selectedMonth - 1, 1); // selectedMonth est 1-12
+        // Si selectedMonth est 0 (Ce mois), utiliser le mois actuel
+        const monthToUse = selectedMonth === 0 ? currentMonth + 1 : selectedMonth;
+        const firstDayOfSelectedMonth = new Date(currentYear, monthToUse - 1, 1); // monthToUse est 1-12
         startDate = new Date(firstDayOfSelectedMonth);
-        endDate = new Date(currentYear, selectedMonth, 1); // Mois suivant
+        endDate = new Date(currentYear, monthToUse, 1); // Mois suivant
         break;
         
       case 'annee':
@@ -185,7 +187,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           break;
         case 'mois':
           // Toujours utiliser l'année actuelle pour les mois
-          kpiData = await supabaseAPI.getKPIBundleMonth(new Date().getFullYear(), selectedMonth);
+          // Si selectedMonth est 0 (Ce mois), utiliser le mois actuel
+          const monthToUse = selectedMonth === 0 ? new Date().getMonth() + 1 : selectedMonth;
+          kpiData = await supabaseAPI.getKPIBundleMonth(new Date().getFullYear(), monthToUse);
           break;
         case 'annee':
           kpiData = await supabaseAPI.getKPIBundleYear(selectedYear);
@@ -1169,18 +1173,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                      ))}
                    </>
                  )}
+                 
+                 {/* Display selected week info in the select itself */}
+                 {selectedWeek > 0 && (
+                   <div style={{ 
+                     fontSize: 12, 
+                     color: colors.textLight,
+                     fontStyle: 'italic',
+                     marginTop: 4
+                   }}>
+                     Sélectionné: Semaine {selectedWeek} - {new Date().getFullYear()}
+                   </div>
+                 )}
                </select>
-               
-               {/* Display selected week info when not "Cette semaine" */}
-               {selectedWeek > 0 && (
-                 <div style={{ 
-                   fontSize: 12, 
-                   color: colors.textLight,
-                   fontStyle: 'italic'
-                 }}>
-                   Semaine {selectedWeek} - {new Date().getFullYear()}
-                 </div>
-               )}
              </div>
            )}
            
@@ -1216,18 +1221,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                      ))}
                    </>
                  )}
+                 
+                 {/* Display selected month info in the select itself */}
+                 {selectedMonth > 0 && (
+                   <div style={{ 
+                     fontSize: 12, 
+                     color: colors.textLight,
+                     fontStyle: 'italic',
+                     marginTop: 4
+                   }}>
+                     Sélectionné: {availableMonths.find(m => m.value === selectedMonth)?.label} {new Date().getFullYear()}
+                   </div>
+                 )}
                </select>
-               
-               {/* Display selected month name when not "Ce mois" */}
-               {selectedMonth > 0 && (
-                 <div style={{ 
-                   fontSize: 12, 
-                   color: colors.textLight,
-                   fontStyle: 'italic'
-                 }}>
-                   {availableMonths.find(m => m.value === selectedMonth)?.label} {new Date().getFullYear()}
-                 </div>
-               )}
              </div>
            )}
            
