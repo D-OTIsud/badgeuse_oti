@@ -37,6 +37,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois'>('jour');
+  const [selectedWeek, setSelectedWeek] = useState<number>(0); // 0 = semaine actuelle, -1 = semaine précédente, etc.
+  const [selectedMonth, setSelectedMonth] = useState<number>(0); // 0 = mois actuel, -1 = mois précédent, etc.
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,6 +67,78 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       case 'En pause': return 2;
       case 'Sorti': return 3;
       default: return 4; // Non badgé ou autres
+    }
+  };
+
+  // Fonctions utilitaires pour les dates selon les périodes
+  const getDateRangeForPeriod = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentDate = now.getDate();
+    const currentDay = now.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    switch (period) {
+      case 'jour':
+        startDate = new Date(currentYear, currentMonth, currentDate);
+        endDate = new Date(currentYear, currentMonth, currentDate + 1);
+        break;
+        
+      case 'semaine':
+        // Calculer le lundi de la semaine sélectionnée
+        const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Si dimanche, lundi = -6, sinon 1 - currentDay
+        const mondayOfCurrentWeek = new Date(currentYear, currentMonth, currentDate + mondayOffset);
+        const mondayOfSelectedWeek = new Date(mondayOfCurrentWeek);
+        mondayOfSelectedWeek.setDate(mondayOfCurrentWeek.getDate() + (selectedWeek * 7));
+        
+        startDate = new Date(mondayOfSelectedWeek);
+        endDate = new Date(mondayOfSelectedWeek);
+        endDate.setDate(mondayOfSelectedWeek.getDate() + 7);
+        break;
+        
+      case 'mois':
+        const selectedMonthDate = new Date(currentYear, currentMonth + selectedMonth, 1);
+        startDate = new Date(selectedMonthDate);
+        endDate = new Date(selectedMonthDate.getFullYear(), selectedMonthDate.getMonth() + 1, 0);
+        endDate.setDate(endDate.getDate() + 1); // +1 pour inclure le dernier jour
+        break;
+        
+      default:
+        startDate = new Date(currentYear, currentMonth, currentDate);
+        endDate = new Date(currentYear, currentMonth, currentDate + 1);
+    }
+    
+    return { startDate, endDate };
+  };
+
+  const getPeriodLabel = () => {
+    const { startDate, endDate } = getDateRangeForPeriod();
+    
+    switch (period) {
+      case 'jour':
+        return startDate.toLocaleDateString('fr-FR', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        
+      case 'semaine':
+        const endDateWeek = new Date(endDate);
+        endDateWeek.setDate(endDate.getDate() - 1);
+        return `Semaine du ${startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${endDateWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        
+      case 'mois':
+        return startDate.toLocaleDateString('fr-FR', { 
+          month: 'long', 
+          year: 'numeric' 
+        });
+        
+      default:
+        return '';
     }
   };
 
@@ -228,11 +303,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         console.log('Rafraîchissement forcé des données...');
       }
       
-      // Récupérer les données du dashboard jour (vue appbadge_v_dashboard_jour)
+      // Récupérer les données selon la période sélectionnée
+      const { startDate, endDate } = getDateRangeForPeriod();
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      
       const { data: dashboardData, error: dashboardError } = await supabase
         .from('appbadge_v_dashboard_jour')
         .select('*')
-        .eq('jour_local', new Date().toISOString().split('T')[0]);
+        .gte('jour_local', startDateStr)
+        .lt('jour_local', endDateStr);
 
       if (dashboardError) {
         console.error('Erreur dashboard jour:', dashboardError);
@@ -276,13 +356,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   };
 
-  // Initialisation et mise à jour périodique (1 minute au lieu de 5)
-  useEffect(() => {
-    fetchData();
-    fetchLieuxColors(); // Récupérer les couleurs des lieux
-    const interval = setInterval(fetchData, 60000); // 1 minute
-    return () => clearInterval(interval);
-  }, [period, updateUserStatusFromBadgeages]);
+     // Initialisation et mise à jour périodique (1 minute au lieu de 5)
+   useEffect(() => {
+     fetchData();
+     fetchLieuxColors(); // Récupérer les couleurs des lieux
+     const interval = setInterval(fetchData, 60000); // 1 minute
+     return () => clearInterval(interval);
+   }, [period, selectedWeek, selectedMonth, selectedYear, updateUserStatusFromBadgeages]);
 
   // Temps réel pour les utilisateurs et récupération des services/rôles
   useEffect(() => {
@@ -552,9 +632,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           >
             ← Retour
           </button>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
-            Tableau de bord — Présences & Retards
-          </h1>
+                     <div>
+             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
+               Tableau de bord — Présences & Retards
+             </h1>
+             <div style={{ 
+               marginTop: 4, 
+               fontSize: 14, 
+               opacity: 0.9,
+               fontWeight: 500
+             }}>
+               {getPeriodLabel()}
+             </div>
+           </div>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button style={{
@@ -584,34 +674,103 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Filtres */}
-      <div style={{
-        background: 'white',
-        padding: '16px 24px',
-        margin: '16px 24px',
-        borderRadius: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, color: colors.text }}>Période :</span>
-          {['Jour', 'Semaine', 'Mois'].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p.toLowerCase() as any)}
-              style={{
-                background: period === p.toLowerCase() ? colors.primary : 'white',
-                color: period === p.toLowerCase() ? 'white' : colors.text,
-                border: `1px solid ${colors.primary}`,
-                padding: '8px 16px',
-                borderRadius: 8,
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 600
-              }}
-            >
-              {p}
-            </button>
-          ))}
+             {/* Filtres */}
+       <div style={{
+         background: 'white',
+         padding: '16px 24px',
+         margin: '16px 24px',
+         borderRadius: 12,
+         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+       }}>
+         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+           <span style={{ fontWeight: 600, color: colors.text }}>Période :</span>
+           {['Jour', 'Semaine', 'Mois'].map((p) => (
+             <button
+               key={p}
+               onClick={() => {
+                 setPeriod(p.toLowerCase() as any);
+                 // Réinitialiser les sous-filtres lors du changement de période
+                 setSelectedWeek(0);
+                 setSelectedMonth(0);
+               }}
+               style={{
+                 background: period === p.toLowerCase() ? colors.primary : 'white',
+                 color: period === p.toLowerCase() ? 'white' : colors.text,
+                 border: `1px solid ${colors.primary}`,
+                 padding: '8px 16px',
+                 borderRadius: 8,
+                 cursor: 'pointer',
+                 fontSize: 14,
+                 fontWeight: 600
+               }}
+             >
+               {p}
+             </button>
+           ))}
+           
+           {/* Sous-filtres selon la période */}
+           {period === 'semaine' && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <span style={{ fontSize: 14, color: colors.textLight }}>Semaine :</span>
+               <select
+                 value={selectedWeek}
+                 onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                 style={{
+                   padding: '6px 10px',
+                   borderRadius: 6,
+                   border: '1px solid #ddd',
+                   fontSize: 13
+                 }}
+               >
+                 <option value={0}>Cette semaine</option>
+                 <option value={-1}>Semaine précédente</option>
+                 <option value={-2}>Il y a 2 semaines</option>
+                 <option value={-3}>Il y a 3 semaines</option>
+                 <option value={-4}>Il y a 4 semaines</option>
+               </select>
+             </div>
+           )}
+           
+           {period === 'mois' && (
+             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+               <span style={{ fontSize: 14, color: colors.textLight }}>Mois :</span>
+               <select
+                 value={selectedMonth}
+                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                 style={{
+                   padding: '6px 10px',
+                   borderRadius: 6,
+                   border: '1px solid #ddd',
+                   fontSize: 13
+                 }}
+               >
+                 <option value={0}>Ce mois</option>
+                 <option value={-1}>Mois précédent</option>
+                 <option value={-2}>Il y a 2 mois</option>
+                 <option value={-3}>Il y a 3 mois</option>
+                 <option value={-6}>Il y a 6 mois</option>
+               </select>
+             </div>
+           )}
+           
+           {/* Filtre année */}
+           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+             <span style={{ fontSize: 14, color: colors.textLight }}>Année :</span>
+             <select
+               value={selectedYear}
+               onChange={(e) => setSelectedYear(Number(e.target.value))}
+               style={{
+                 padding: '6px 10px',
+                 borderRadius: 6,
+                 border: '1px solid #ddd',
+                 fontSize: 13
+               }}
+             >
+               {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                 <option key={year} value={year}>{year}</option>
+               ))}
+             </select>
+           </div>
           
           <select
             value={selectedService}
