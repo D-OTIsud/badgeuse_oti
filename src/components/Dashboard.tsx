@@ -1315,19 +1315,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Note sur la priorité des données */}
-        <div style={{
-          background: '#fff3cd',
-          border: '1px solid #ffeaa7',
-          padding: 12,
-          borderRadius: 8,
-          textAlign: 'center',
-          gridColumn: '1 / -1',
-          fontSize: 12,
-          color: '#856404'
-        }}>
-          <strong>Priorité des données:</strong> Les fonctions SQL sont utilisées en priorité si disponibles, sinon fallback vers les données dashboard.
-        </div>
+
 
         {/* KPIs spécifiques au jour en cours */}
         {period === 'jour' ? (
