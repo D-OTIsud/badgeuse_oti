@@ -1702,7 +1702,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Graphique Retards & travail - Affichage conditionnel selon la période */}
+
+
+        {/* Graphique Top des retards - Remplacé le graphique "Retards & travail — tendances" */}
         {(period === 'jour' || period === 'semaine' || period === 'mois' || period === 'annee') && (
           <div style={{
             background: 'white',
@@ -1711,24 +1713,136 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
             <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-              Retards & travail — tendances
-              {kpiChartData && (
+              Top des retards
+              {data.kpiBundle?.utilisateurs && (
                 <span style={{ fontSize: 12, color: colors.primary, marginLeft: 8, fontWeight: 400 }}>
                   (SQL)
                 </span>
               )}
             </h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={kpiChartData || chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="nom" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="retard" stroke="#ff9800" name="Retard (min)" />
-                <Line type="monotone" dataKey="travailNet" stroke={colors.primary} name="Travail net (min)" />
-              </LineChart>
-            </ResponsiveContainer>
+            
+            {(() => {
+              // Préparer les données pour le top des retards
+              let topRetardsData: any[] = [];
+              
+              if (data.kpiBundle?.utilisateurs) {
+                // Utiliser les données SQL si disponibles
+                topRetardsData = data.kpiBundle.utilisateurs
+                  .filter((user: any) => (user.retard_minutes || 0) > 0)
+                  .map((user: any) => ({
+                    nom: `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur',
+                    retard: user.retard_minutes || 0,
+                    service: user.service || 'Non défini',
+                    lieu: user.lieu || 'Non défini'
+                  }))
+                  .sort((a: any, b: any) => b.retard - a.retard)
+                  .slice(0, 10);
+              } else if (filteredUsers.length > 0) {
+                // Fallback sur les données utilisateurs filtrées
+                topRetardsData = filteredUsers
+                  .filter((user: any) => (user.retard_minutes || 0) > 0)
+                  .map((user: any) => ({
+                    nom: `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur',
+                    retard: user.retard_minutes || 0,
+                    service: user.service || 'Non défini',
+                    lieu: user.lieu || 'Non défini'
+                  }))
+                  .sort((a: any, b: any) => b.retard - a.retard)
+                  .slice(0, 10);
+              }
+
+              if (topRetardsData.length === 0) {
+                return (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '200px',
+                    color: '#7f8c8d',
+                    fontStyle: 'italic',
+                    fontSize: '16px'
+                  }}>
+                    🎉 Aucun retard aujourd'hui ! Parfait !
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ height: '200px', overflowY: 'auto' }}>
+                  {topRetardsData.map((user, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      marginBottom: '8px',
+                      background: index === 0 ? '#fff3e0' : '#f8f9fa',
+                      border: index === 0 ? '2px solid #ff9800' : '1px solid #e9ecef',
+                      borderRadius: '8px',
+                      borderLeft: `4px solid ${index === 0 ? '#ff9800' : index === 1 ? '#ffc107' : index === 2 ? '#ff9800' : '#9e9e9e'}`
+                    }}>
+                      {/* Position */}
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        color: 'white',
+                        background: index === 0 ? '#ff9800' : index === 1 ? '#ffc107' : index === 2 ? '#ff9800' : '#9e9e9e',
+                        marginRight: '16px',
+                        flexShrink: 0
+                      }}>
+                        {index + 1}
+                      </div>
+
+                      {/* Informations utilisateur */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontWeight: '600',
+                          fontSize: '16px',
+                          color: colors.text,
+                          marginBottom: '4px'
+                        }}>
+                          {user.nom}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#7f8c8d',
+                          display: 'flex',
+                          gap: '16px'
+                        }}>
+                          <span>🏢 {user.service}</span>
+                          <span>📍 {user.lieu}</span>
+                        </div>
+                      </div>
+
+                      {/* Retard */}
+                      <div style={{
+                        textAlign: 'right',
+                        marginLeft: '16px'
+                      }}>
+                        <div style={{
+                          fontSize: '18px',
+                          fontWeight: 'bold',
+                          color: index === 0 ? '#ff9800' : '#e74c3c'
+                        }}>
+                          {Math.floor(user.retard / 60)}h{(user.retard % 60).toString().padStart(2, '0')}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#7f8c8d'
+                        }}>
+                          {user.retard} min
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
