@@ -979,20 +979,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     { time: '10+', count: arrivalData['10+'] || 0 }
   ];
 
-  if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        background: colors.background 
-      }}>
-        <div style={{ fontSize: 18, color: colors.text }}>Chargement du tableau de bord...</div>
-      </div>
-    );
-  }
-
   // Fonction pour charger et mettre en cache les avatars
   const loadUserAvatars = useCallback(async (users: any[]) => {
     const newAvatars: {[key: string]: string} = {};
@@ -1021,6 +1007,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       setAvatarCache(prev => ({ ...prev, ...newAvatars }));
     }
   }, [avatarCache, supabase]);
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: colors.background 
+      }}>
+        <div style={{ fontSize: 18, color: colors.text }}>Chargement du tableau de bord...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
