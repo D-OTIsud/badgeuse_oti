@@ -64,8 +64,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [availableWeeks, setAvailableWeeks] = useState<{value: number, label: string}[]>([]);
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
 
-  // Cache des avatars pour éviter de les recharger
-  const [avatarCache, setAvatarCache] = useState<{[key: string]: string}>({});
+  // TODO: Cache des avatars pour éviter de les recharger (à implémenter plus tard)
+  // const [avatarCache, setAvatarCache] = useState<{[key: string]: string}>({});
 
   // Couleurs du thème OTI du SUD
   const colors = {
@@ -222,10 +222,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           }
         }));
         
-        // Charger les avatars des utilisateurs
-        if (kpiStructure.users || kpiStructure.utilisateurs) {
-          loadUserAvatars(kpiStructure.users || kpiStructure.utilisateurs);
-        }
+        // TODO: Charger les avatars des utilisateurs plus tard
+        // if (kpiStructure.users || kpiStructure.utilisateurs) {
+        //   loadUserAvatars(kpiStructure.users || kpiStructure.utilisateurs);
+        // }
       }
       
     } catch (error) {
@@ -979,34 +979,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     { time: '10+', count: arrivalData['10+'] || 0 }
   ];
 
-  // Fonction pour charger et mettre en cache les avatars
-  const loadUserAvatars = useCallback(async (users: any[]) => {
-    const newAvatars: {[key: string]: string} = {};
-    
-    for (const user of users) {
-      const userId = user.utilisateur_id || user.id;
-      if (userId && !avatarCache[userId]) {
-        try {
-          // Essayer de récupérer l'avatar depuis la table utilisateurs
-          const { data: userData } = await supabase
-            .from('appbadge_utilisateurs')
-            .select('avatar')
-            .eq('id', userId)
-            .single();
-          
-          if (userData?.avatar) {
-            newAvatars[userId] = userData.avatar;
-          }
-        } catch (error) {
-          console.log(`Pas d'avatar pour l'utilisateur ${userId}`);
-        }
-      }
-    }
-    
-    if (Object.keys(newAvatars).length > 0) {
-      setAvatarCache(prev => ({ ...prev, ...newAvatars }));
-    }
-  }, [avatarCache, supabase]);
+  // TODO: Fonction pour charger et mettre en cache les avatars (à implémenter plus tard)
+  // const loadUserAvatars = useCallback(async (users: any[]) => {
+  //   // ... implémentation à venir
+  // }, [avatarCache, supabase]);
 
   if (loading) {
     return (
@@ -1985,41 +1961,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                          }}>
                       
                       {/* Avatar */}
-                      {(() => {
-                        const userId = userKPI.utilisateur_id || userKPI.id;
-                        const cachedAvatar = userId ? avatarCache[userId] : null;
-                        
-                        if (cachedAvatar) {
-                          return (
-                            <img src={cachedAvatar} alt="avatar" style={{ 
-                              width: 36, 
-                              height: 36, 
-                              borderRadius: '50%', 
-                              objectFit: 'cover', 
-                              border: '1px solid #e0e0e0',
-                              flexShrink: 0
-                            }} />
-                          );
-                        } else {
-                          return (
-                            <div style={{ 
-                              width: 36, 
-                              height: 36, 
-                              borderRadius: '50%', 
-                              background: '#f4f6fa', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              fontSize: 16, 
-                              color: '#bbb', 
-                              border: '1px solid #e0e0e0',
-                              flexShrink: 0
-                            }}>
-                              👤
-                            </div>
-                          );
-                        }
-                      })()}
+                      <div style={{ 
+                        width: 36, 
+                        height: 36, 
+                        borderRadius: '50%', 
+                        background: '#f4f6fa', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontSize: 16, 
+                        color: '#bbb', 
+                        border: '1px solid #e0e0e0',
+                        flexShrink: 0
+                      }}>
+                        👤
+                      </div>
                       
                       {/* Informations utilisateur */}
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2174,43 +2130,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               paddingBottom: '12px',
               borderBottom: '1px solid #e0e0e0'
             }}>
-              {(() => {
-                const userId = selectedUserForKPIDetails.utilisateur_id || selectedUserForKPIDetails.id;
-                const cachedAvatar = userId ? avatarCache[userId] : null;
-                
-                if (cachedAvatar) {
-                  return (
-                    <img src={cachedAvatar} alt="avatar" style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      border: '2px solid #1976d2',
-                      margin: '0 auto 12px auto',
-                      boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
-                    }} />
-                  );
-                } else {
-                  return (
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: '#f4f6fa',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '20px',
-                      color: '#bbb',
-                      border: '2px solid #1976d2',
-                      margin: '0 auto 12px auto',
-                      boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
-                    }}>
-                      👤
-                    </div>
-                  );
-                }
-              })()}
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: '#f4f6fa',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                color: '#bbb',
+                border: '2px solid #1976d2',
+                margin: '0 auto 12px auto',
+                boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
+              }}>
+                👤
+              </div>
               <h2 style={{
                 margin: '0 0 6px 0',
                 fontSize: '18px',
