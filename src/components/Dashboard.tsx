@@ -137,7 +137,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const fetchKPIData = async () => {
     try {
       setKpiLoading(true);
-      setKpiError(null); // Clear previous errors
+      setKpiError(null);
       const { startDate, endDate } = getDateRangeForPeriod();
       
       let kpiData: any;
@@ -170,15 +170,45 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       
       console.log(`KPIs récupérés pour la période ${period}:`, kpiData);
       
-      // Mettre à jour les données avec le bundle KPI
-      setData(prev => ({
-        ...prev,
-        kpiBundle: kpiData
-      }));
+      // Traiter la structure des données retournées par les fonctions SQL
+      if (kpiData && Array.isArray(kpiData) && kpiData.length > 0) {
+        const firstResult = kpiData[0]; // Prendre le premier résultat
+        const kpiBundle = {
+          global: firstResult.global || null,
+          utilisateurs: firstResult.users || [],
+          metadata: firstResult.meta || null
+        };
+        
+        console.log('Structure KPI traitée:', kpiBundle);
+        
+        setData(prev => ({
+          ...prev,
+          kpiBundle: kpiBundle
+        }));
+      } else {
+        console.log('Aucune donnée KPI trouvée ou structure invalide');
+        setData(prev => ({
+          ...prev,
+          kpiBundle: {
+            global: null,
+            utilisateurs: [],
+            metadata: null
+          }
+        }));
+      }
       
     } catch (error) {
       console.error('Erreur lors de la récupération des KPIs:', error);
       setKpiError('Erreur générale lors de la récupération des KPIs.');
+      // En cas d'erreur, initialiser avec des valeurs par défaut
+      setData(prev => ({
+        ...prev,
+        kpiBundle: {
+          global: null,
+          utilisateurs: [],
+          metadata: null
+        }
+      }));
     } finally {
       setKpiLoading(false);
     }
@@ -1139,6 +1169,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               minWidth: 200
             }}
           />
+          
+          {/* Bouton discret pour actualiser les KPIs */}
+          <button
+            onClick={() => fetchKPIData()}
+            disabled={kpiLoading}
+            style={{
+              background: colors.primary,
+              color: 'white',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: 6,
+              cursor: kpiLoading ? 'not-allowed' : 'pointer',
+              fontSize: 12,
+              fontWeight: 500,
+              opacity: kpiLoading ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+            title="Actualiser les données KPI depuis la base de données"
+          >
+            {kpiLoading ? '🔄' : '📊'} KPIs
+          </button>
         </div>
       </div>
 
@@ -1147,7 +1200,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: 16,
-        marginBottom: 24
+        margin: '0 24px 24px',
+        maxWidth: '1200px',
+        marginLeft: 'auto',
+        marginRight: 'auto'
       }}>
         {/* Indicateur de chargement des KPIs */}
         {kpiLoading && (
@@ -1193,72 +1249,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             </button>
           </div>
         )}
-
-        {/* Bouton de rafraîchissement des KPIs */}
-        <div style={{
-          background: colors.background,
-          border: `1px solid ${colors.primary}`,
-          padding: 16,
-          borderRadius: 12,
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 8
-        }}>
-          <button 
-            onClick={() => fetchKPIData()}
-            disabled={kpiLoading}
-            style={{
-              background: colors.primary,
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: 8,
-              cursor: kpiLoading ? 'not-allowed' : 'pointer',
-              fontSize: 14,
-              fontWeight: 500,
-              opacity: kpiLoading ? 0.6 : 1
-            }}
-          >
-            {kpiLoading ? 'Actualisation...' : 'Actualiser KPIs'}
-          </button>
-          <div style={{ fontSize: 12, color: colors.textLight }}>
-            Données SQL
-          </div>
-        </div>
-
-        {/* Bouton de test des fonctions SQL */}
-        <div style={{
-          background: '#f0f8ff',
-          border: '1px solid #4AA3FF',
-          padding: 16,
-          borderRadius: 12,
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 8
-        }}>
-          <button 
-            onClick={testSQLFunctions}
-            style={{
-              background: '#4AA3FF',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 500
-            }}
-          >
-            Tester SQL
-          </button>
-          <div style={{ fontSize: 12, color: colors.textLight }}>
-            Vérifier disponibilité
-          </div>
-        </div>
 
         {/* Note sur la priorité des données */}
         <div style={{
@@ -1390,30 +1380,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
          )}
        </div>
 
-       {/* Debug info pour les KPIs SQL */}
+       {/* Debug info pour les KPIs SQL - Version simplifiée */}
        {data.kpiBundle && (
          <div style={{
            background: '#f8f9fa',
            border: '1px solid #dee2e6',
            borderRadius: 8,
-           padding: 16,
+           padding: 12,
            margin: '0 24px 16px',
-           fontSize: 12,
-           color: colors.textLight
+           fontSize: 11,
+           color: colors.textLight,
+           textAlign: 'center'
          }}>
-           <strong>Données SQL disponibles:</strong> 
+           <strong>Données SQL:</strong> 
            {data.kpiBundle.global ? ' ✅ Global' : ' ❌ Global'} | 
-           {data.kpiBundle.utilisateurs ? `✅ Utilisateurs (${data.kpiBundle.utilisateurs.length})` : ' ❌ Utilisateurs'} | 
+           {data.kpiBundle.utilisateurs && data.kpiBundle.utilisateurs.length > 0 ? `✅ Utilisateurs (${data.kpiBundle.utilisateurs.length})` : ' ❌ Utilisateurs'} | 
            {data.kpiBundle.metadata ? ' ✅ Metadata' : ' ❌ Metadata'}
-           
-           {data.kpiBundle.global && (
-             <div style={{ marginTop: 8 }}>
-               <strong>Résumé global:</strong> 
-               Travail: {data.kpiBundle.global.travail_total_minutes || 0}min | 
-               Pause: {data.kpiBundle.global.pause_total_minutes || 0}min | 
-               Retard: {data.kpiBundle.global.retard_minutes || 0}min
-             </div>
-           )}
          </div>
        )}
 
