@@ -6,6 +6,10 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chart-container:hover {
@@ -15,29 +19,53 @@
 
 .chart-title {
   margin: 0 0 20px 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #2c3e50;
   text-align: center;
+  flex-shrink: 0;
+}
+
+.chart-container .recharts-wrapper {
+  flex: 1;
+  min-height: 300px;
 }
 
 /* Grille des graphiques */
 .charts-grid {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  width: 100%;
 }
 
 .chart-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 24px;
+  width: 100%;
 }
 
 /* Responsive pour les petits écrans */
 @media (max-width: 1200px) {
   .chart-row {
     grid-template-columns: 1fr;
+  }
+  
+  .chart-container {
+    min-height: 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-row {
+    gap: 16px;
+  }
+  
+  .chart-container {
+    padding: 16px;
+    margin-bottom: 16px;
+    min-height: 300px;
   }
 }
 
@@ -46,12 +74,13 @@
 .week-screen,
 .month-screen,
 .year-screen {
-  padding: 20px;
+  width: 100%;
 }
 
 /* Styles pour le calendrier heatmap */
 .calendar-heatmap {
   text-align: center;
+  grid-column: 1 / -1;
 }
 
 .calendar-header h4 {
@@ -144,6 +173,7 @@
 /* Styles pour le statut temps réel */
 .realtime-status {
   padding: 20px;
+  grid-column: 1 / -1;
 }
 
 .status-summary {
@@ -256,6 +286,7 @@
   border-radius: 12px;
   padding: 30px;
   text-align: center;
+  grid-column: 1 / -1;
 }
 
 .comparison-section h3 {
@@ -282,6 +313,7 @@
   padding: 60px;
   color: #7f8c8d;
   font-size: 18px;
+  grid-column: 1 / -1;
 }
 
 .no-charts {
@@ -289,17 +321,41 @@
   padding: 60px;
   color: #7f8c8d;
   font-style: italic;
+  grid-column: 1 / -1;
 }
 
-/* Responsive design */
+/* Amélioration de l'espacement et de l'alignement */
+.charts-grid > * {
+  width: 100%;
+}
+
+/* Ajustement des hauteurs pour une meilleure cohérence */
+.chart-container .recharts-responsive-container {
+  height: 100% !important;
+}
+
+/* Styles spécifiques pour les graphiques en pleine largeur */
+.chart-container.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Amélioration de la lisibilité des titres */
+.chart-title {
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 0 10px;
+}
+
+/* Ajustement des marges pour les petits écrans */
 @media (max-width: 768px) {
   .chart-container {
     padding: 15px;
     margin-bottom: 15px;
+    min-height: 300px;
   }
   
   .chart-title {
-    font-size: 16px;
+    font-size: 13px;
     margin-bottom: 15px;
   }
   
@@ -319,5 +375,13 @@
   .legend-items {
     flex-direction: column;
     gap: 10px;
+  }
+  
+  .charts-grid {
+    gap: 16px;
+  }
+  
+  .chart-row {
+    gap: 16px;
   }
 }

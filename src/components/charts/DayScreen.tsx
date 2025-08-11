@@ -64,33 +64,33 @@ const DayScreen: React.FC<DayScreenProps> = ({ kpiData, users }) => {
   return (
     <div className="day-screen">
       <div className="charts-grid">
-        {/* Première ligne */}
+        {/* Première ligne - Services et Lieux */}
         <div className="chart-row">
           <BarChart 
             data={serviceData}
-            title="Travail net par service (jour J)"
+            title="Travail net par service"
             xAxisLabel="Service"
             yAxisLabel="Minutes"
           />
           <BarChart 
             data={lieuData}
-            title="Travail net par lieu (jour J)"
+            title="Travail net par lieu"
             xAxisLabel="Lieu"
             yAxisLabel="Minutes"
           />
         </div>
 
-        {/* Deuxième ligne */}
+        {/* Deuxième ligne - Rôles et Top retards */}
         <div className="chart-row">
           <BarChart 
             data={roleData}
-            title="Travail net par rôle (jour J)"
+            title="Travail net par rôle"
             xAxisLabel="Rôle"
             yAxisLabel="Minutes"
           />
           <HorizontalBarChart 
             data={topRetardsData}
-            title="Top retards (jour J)"
+            title="Top retards"
             xAxisLabel="Minutes"
             yAxisLabel="Utilisateur"
             color="#ff6b6b"
@@ -98,19 +98,19 @@ const DayScreen: React.FC<DayScreenProps> = ({ kpiData, users }) => {
           />
         </div>
 
-        {/* Troisième ligne */}
+        {/* Troisième ligne - Nuage de points et Donut */}
         <div className="chart-row">
           <ScatterChart 
             data={scatterData}
-            title="Retard vs travail net (par utilisateur, jour J)"
+            title="Retard vs travail net (par utilisateur)"
           />
           <DonutChart 
             data={serviceData}
-            title="Part des services dans le travail net (jour J)"
+            title="Part des services dans le travail net"
           />
         </div>
 
-        {/* Quatrième ligne - Statut temps réel */}
+        {/* Quatrième ligne - Statut temps réel (pleine largeur) */}
         <div className="chart-row">
           <RealTimeStatus 
             users={users}

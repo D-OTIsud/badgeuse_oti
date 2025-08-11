@@ -2,21 +2,21 @@ import React from 'react';
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface LineChartProps {
-  data: Array<{ name: string; value: number }>;
+  data: Array<{ name: string; [key: string]: any }>;
   title: string;
   xAxisLabel?: string;
   yAxisLabel?: string;
+  dataKey: string;
   color?: string;
-  strokeWidth?: number;
 }
 
 const LineChart: React.FC<LineChartProps> = ({ 
   data, 
   title, 
-  xAxisLabel = "Période", 
+  xAxisLabel = "Catégorie", 
   yAxisLabel = "Minutes", 
-  color = "#8884d8",
-  strokeWidth = 2
+  dataKey,
+  color = "#8884d8"
 }) => {
   // Formater les minutes en heures:minutes
   const formatMinutes = (minutes: number) => {
@@ -24,6 +24,25 @@ const LineChart: React.FC<LineChartProps> = ({
     const mins = minutes % 60;
     return `${hours}h${mins.toString().padStart(2, '0')}`;
   };
+
+  // Vérifier si les données sont valides
+  if (!data || data.length === 0) {
+    return (
+      <div className="chart-container">
+        <h3 className="chart-title">{title}</h3>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '300px',
+          color: '#7f8c8d',
+          fontStyle: 'italic'
+        }}>
+          Aucune donnée disponible
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-container">
@@ -34,6 +53,7 @@ const LineChart: React.FC<LineChartProps> = ({
           <XAxis 
             dataKey="name" 
             label={{ value: xAxisLabel, position: 'bottom', offset: -10 }}
+            height={80}
           />
           <YAxis 
             label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }}
@@ -45,9 +65,9 @@ const LineChart: React.FC<LineChartProps> = ({
           />
           <Line 
             type="monotone" 
-            dataKey="value" 
+            dataKey={dataKey} 
             stroke={color} 
-            strokeWidth={strokeWidth}
+            strokeWidth={3}
             dot={{ fill: color, strokeWidth: 2, r: 4 }}
             activeDot={{ r: 6, stroke: color, strokeWidth: 2 }}
           />

@@ -7,86 +7,106 @@ import {
 } from './index';
 
 interface YearScreenProps {
-  kpiData: any; // Type à définir selon la structure des données
+  kpiData: any;
   users: Array<{
     id: string;
     nom: string;
     prenom: string;
+    statut: string;
+    lieu?: string;
+    service?: string;
     travail_net_minutes: number;
     retard_minutes: number;
+    travail_total_minutes: number;
   }>;
   year: number;
-  supabaseAPI: any; // Type à définir
+  supabaseAPI: any;
 }
 
-const YearScreen: React.FC<YearScreenProps> = ({ kpiData, users, year, supabaseAPI }) => {
-  const [monthlyData, setMonthlyData] = useState<Array<{ name: string; travail_net: number; retard: number }>>([]);
+const YearScreen: React.FC<YearScreenProps> = ({ 
+  kpiData, 
+  users, 
+  year, 
+  supabaseAPI 
+}) => {
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Générer les données mensuelles pour l'année
+  // Récupérer les données mensuelles pour l'année
   useEffect(() => {
     const fetchMonthlyData = async () => {
       setLoading(true);
-      const yearData = [];
-      
-      // Générer les données pour chaque mois de l'année
-      for (let month = 1; month <= 12; month++) {
-        try {
-          // Calculer le début et la fin du mois
+      try {
+        const monthlyKPIs = [];
+        const monthNames = [
+          'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
+          'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
+        ];
+        
+        for (let month = 1; month <= 12; month++) {
           const monthStart = new Date(year, month - 1, 1);
-          const monthEnd = new Date(year, month, 1); // Premier jour du mois suivant
+          const monthEnd = new Date(year, month, 1);
           
-          // Appel à appbadge_kpi_global_between pour chaque mois
-          const response = await supabaseAPI.getKPIGlobalBetween(
-            monthStart.toISOString().split('T')[0],
-            monthEnd.toISOString().split('T')[0]
-          );
-          
-          const monthData = response.data?.[0]?.global || {};
-          const monthName = monthStart.toLocaleDateString('fr-FR', { month: 'short' });
-          
-          yearData.push({
-            name: monthName,
-            travail_net: monthData.travail_net_minutes || 0,
-            retard: monthData.retard_minutes || 0
-          });
-        } catch (error) {
-          console.error(`Erreur lors de la récupération des données pour le mois ${month}:`, error);
-          const monthStart = new Date(year, month - 1, 1);
-          yearData.push({
-            name: monthStart.toLocaleDateString('fr-FR', { month: 'short' }),
-            travail_net: 0,
-            retard: 0
-          });
+          try {
+            const response = await supabaseAPI.getKPIGlobalBetween(
+              monthStart.toISOString().split('T')[0],
+              monthEnd.toISOString().split('T')[0]
+            );
+            
+            if (response && response.data && response.data.length > 0) {
+              const monthData = response.data[0];
+              monthlyKPIs.push({
+                month: month,
+                name: monthNames[month - 1],
+                travail_net_minutes: monthData.global?.travail_net_minutes || 0,
+                retard_minutes: monthData.global?.retard_minutes || 0
+              });
+            } else {
+              monthlyKPIs.push({
+                month: month,
+                name: monthNames[month - 1],
+                travail_net_minutes: 0,
+                retard_minutes: 0
+              });
+            }
+          } catch (error) {
+            console.error(`Erreur lors de la récupération des KPIs pour ${monthStart.toISOString().split('T')[0]}:`, error);
+            monthlyKPIs.push({
+              month: month,
+              name: monthNames[month - 1],
+              travail_net_minutes: 0,
+              retard_minutes: 0
+            });
+          }
         }
+        
+        setMonthlyData(monthlyKPIs);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des données mensuelles:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setMonthlyData(yearData);
-      setLoading(false);
     };
 
     fetchMonthlyData();
   }, [year, supabaseAPI]);
 
-  // Préparer les données pour les graphiques par service
+  // Préparer les données pour les graphiques
   const serviceData = kpiData?.meta?.subtotals?.by_service?.map((item: any) => ({
     name: item.service || 'Non défini',
     value: item.travail_net_minutes || 0
   })) || [];
 
-  // Préparer les données pour les graphiques par lieu
   const lieuData = kpiData?.meta?.subtotals?.by_lieux?.map((item: any) => ({
     name: item.lieu || 'Non défini',
     value: item.travail_net_minutes || 0
   })) || [];
 
-  // Préparer les données pour les graphiques par rôle
   const roleData = kpiData?.meta?.subtotals?.by_role?.map((item: any) => ({
     name: item.role || 'Non défini',
     value: item.travail_net_minutes || 0
   })) || [];
 
-  // Préparer les données pour le top des retards
   const topRetardsData = users
     .filter(user => user.retard_minutes > 0)
     .map(user => ({
@@ -98,8 +118,8 @@ const YearScreen: React.FC<YearScreenProps> = ({ kpiData, users, year, supabaseA
 
   if (loading) {
     return (
-      <div className="year-screen">
-        <div className="loading">Chargement des données de l'année...</div>
+      <div className="loading">
+        <p>Chargement des données de l'année...</p>
       </div>
     );
   }
@@ -107,25 +127,27 @@ const YearScreen: React.FC<YearScreenProps> = ({ kpiData, users, year, supabaseA
   return (
     <div className="year-screen">
       <div className="charts-grid">
-        {/* Première ligne - Tendances mensuelles */}
+        {/* Première ligne - Tendances de l'année */}
         <div className="chart-row">
           <LineChart 
-            data={monthlyData.map(month => ({ name: month.name, value: month.travail_net }))}
-            title="Travail net par mois (12 points)"
+            data={monthlyData}
+            title="Travail net par mois (année)"
             xAxisLabel="Mois"
             yAxisLabel="Minutes"
+            dataKey="travail_net_minutes"
             color="#4CAF50"
           />
           <LineChart 
-            data={monthlyData.map(month => ({ name: month.name, value: month.retard }))}
-            title="Retard par mois (12 points)"
+            data={monthlyData}
+            title="Retard par mois (année)"
             xAxisLabel="Mois"
             yAxisLabel="Minutes"
+            dataKey="retard_minutes"
             color="#FF9800"
           />
         </div>
 
-        {/* Deuxième ligne - Répartition par service et lieu */}
+        {/* Deuxième ligne - Services et Lieux */}
         <div className="chart-row">
           <BarChart 
             data={serviceData}
@@ -141,7 +163,7 @@ const YearScreen: React.FC<YearScreenProps> = ({ kpiData, users, year, supabaseA
           />
         </div>
 
-        {/* Troisième ligne - Répartition par rôle et top retards */}
+        {/* Troisième ligne - Rôles et Top retards */}
         <div className="chart-row">
           <BarChart 
             data={roleData}
@@ -151,7 +173,7 @@ const YearScreen: React.FC<YearScreenProps> = ({ kpiData, users, year, supabaseA
           />
           <HorizontalBarChart 
             data={topRetardsData}
-            title="Top N retards année"
+            title="Top retards de l'année"
             xAxisLabel="Minutes"
             yAxisLabel="Utilisateur"
             color="#ff6b6b"
@@ -159,18 +181,17 @@ const YearScreen: React.FC<YearScreenProps> = ({ kpiData, users, year, supabaseA
           />
         </div>
 
-        {/* Quatrième ligne - Donut des services et comparaison YTD */}
+        {/* Quatrième ligne - Donut et Comparatif YTD */}
         <div className="chart-row">
           <DonutChart 
             data={serviceData}
-            title="Part des services sur l'année"
+            title="Part des services dans le travail net (année)"
           />
           <div className="comparison-section">
             <h3>Comparatif YTD vs N-1</h3>
-            <p>Fonctionnalité à implémenter : comparaison avec l'année précédente</p>
             <div className="comparison-placeholder">
-              <p>📊 Comparaison des performances entre {year} et {year - 1}</p>
-              <p>🔄 Calcul des deltas en cours de développement</p>
+              <p>Fonctionnalité à implémenter</p>
+              <p>Comparaison avec l'année précédente</p>
             </div>
           </div>
         </div>
