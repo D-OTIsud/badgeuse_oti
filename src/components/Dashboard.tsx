@@ -67,6 +67,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [availableWeeks, setAvailableWeeks] = useState<{value: number, label: string}[]>([]);
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
 
+  // Cache des avatars pour éviter de les recharger
+  const [avatarCache, setAvatarCache] = useState<{[key: string]: string}>({});
+
   // Couleurs du thème OTI du SUD
   const colors = {
     primary: '#3ba27c',
@@ -207,31 +210,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       
       console.log(`KPIs récupérés pour la période ${period}:`, kpiData);
       
-      // Traiter la structure des données retournées par les fonctions SQL
-      if (kpiData && Array.isArray(kpiData) && kpiData.length > 0) {
-        const firstResult = kpiData[0]; // Prendre le premier résultat
-        const kpiBundle = {
-          global: firstResult.global || null,
-          utilisateurs: firstResult.users || [],
-          metadata: firstResult.meta || null
-        };
+      // Traitement des données KPI
+      if (kpiData && kpiData.length > 0) {
+        const kpiStructure = kpiData[0];
+        console.log('Structure KPI traitée:', kpiStructure);
         
-        console.log('Structure KPI traitée:', kpiBundle);
-        
-        setData(prev => ({
-          ...prev,
-          kpiBundle: kpiBundle
-        }));
-      } else {
-        console.log('Aucune donnée KPI trouvée ou structure invalide');
-        setData(prev => ({
-          ...prev,
+        // Mettre à jour les données du dashboard
+        setData(prevData => ({
+          ...prevData,
           kpiBundle: {
-            global: null,
-            utilisateurs: [],
-            metadata: null
+            global: kpiStructure.global || {},
+            utilisateurs: kpiStructure.users || kpiStructure.utilisateurs || [],
+            metadata: kpiStructure.meta || kpiStructure.metadata || {}
           }
         }));
+        
+        // Charger les avatars des utilisateurs
+        if (kpiStructure.users || kpiStructure.utilisateurs) {
+          loadUserAvatars(kpiStructure.users || kpiStructure.utilisateurs);
+        }
       }
       
     } catch (error) {
@@ -1008,6 +1005,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       </div>
     );
   }
+
+  // Fonction pour charger et mettre en cache les avatars
+  const loadUserAvatars = useCallback(async (users: any[]) => {
+    const newAvatars: {[key: string]: string} = {};
+    
+    for (const user of users) {
+      const userId = user.utilisateur_id || user.id;
+      if (userId && !avatarCache[userId]) {
+        try {
+          // Essayer de récupérer l'avatar depuis la table utilisateurs
+          const { data: userData } = await supabase
+            .from('appbadge_utilisateurs')
+            .select('avatar')
+            .eq('id', userId)
+            .single();
+          
+          if (userData?.avatar) {
+            newAvatars[userId] = userData.avatar;
+          }
+        } catch (error) {
+          console.log(`Pas d'avatar pour l'utilisateur ${userId}`);
+        }
+      }
+    }
+    
+    if (Object.keys(newAvatars).length > 0) {
+      setAvatarCache(prev => ({ ...prev, ...newAvatars }));
+    }
+  }, [avatarCache, supabase]);
 
   return (
     <div style={{ 
@@ -1990,32 +2016,41 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                          }}>
                       
                       {/* Avatar */}
-                      {userKPI.avatar ? (
-                        <img src={userKPI.avatar} alt="avatar" style={{ 
-                          width: 36, 
-                          height: 36, 
-                          borderRadius: '50%', 
-                          objectFit: 'cover', 
-                          border: '1px solid #e0e0e0',
-                          flexShrink: 0
-                        }} />
-                      ) : (
-                        <div style={{ 
-                          width: 36, 
-                          height: 36, 
-                          borderRadius: '50%', 
-                          background: '#f4f6fa', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          fontSize: 16, 
-                          color: '#bbb', 
-                          border: '1px solid #e0e0e0',
-                          flexShrink: 0
-                        }}>
-                          👤
-                        </div>
-                      )}
+                      {(() => {
+                        const userId = userKPI.utilisateur_id || userKPI.id;
+                        const cachedAvatar = userId ? avatarCache[userId] : null;
+                        
+                        if (cachedAvatar) {
+                          return (
+                            <img src={cachedAvatar} alt="avatar" style={{ 
+                              width: 36, 
+                              height: 36, 
+                              borderRadius: '50%', 
+                              objectFit: 'cover', 
+                              border: '1px solid #e0e0e0',
+                              flexShrink: 0
+                            }} />
+                          );
+                        } else {
+                          return (
+                            <div style={{ 
+                              width: 36, 
+                              height: 36, 
+                              borderRadius: '50%', 
+                              background: '#f4f6fa', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              fontSize: 16, 
+                              color: '#bbb', 
+                              border: '1px solid #e0e0e0',
+                              flexShrink: 0
+                            }}>
+                              👤
+                            </div>
+                          );
+                        }
+                      })()}
                       
                       {/* Informations utilisateur */}
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2122,22 +2157,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           justifyContent: 'center',
           zIndex: 1000,
           padding: '20px'
-        }}
-        onClick={() => setShowKPIDetailsPopup(false)}>
-          
+        }} onClick={() => setShowKPIDetailsPopup(false)}>
           <div style={{
             background: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '600px',
+            borderRadius: '8px',
+            padding: '20px',
+            maxWidth: '500px',
             width: '100%',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            position: 'relative'
-          }}
-          onClick={(e) => e.stopPropagation()}>
-            
+            maxHeight: '80vh',
+            overflow: 'hidden',
+            position: 'relative',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+          }} onClick={(e) => e.stopPropagation()}>
             {/* Bouton fermer */}
             <button 
               onClick={() => setShowKPIDetailsPopup(false)}
@@ -2170,56 +2201,65 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             {/* En-tête du popup */}
             <div style={{
               textAlign: 'center',
-              marginBottom: '24px',
-              paddingBottom: '20px',
+              marginBottom: '16px',
+              paddingBottom: '12px',
               borderBottom: '1px solid #e0e0e0'
             }}>
-              {selectedUserForKPIDetails.avatar ? (
-                <img src={selectedUserForKPIDetails.avatar} alt="avatar" style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2px solid #1976d2',
-                  margin: '0 auto 16px auto',
-                  boxShadow: '0 4px 16px rgba(25,118,210,0.2)'
-                }} />
-              ) : (
-                <div style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '50%',
-                  background: '#f4f6fa',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                  color: '#bbb',
-                  border: '2px solid #1976d2',
-                  margin: '0 auto 16px auto',
-                  boxShadow: '0 4px 16px rgba(25,118,210,0.2)'
-                }}>
-                  👤
-                </div>
-              )}
+              {(() => {
+                const userId = selectedUserForKPIDetails.utilisateur_id || selectedUserForKPIDetails.id;
+                const cachedAvatar = userId ? avatarCache[userId] : null;
+                
+                if (cachedAvatar) {
+                  return (
+                    <img src={cachedAvatar} alt="avatar" style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid #1976d2',
+                      margin: '0 auto 12px auto',
+                      boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
+                    }} />
+                  );
+                } else {
+                  return (
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: '#f4f6fa',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      color: '#bbb',
+                      border: '2px solid #1976d2',
+                      margin: '0 auto 12px auto',
+                      boxShadow: '0 2px 8px rgba(25,118,210,0.2)'
+                    }}>
+                      👤
+                    </div>
+                  );
+                }
+              })()}
               <h2 style={{
-                margin: '0 0 8px 0',
-                fontSize: '20px',
+                margin: '0 0 6px 0',
+                fontSize: '18px',
                 fontWeight: '600',
                 color: colors.text
               }}>
                 {selectedUserForKPIDetails.prenom || ''} {selectedUserForKPIDetails.nom || ''}
               </h2>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 color: '#7f8c8d',
-                marginBottom: '4px'
+                marginBottom: '2px'
               }}>
                 {selectedUserForKPIDetails.service || 'Service non défini'}
               </div>
               {selectedUserForKPIDetails.lieu && (
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   color: '#95a5a6'
                 }}>
                   📍 {selectedUserForKPIDetails.lieu}
@@ -2227,77 +2267,77 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               )}
             </div>
             
-            {/* KPIs détaillés - Taille réduite */}
+            {/* KPIs détaillés - Taille ultra-compacte */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '16px',
-              marginBottom: '24px'
+              gap: '12px',
+              marginBottom: '16px'
             }}>
               {/* Travail net */}
               <div style={{
                 background: '#e8f5e8',
-                padding: '16px',
-                borderRadius: '8px',
+                padding: '12px',
+                borderRadius: '6px',
                 textAlign: 'center',
                 border: '1px solid #c8e6c9'
               }}>
                 <div style={{
-                  fontSize: '24px',
+                  fontSize: '20px',
                   fontWeight: 'bold',
                   color: '#2e7d32',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}>
                   {Math.floor((selectedUserForKPIDetails.travail_net_minutes || 0) / 60)}h{((selectedUserForKPIDetails.travail_net_minutes || 0) % 60).toString().padStart(2, '0')}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: '#388e3c',
                   fontWeight: '500'
                 }}>
                   Travail net
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '10px',
                   color: '#4caf50',
-                  marginTop: '6px'
+                  marginTop: '4px'
                 }}>
-                  {selectedUserForKPIDetails.travail_net_minutes || 0} minutes
+                  {selectedUserForKPIDetails.travail_net_minutes || 0} min
                 </div>
               </div>
               
               {/* Retard */}
               <div style={{
                 background: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#ffebee' : '#f1f8e9',
-                padding: '16px',
-                borderRadius: '8px',
+                padding: '12px',
+                borderRadius: '6px',
                 textAlign: 'center',
                 border: `1px solid ${(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#ffcdd2' : '#c8e6c9'}`
               }}>
                 <div style={{
-                  fontSize: '24px',
+                  fontSize: '20px',
                   fontWeight: 'bold',
                   color: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#c62828' : '#2e7d32',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}>
                   {(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? 
                     `+${Math.floor((selectedUserForKPIDetails.retard_minutes || 0) / 60)}h${((selectedUserForKPIDetails.retard_minutes || 0) % 60).toString().padStart(2, '0')}` : 
                     'À l\'heure'}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#d32f2f' : '#388e3c',
                   fontWeight: '500'
                 }}>
                   {(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? 'Retard' : 'Ponctuel'}
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '10px',
                   color: (selectedUserForKPIDetails.retard_minutes || 0) > 0 ? '#f44336' : '#4caf50',
-                  marginTop: '6px'
+                  marginTop: '4px'
                 }}>
                   {(selectedUserForKPIDetails.retard_minutes || 0) > 0 ? 
-                    `${selectedUserForKPIDetails.retard_minutes || 0} minutes` : 
+                    `${selectedUserForKPIDetails.retard_minutes || 0} min` : 
                     'Aucun retard'}
                 </div>
               </div>
@@ -2305,67 +2345,67 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               {/* Pause */}
               <div style={{
                 background: '#fff3e0',
-                padding: '16px',
-                borderRadius: '8px',
+                padding: '12px',
+                borderRadius: '6px',
                 textAlign: 'center',
                 border: '1px solid #ffe0b2'
               }}>
                 <div style={{
-                  fontSize: '24px',
+                  fontSize: '20px',
                   fontWeight: 'bold',
                   color: '#ef6c00',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}>
                   {Math.floor((selectedUserForKPIDetails.pause_total_minutes || 0) / 60)}h{((selectedUserForKPIDetails.pause_total_minutes || 0) % 60).toString().padStart(2, '0')}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: '#f57c00',
                   fontWeight: '500'
                 }}>
                   Pause totale
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '10px',
                   color: '#ff9800',
-                  marginTop: '6px'
+                  marginTop: '4px'
                 }}>
-                  {selectedUserForKPIDetails.pause_total_minutes || 0} minutes
+                  {selectedUserForKPIDetails.pause_total_minutes || 0} min
                 </div>
               </div>
               
               {/* Départ anticipé */}
               <div style={{
                 background: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#ffebee' : '#f1f8e9',
-                padding: '16px',
-                borderRadius: '8px',
+                padding: '12px',
+                borderRadius: '6px',
                 textAlign: 'center',
                 border: `1px solid ${(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#ffcdd2' : '#c8e6c9'}`
               }}>
                 <div style={{
-                  fontSize: '24px',
+                  fontSize: '20px',
                   fontWeight: 'bold',
                   color: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#c62828' : '#2e7d32',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}>
                   {(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? 
                     `-${Math.floor((selectedUserForKPIDetails.depart_anticipe_minutes || 0) / 60)}h${((selectedUserForKPIDetails.depart_anticipe_minutes || 0) % 60).toString().padStart(2, '0')}` : 
                     'Normal'}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#d32f2f' : '#388e3c',
                   fontWeight: '500'
                 }}>
                   {(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? 'Départ anticipé' : 'Départ normal'}
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '10px',
                   color: (selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? '#f44336' : '#4caf50',
-                  marginTop: '6px'
+                  marginTop: '4px'
                 }}>
                   {(selectedUserForKPIDetails.depart_anticipe_minutes || 0) > 0 ? 
-                    `${selectedUserForKPIDetails.depart_anticipe_minutes || 0} minutes` : 
+                    `${selectedUserForKPIDetails.depart_anticipe_minutes || 0} min` : 
                     'Aucun départ anticipé'}
                 </div>
               </div>
@@ -2374,13 +2414,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             {/* Score de performance détaillé */}
             <div style={{
               background: '#f8f9fa',
-              padding: '20px',
-              borderRadius: '8px',
+              padding: '16px',
+              borderRadius: '6px',
               textAlign: 'center'
             }}>
               <h3 style={{
-                margin: '0 0 16px 0',
-                fontSize: '16px',
+                margin: '0 0 12px 0',
+                fontSize: '14px',
                 color: colors.text
               }}>
                 Score de Performance Global
@@ -2409,23 +2449,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                 return (
                   <>
                     <div style={{
-                      fontSize: '36px',
-                      marginBottom: '12px'
+                      fontSize: '28px',
+                      marginBottom: '8px'
                     }}>
                       {getScoreIcon(scorePerformance)}
                     </div>
                     <div style={{
-                      fontSize: '28px',
+                      fontSize: '22px',
                       fontWeight: 'bold',
                       color: getScoreColor(scorePerformance),
-                      marginBottom: '12px'
+                      marginBottom: '8px'
                     }}>
                       {scorePerformance}%
                     </div>
                     <div style={{
-                      fontSize: '14px',
+                      fontSize: '12px',
                       color: '#7f8c8d',
-                      marginBottom: '20px'
+                      marginBottom: '12px'
                     }}>
                       {scorePerformance >= 80 ? 'Excellente performance' : 
                        scorePerformance >= 60 ? 'Performance correcte' : 
@@ -2435,29 +2475,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     {/* Barre de progression */}
                     <div style={{
                       width: '100%',
-                      height: '10px',
+                      height: '8px',
                       background: '#e0e0e0',
-                      borderRadius: '5px',
+                      borderRadius: '4px',
                       overflow: 'hidden',
-                      marginBottom: '16px'
+                      marginBottom: '12px'
                     }}>
                       <div style={{
                         width: `${scorePerformance}%`,
                         height: '100%',
                         background: getScoreColor(scorePerformance),
-                        borderRadius: '5px',
+                        borderRadius: '4px',
                         transition: 'width 0.5s ease'
                       }} />
                     </div>
                     
                     {/* Détail du calcul */}
                     <div style={{
-                      fontSize: '12px',
+                      fontSize: '10px',
                       color: '#7f8c8d',
-                      lineHeight: '1.4'
+                      lineHeight: '1.3'
                     }}>
                       <div>Calcul : (Travail net - Retards - Départs anticipés) / Travail net × 100</div>
-                      <div style={{ marginTop: '6px' }}>
+                      <div style={{ marginTop: '4px' }}>
                         = ({travailNet} - {retard} - {departAnticipe}) / {travailNet} × 100 = {scorePerformance}%
                       </div>
                     </div>
