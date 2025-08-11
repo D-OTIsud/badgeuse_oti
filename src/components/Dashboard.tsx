@@ -44,7 +44,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiError, setKpiError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois' | 'annee'>('jour');
+  const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois' | 'annee' | 'année'>('jour');
   const [selectedWeek, setSelectedWeek] = useState<number>(0); // 0 = semaine actuelle, -1 = semaine précédente, etc.
   const [selectedMonth, setSelectedMonth] = useState<number>(0); // 0 = mois actuel, -1 = mois précédent, etc.
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -158,6 +158,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         console.log(`Cas année - selectedYear: ${selectedYear}, startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
         break;
         
+      case 'année':
+        // Pour l'année, utiliser l'année sélectionnée (avec accent)
+        startDate = new Date(selectedYear, 0, 1); // 1er janvier
+        endDate = new Date(selectedYear + 1, 0, 1); // 1er janvier de l'année suivante
+        console.log(`Cas année (avec accent) - selectedYear: ${selectedYear}, startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
+        break;
+        
       default:
         startDate = new Date();
         endDate = new Date();
@@ -206,6 +213,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           break;
         case 'annee':
           // Utiliser appbadge_kpi_bundle_between avec les dates de début et fin d'année
+          // startDate = 1er janvier, endDate = 1er janvier de l'année suivante
+          kpiData = await supabaseAPI.getKPIBundleBetween(
+            startDate.toISOString().split('T')[0], 
+            endDate.toISOString().split('T')[0]
+          );
+          break;
+        case 'année':
+          // Utiliser appbadge_kpi_bundle_between avec les dates de début et fin d'année (avec accent)
           // startDate = 1er janvier, endDate = 1er janvier de l'année suivante
           kpiData = await supabaseAPI.getKPIBundleBetween(
             startDate.toISOString().split('T')[0], 
