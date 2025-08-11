@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { supabaseAPI } from '../../supabase.config';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface DashboardData {
@@ -139,46 +140,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       setKpiError(null); // Clear previous errors
       const { startDate, endDate } = getDateRangeForPeriod();
       
-      let functionName: string;
-      let params: any[] = [];
+      let kpiData: any;
       
       // Déterminer quelle fonction SQL utiliser selon la période
       switch (period) {
         case 'jour':
-          functionName = 'appbadge_kpi_bundle';
-          params = [startDate.toISOString().split('T')[0]];
+          // Utiliser la nouvelle API pour une date spécifique
+          kpiData = await supabaseAPI.getKPIBundleBetween(
+            startDate.toISOString().split('T')[0], 
+            startDate.toISOString().split('T')[0]
+          );
           break;
         case 'semaine':
-          functionName = 'appbadge_kpi_bundle_iso_week';
           const weekNumber = getISOWeekNumber(startDate);
-          params = [selectedYear, weekNumber];
+          kpiData = await supabaseAPI.getKPIBundleISOWeek(selectedYear, weekNumber);
           break;
         case 'mois':
-          functionName = 'appbadge_kpi_bundle_month';
-          params = [selectedYear, startDate.getMonth() + 1];
+          kpiData = await supabaseAPI.getKPIBundleMonth(selectedYear, startDate.getMonth() + 1);
           break;
         case 'annee':
-          functionName = 'appbadge_kpi_bundle_year';
-          params = [selectedYear];
+          kpiData = await supabaseAPI.getKPIBundleYear(selectedYear);
           break;
         default:
-          functionName = 'appbadge_kpi_bundle';
-          params = [startDate.toISOString().split('T')[0]];
+          kpiData = await supabaseAPI.getKPIBundleBetween(
+            startDate.toISOString().split('T')[0], 
+            startDate.toISOString().split('T')[0]
+          );
       }
       
-      console.log(`Appel de la fonction SQL: ${functionName} avec paramètres:`, params);
-      console.log(`Période: ${period}, Date de début: ${startDate.toISOString()}, Date de fin: ${endDate.toISOString()}`);
-      
-      // Appeler la fonction SQL via Supabase
-      const { data: kpiData, error } = await supabase.rpc(functionName, ...params);
-      
-      if (error) {
-        console.error(`Erreur lors de l'appel de ${functionName}:`, error);
-        setKpiError(`Erreur lors de la récupération des KPIs: ${error.message}`);
-        return;
-      }
-      
-      console.log(`Données KPIs de ${functionName}:`, kpiData);
+      console.log(`KPIs récupérés pour la période ${period}:`, kpiData);
       
       // Mettre à jour les données avec le bundle KPI
       setData(prev => ({
@@ -209,17 +199,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     try {
       console.log('Test de disponibilité des fonctions SQL...');
       
-      // Tester la fonction de base
-      const { data: testData, error: testError } = await supabase.rpc('appbadge_kpi_bundle', '2024-01-01');
+      // Tester avec la nouvelle API
+      const testData = await supabaseAPI.getKPIBundleBetween('2024-01-01', '2024-01-01');
       
-      if (testError) {
-        console.error('Fonction SQL non disponible:', testError);
-        setKpiError('Les fonctions SQL ne sont pas encore disponibles dans la base de données.');
+      if (testData && testData.length > 0) {
+        console.log('Fonction SQL disponible:', testData);
+        setKpiError(null); // Clear any previous errors
+        return true;
+      } else {
+        console.error('Fonction SQL retourne des données vides');
+        setKpiError('Les fonctions SQL retournent des données vides.');
         return false;
       }
-      
-      console.log('Fonction SQL disponible:', testData);
-      return true;
       
     } catch (error) {
       console.error('Erreur lors du test des fonctions SQL:', error);
@@ -846,9 +837,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       return acc;
     }, {} as Record<string, number>);
 
-  const totalUsers = Object.values(occupationData).reduce((sum, val) => sum + val, 0);
+  let totalUsers = 0;
+  for (const count of Object.values(occupationData)) {
+    totalUsers += count as number;
+  }
+  
   const occupationChartData = Object.entries(occupationData).map(([lieu, count]) => {
-    const percentage = totalUsers > 0 ? Math.round((count / totalUsers) * 100) : 0;
+    const percentage = totalUsers > 0 ? Math.round((count as number) / totalUsers * 100) : 0;
     return {
       name: `${lieu} (${count} - ${percentage}%)`,
       value: count,
