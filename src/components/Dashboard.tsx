@@ -43,6 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [availableServices, setAvailableServices] = useState<string[]>([]);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [lieuxColors, setLieuxColors] = useState<Record<string, string>>({});
 
   // Couleurs du thème OTI du SUD
   const colors = {
@@ -63,6 +64,54 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       case 'En pause': return 2;
       case 'Sorti': return 3;
       default: return 4; // Non badgé ou autres
+    }
+  };
+
+  // Récupérer les couleurs des lieux depuis la table appbadge_horaires_standards
+  const fetchLieuxColors = async () => {
+    try {
+      const { data: lieuxData, error } = await supabase
+        .from('appbadge_horaires_standards')
+        .select('lieux, color');
+
+      if (error) {
+        console.error('Erreur lors de la récupération des couleurs des lieux:', error);
+        return;
+      }
+
+      const colorsMap: Record<string, string> = {};
+      lieuxData?.forEach(item => {
+        colorsMap[item.lieux] = item.color || '#F0F0F2'; // Couleur par défaut si null
+      });
+
+      setLieuxColors(colorsMap);
+      console.log('Couleurs des lieux récupérées:', colorsMap);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des couleurs des lieux:', error);
+    }
+  };
+
+  // Récupérer les couleurs des lieux depuis la table appbadge_horaires_standards
+  const fetchLieuxColors = async () => {
+    try {
+      const { data: lieuxData, error } = await supabase
+        .from('appbadge_horaires_standards')
+        .select('lieux, color');
+
+      if (error) {
+        console.error('Erreur lors de la récupération des couleurs des lieux:', error);
+        return;
+      }
+
+      const colorsMap: Record<string, string> = {};
+      lieuxData?.forEach(item => {
+        colorsMap[item.lieux] = item.color || '#F0F0F2'; // Couleur par défaut si null
+      });
+
+      setLieuxColors(colorsMap);
+      console.log('Couleurs des lieux récupérées:', colorsMap);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des couleurs des lieux:', error);
     }
   };
 
@@ -254,6 +303,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   // Initialisation et mise à jour périodique (1 minute au lieu de 5)
   useEffect(() => {
     fetchData();
+    fetchLieuxColors(); // Récupérer les couleurs des lieux
     const interval = setInterval(fetchData, 60000); // 1 minute
     return () => clearInterval(interval);
   }, [period, updateUserStatusFromBadgeages]);
@@ -432,10 +482,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       return acc;
     }, {} as Record<string, number>);
 
-  const occupationChartData = Object.entries(occupationData).map(([lieu, count]) => ({
-    name: lieu,
-    value: count
-  }));
+  const totalUsers = Object.values(occupationData).reduce((sum, val) => sum + val, 0);
+  const occupationChartData = Object.entries(occupationData).map(([lieu, count]) => {
+    const percentage = totalUsers > 0 ? Math.round((count / totalUsers) * 100) : 0;
+    return {
+      name: `${lieu} (${count} - ${percentage}%)`,
+      value: count,
+      percentage: percentage,
+      color: lieuxColors[lieu] || '#F0F0F2' // Utiliser la couleur personnalisée ou la couleur par défaut
+    };
+  });
 
   const arrivalData = filteredDashboardData.reduce((acc, item) => {
     const retard = item.retard_minutes || 0;
@@ -1002,35 +1058,45 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           </ResponsiveContainer>
         </div>
 
-        {/* Occupation par lieu */}
-        <div style={{
-          background: 'white',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-            Occupation par lieu
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={occupationChartData}
-                cx="50%"
-                cy="50%"
-                outerRadius={60}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {occupationChartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={index === 0 ? colors.primary : colors.avatarRing} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+                 {/* Occupation par lieu */}
+         <div style={{
+           background: 'white',
+           borderRadius: 12,
+           padding: 24,
+           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+         }}>
+           <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
+             Occupation par lieu
+           </h3>
+           <ResponsiveContainer width="100%" height={200}>
+             <PieChart>
+               <Pie
+                 data={occupationChartData}
+                 cx="50%"
+                 cy="50%"
+                 outerRadius={60}
+                 fill="#8884d8"
+                 dataKey="value"
+               >
+                 {occupationChartData.map((entry, index) => (
+                   <Cell key={`cell-${index}`} fill={entry.color} />
+                 ))}
+               </Pie>
+               <Tooltip 
+                 formatter={(value: any, name: any, props: any) => [
+                   `${value} utilisateurs (${props.payload.percentage}%)`,
+                   props.payload.name.split(' (')[0]
+                 ]}
+               />
+               <Legend 
+                 formatter={(value: any, entry: any) => {
+                   const data = entry.payload;
+                   return `${data.name.split(' (')[0]} - ${data.value} (${data.percentage}%)`;
+                 }}
+               />
+             </PieChart>
+           </ResponsiveContainer>
+         </div>
 
         {/* Arrivées vs horaire */}
         <div style={{
