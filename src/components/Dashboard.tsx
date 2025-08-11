@@ -100,6 +100,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     const currentDate = now.getDate();
     const currentDay = now.getDay(); // 0 = dimanche, 1 = lundi, etc.
     
+    console.log(`getDateRangeForPeriod - period: ${period}, selectedYear: ${selectedYear}, currentYear: ${currentYear}`);
+    
     let startDate: Date;
     let endDate: Date;
     
@@ -153,6 +155,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         // Pour l'année, utiliser l'année sélectionnée
         startDate = new Date(selectedYear, 0, 1); // 1er janvier
         endDate = new Date(selectedYear + 1, 0, 1); // 1er janvier de l'année suivante
+        console.log(`Cas année - selectedYear: ${selectedYear}, startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`);
         break;
         
       default:
@@ -169,6 +172,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     try {
       setKpiLoading(true);
       setKpiError(null);
+      
+      console.log(`fetchKPIData - period: ${period}, selectedYear: ${selectedYear}, selectedMonth: ${selectedMonth}, selectedWeek: ${selectedWeek}`);
+      
       const { startDate, endDate } = getDateRangeForPeriod();
       
       let kpiData: any;
@@ -1156,6 +1162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                    if (!availableYears.includes(selectedYear)) {
                      setSelectedYear(new Date().getFullYear());
                    }
+                   console.log(`Bouton Année cliqué - selectedYear: ${selectedYear}, availableYears:`, availableYears);
                  } else {
                    // Pour jour, semaine, mois - garder les valeurs actuelles
                    // L'utilisateur peut les changer manuellement
