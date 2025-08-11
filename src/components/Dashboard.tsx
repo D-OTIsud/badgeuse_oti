@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -35,12 +35,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<'jour' | 'semaine' | 'mois'>('jour');
   const [selectedService, setSelectedService] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [availableServices, setAvailableServices] = useState<string[]>([]);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Couleurs du thème OTI du SUD
   const colors = {
@@ -91,7 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     });
 
   // Calculer les KPIs en temps réel basé sur les données filtrées
-  const calculateKPIs = () => {
+  const calculateKPIs = useCallback(() => {
     // Utiliser les utilisateurs filtrés pour les KPIs de présence
     const presents = filteredUsers.filter(u => u.status === 'Entré').length || 0;
     const enPause = filteredUsers.filter(u => u.status === 'En pause').length || 0;
@@ -121,13 +123,86 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       pauseMoyenne: Math.round(pauseMoyenne),
       tauxPonctualite: Math.round(tauxPonctualite)
     };
-  };
+  }, [filteredUsers, data.dashboardJour]);
 
   // KPIs calculés en temps réel
   const kpis = calculateKPIs();
 
-  const fetchData = async () => {
+  // Fonction pour mettre à jour le statut des utilisateurs basé sur les derniers badgeages
+  const updateUserStatusFromBadgeages = useCallback(async () => {
     try {
+      // Récupérer les derniers badgeages pour chaque utilisateur avec une requête plus optimisée
+      const { data: latestBadgeages, error } = await supabase
+        .from('appbadge_badgeages')
+        .select('utilisateur_id, type_action, created_at')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Dernières 24h
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erreur lors de la récupération des badgeages:', error);
+        return;
+      }
+
+      // Grouper les badgeages par utilisateur et prendre le plus récent
+      const userLatestBadgeages = new Map();
+      latestBadgeages?.forEach(badgeage => {
+        if (!userLatestBadgeages.has(badgeage.utilisateur_id) || 
+            new Date(badgeage.created_at) > new Date(userLatestBadgeages.get(badgeage.utilisateur_id).created_at)) {
+          userLatestBadgeages.set(badgeage.utilisateur_id, badgeage);
+        }
+      });
+
+      // Mettre à jour le statut des utilisateurs basé sur leurs derniers badgeages
+      setData(prev => {
+        const updatedUsers = prev.statutCourant.map(user => {
+          const latestBadgeage = userLatestBadgeages.get(user.id);
+          if (latestBadgeage) {
+            let newStatus = user.status;
+            
+            // Déterminer le statut basé sur le type d'action
+            switch (latestBadgeage.type_action) {
+              case 'entrée':
+                newStatus = 'Entré';
+                break;
+              case 'sortie':
+                newStatus = 'Sorti';
+                break;
+              case 'pause':
+                newStatus = 'En pause';
+                break;
+              case 'retour':
+                newStatus = 'Entré';
+                break;
+              default:
+                newStatus = user.status;
+            }
+            
+            // Ne mettre à jour que si le statut a changé
+            if (newStatus !== user.status) {
+              console.log(`Mise à jour statut ${user.prenom} ${user.nom}: ${user.status} → ${newStatus}`);
+              return { ...user, status: newStatus };
+            }
+          }
+          return user;
+        });
+
+        return {
+          ...prev,
+          statutCourant: updatedUsers
+        };
+      });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+    }
+  }, []);
+
+  const fetchData = async (forceRefresh = false) => {
+    try {
+      if (forceRefresh) {
+        setRefreshing(true);
+        console.log('Rafraîchissement forcé des données...');
+      }
+      
       // Récupérer les données du dashboard jour (vue appbadge_v_dashboard_jour)
       const { data: dashboardData, error: dashboardError } = await supabase
         .from('appbadge_v_dashboard_jour')
@@ -158,17 +233,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         dashboardJour: dashboardData || [],
         anomalies: anomaliesData || []
       }));
+
+      // Mettre à jour le statut des utilisateurs
+      await updateUserStatusFromBadgeages();
+      
+      setLastUpdate(new Date());
+      
+      if (forceRefresh) {
+        console.log('Rafraîchissement terminé avec succès');
+        setTimeout(() => setRefreshing(false), 1000); // Délai pour montrer l'animation
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
+      if (forceRefresh) {
+        setRefreshing(false);
+      }
     }
   };
 
-  // Initialisation et mise à jour périodique (5 minutes)
+  // Initialisation et mise à jour périodique (1 minute au lieu de 5)
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 300000); // 5 minutes
+    const interval = setInterval(fetchData, 60000); // 1 minute
     return () => clearInterval(interval);
-  }, [period]);
+  }, [period, updateUserStatusFromBadgeages]);
 
   // Temps réel pour les utilisateurs et récupération des services/rôles
   useEffect(() => {
@@ -249,10 +337,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       )
       .subscribe();
 
+    // Abonnement temps réel sur la table badgeages pour mettre à jour les statuts
+    const badgeagesChannel = supabase
+      .channel('badgeages_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'appbadge_badgeages' 
+        }, 
+        async (payload) => {
+          console.log('Changement badgeage détecté:', payload.eventType, payload.new);
+          
+          if (payload.eventType === 'INSERT') {
+            // Mettre à jour immédiatement le statut de l'utilisateur
+            await updateUserStatusFromBadgeages();
+            
+            // Rafraîchir les données du dashboard
+            setTimeout(() => {
+              fetchData();
+            }, 1000);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(badgeagesChannel);
     };
-  }, []);
+  }, [updateUserStatusFromBadgeages]);
 
   // Calculer les options disponibles pour les filtres
   const getAvailableOptions = () => {
@@ -361,6 +475,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       background: colors.background,
       fontFamily: 'Segoe UI, Arial, sans-serif'
     }}>
+      <style>
+        {`
+          @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
       {/* Header */}
       <div style={{
         background: colors.primary,
@@ -526,11 +654,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           padding: 24,
           borderRadius: 12,
           textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
+          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+          position: 'relative'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
+          <div style={{ 
+            position: 'absolute', 
+            top: 8, 
+            right: 8, 
+            width: 8, 
+            height: 8, 
+            borderRadius: '50%', 
+            background: '#4caf50',
+            animation: 'pulse 2s infinite'
+          }} />
         </div>
 
         <div style={{
@@ -539,11 +678,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           padding: 24,
           borderRadius: 12,
           textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
+          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+          position: 'relative'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
+          <div style={{ 
+            position: 'absolute', 
+            top: 8, 
+            right: 8, 
+            width: 8, 
+            height: 8, 
+            borderRadius: '50%', 
+            background: '#ff9800',
+            animation: 'pulse 2s infinite'
+          }} />
         </div>
 
         <div style={{
@@ -552,11 +702,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           padding: 24,
           borderRadius: 12,
           textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
+          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+          position: 'relative'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
+          <div style={{ 
+            position: 'absolute', 
+            top: 8, 
+            right: 8, 
+            width: 8, 
+            height: 8, 
+            borderRadius: '50%', 
+            background: '#ff9800',
+            animation: 'pulse 2s infinite'
+          }} />
         </div>
 
         <div style={{
@@ -565,12 +726,64 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           padding: 24,
           borderRadius: 12,
           textAlign: 'center',
-          boxShadow: '0 4px 12px rgba(59,162,124,0.3)'
+          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+          position: 'relative'
         }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
           <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
+          <div style={{ 
+            position: 'absolute', 
+            top: 8, 
+            right: 8, 
+            width: 8, 
+            height: 8, 
+            borderRadius: '50%', 
+            background: '#4caf50',
+            animation: 'pulse 2s infinite'
+          }} />
         </div>
+      </div>
+
+      {/* Indicateur de dernière mise à jour */}
+      <div style={{
+        textAlign: 'center',
+        padding: '8px 24px',
+        color: colors.textLight,
+        fontSize: 12
+      }}>
+        Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')} | 
+        <button 
+          onClick={() => fetchData(true)}
+          disabled={refreshing}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: refreshing ? colors.textLight : colors.primary,
+            textDecoration: 'underline',
+            cursor: refreshing ? 'not-allowed' : 'pointer',
+            marginLeft: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          {refreshing ? (
+            <>
+              <div style={{ 
+                width: 12, 
+                height: 12, 
+                border: '2px solid #ccc', 
+                borderTop: `2px solid ${colors.primary}`, 
+                borderRadius: '50%', 
+                animation: 'spin 1s linear infinite' 
+              }} />
+              Actualisation...
+            </>
+          ) : (
+            'Actualiser maintenant'
+          )}
+        </button>
       </div>
 
       {/* Contenu principal */}
@@ -587,9 +800,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           padding: 24,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-            Status en direct ({filteredUsers.length} utilisateurs)
-          </h3>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: 16 
+          }}>
+            <h3 style={{ margin: 0, color: colors.text, fontSize: 18, fontWeight: 600 }}>
+              Status en direct ({filteredUsers.length} utilisateurs)
+            </h3>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8,
+              fontSize: 12,
+              color: colors.textLight
+            }}>
+              <div style={{ 
+                width: 8, 
+                height: 8, 
+                borderRadius: '50%', 
+                background: '#4caf50',
+                animation: 'pulse 2s infinite'
+              }} />
+              Temps réel
+            </div>
+          </div>
           <div style={{ 
             display: 'flex',
             flexDirection: 'column',
