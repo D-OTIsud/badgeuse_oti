@@ -56,6 +56,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [lieuxColors, setLieuxColors] = useState<Record<string, string>>({});
+  
+  // New state for dynamic filter options
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [availableMonths, setAvailableMonths] = useState<{value: number, label: string}[]>([]);
+  const [availableWeeks, setAvailableWeeks] = useState<{value: number, label: string}[]>([]);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
 
   // Couleurs du thème OTI du SUD
   const colors = {
@@ -99,22 +105,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         break;
         
       case 'semaine':
-        // Calculer le lundi de la semaine sélectionnée
-        const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Si dimanche, lundi = -6, sinon 1 - currentDay
-        const mondayOfCurrentWeek = new Date(currentYear, currentMonth, currentDate + mondayOffset);
-        const mondayOfSelectedWeek = new Date(mondayOfCurrentWeek);
-        mondayOfSelectedWeek.setDate(mondayOfCurrentWeek.getDate() + (selectedWeek * 7));
-        
-        startDate = new Date(mondayOfSelectedWeek);
-        endDate = new Date(mondayOfSelectedWeek);
-        endDate.setDate(mondayOfSelectedWeek.getDate() + 7);
+        // Calculer le début de la semaine (lundi) pour la semaine ISO sélectionnée
+        if (selectedWeek === 0) {
+          // Semaine actuelle
+          const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Si dimanche, lundi = -6, sinon 1 - currentDay
+          const mondayOfCurrentWeek = new Date(currentYear, currentMonth, currentDate + mondayOffset);
+          startDate = new Date(mondayOfCurrentWeek);
+          endDate = new Date(mondayOfCurrentWeek);
+          endDate.setDate(mondayOfCurrentWeek.getDate() + 7);
+        } else {
+          // Semaine ISO spécifique
+          const targetWeek = selectedWeek;
+          const targetYear = selectedYear;
+          // Calculer le premier jour de l'année
+          const yearStart = new Date(targetYear, 0, 1);
+          // Trouver le premier lundi de l'année
+          const firstMonday = new Date(yearStart);
+          const firstMondayDay = yearStart.getDay();
+          const daysToAdd = firstMondayDay === 0 ? 1 : (8 - firstMondayDay);
+          firstMonday.setDate(yearStart.getDate() + daysToAdd);
+          // Calculer le début de la semaine cible
+          const weekStart = new Date(firstMonday);
+          weekStart.setDate(firstMonday.getDate() + (targetWeek - 1) * 7);
+          startDate = new Date(weekStart);
+          endDate = new Date(weekStart);
+          endDate.setDate(weekStart.getDate() + 7);
+        }
         break;
         
       case 'mois':
-        // Calculer le premier jour du mois sélectionné
-        const firstDayOfSelectedMonth = new Date(currentYear, currentMonth + selectedMonth, 1);
+        // Utiliser le mois spécifique sélectionné
+        const firstDayOfSelectedMonth = new Date(selectedYear, selectedMonth - 1, 1); // selectedMonth est 1-12
         startDate = new Date(firstDayOfSelectedMonth);
-        endDate = new Date(currentYear, currentMonth + selectedMonth + 1, 1);
+        endDate = new Date(selectedYear, selectedMonth, 1); // Mois suivant
         break;
         
       case 'annee':
@@ -151,11 +174,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           );
           break;
         case 'semaine':
-          const weekNumber = getISOWeekNumber(startDate);
-          kpiData = await supabaseAPI.getKPIBundleISOWeek(selectedYear, weekNumber);
+          if (selectedWeek === 0) {
+            // Semaine actuelle
+            const weekNumber = getISOWeekNumber(startDate);
+            kpiData = await supabaseAPI.getKPIBundleISOWeek(selectedYear, weekNumber);
+          } else {
+            // Semaine ISO spécifique
+            kpiData = await supabaseAPI.getKPIBundleISOWeek(selectedYear, selectedWeek);
+          }
           break;
         case 'mois':
-          kpiData = await supabaseAPI.getKPIBundleMonth(selectedYear, startDate.getMonth() + 1);
+          kpiData = await supabaseAPI.getKPIBundleMonth(selectedYear, selectedMonth);
           break;
         case 'annee':
           kpiData = await supabaseAPI.getKPIBundleYear(selectedYear);
@@ -223,6 +252,97 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
     return weekNo;
   };
 
+  // New functions to fetch available filter options
+  const fetchAvailableYears = async () => {
+    try {
+      setFilterOptionsLoading(true);
+      // Fetch years from the last 5 years to current year
+      const currentYear = new Date().getFullYear();
+      const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
+      
+      // Test which years have data by calling the KPI function
+      const yearsWithData: number[] = [];
+      for (const year of years) {
+        try {
+          const result = await supabaseAPI.getKPIBundleYear(year);
+          if (result && result.length > 0 && result[0].global && 
+              (result[0].global.travail_total_minutes > 0 || result[0].global.travail_net_minutes > 0)) {
+            yearsWithData.push(year);
+          }
+        } catch (error) {
+          // Skip years that don't have data or cause errors
+          continue;
+        }
+      }
+      
+      setAvailableYears(yearsWithData.length > 0 ? yearsWithData : [currentYear]);
+      
+      // Set current year as default if available
+      if (yearsWithData.includes(currentYear)) {
+        setSelectedYear(currentYear);
+      } else if (yearsWithData.length > 0) {
+        setSelectedYear(yearsWithData[0]);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des années disponibles:', error);
+      // Fallback to current year
+      const currentYear = new Date().getFullYear();
+      setAvailableYears([currentYear]);
+      setSelectedYear(currentYear);
+    } finally {
+      setFilterOptionsLoading(false);
+    }
+  };
+
+  const fetchAvailableMonths = () => {
+    const months = [
+      { value: 1, label: 'Janvier' },
+      { value: 2, label: 'Février' },
+      { value: 3, label: 'Mars' },
+      { value: 4, label: 'Avril' },
+      { value: 5, label: 'Mai' },
+      { value: 6, label: 'Juin' },
+      { value: 7, label: 'Juillet' },
+      { value: 8, label: 'Août' },
+      { value: 9, label: 'Septembre' },
+      { value: 10, label: 'Octobre' },
+      { value: 11, label: 'Novembre' },
+      { value: 12, label: 'Décembre' }
+    ];
+    setAvailableMonths(months);
+    
+    // Set current month as default
+    const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
+    setSelectedMonth(0); // Reset to current month
+  };
+
+  const fetchAvailableWeeks = () => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentWeek = getISOWeekNumber(currentDate);
+    
+    // Generate weeks for the current year (typically 52-53 weeks)
+    const weeks: {value: number, label: string}[] = [];
+    for (let week = 1; week <= 53; week++) {
+      weeks.push({
+        value: week,
+        label: `Semaine ${week}`
+      });
+    }
+    
+    setAvailableWeeks(weeks);
+    
+    // Set current week as default
+    setSelectedWeek(0); // Reset to current week
+  };
+
+  // Function to refresh all filter options
+  const refreshFilterOptions = async () => {
+    await fetchAvailableYears();
+    fetchAvailableMonths();
+    fetchAvailableWeeks();
+  };
+
   // Fonction pour tester la disponibilité des fonctions SQL
   const testSQLFunctions = async () => {
     try {
@@ -261,15 +381,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         });
         
       case 'semaine':
-        const endDateWeek = new Date(endDate);
-        endDateWeek.setDate(endDate.getDate() - 1);
-        return `Semaine du ${startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${endDateWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        if (selectedWeek === 0) {
+          const endDateWeek = new Date(endDate);
+          endDateWeek.setDate(endDate.getDate() - 1);
+          return `Semaine du ${startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${endDateWeek.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        } else {
+          return `Semaine ${selectedWeek} - ${selectedYear}`;
+        }
         
       case 'mois':
-        return startDate.toLocaleDateString('fr-FR', { 
-          month: 'long', 
-          year: 'numeric' 
-        });
+        if (selectedMonth > 0) {
+          const monthNames = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+          ];
+          return `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+        } else {
+          return startDate.toLocaleDateString('fr-FR', { 
+            month: 'long', 
+            year: 'numeric' 
+          });
+        }
         
       case 'annee':
         return `Année ${selectedYear}`;
@@ -476,6 +608,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
      fetchKPIData(); // Récupérer les KPIs via les fonctions SQL
      testSQLFunctions(); // Tester la disponibilité des fonctions SQL
      fetchLieuxColors(); // Récupérer les couleurs des lieux
+     fetchAvailableYears(); // Récupérer les années disponibles
+     fetchAvailableMonths(); // Récupérer les mois disponibles
+     fetchAvailableWeeks(); // Récupérer les semaines disponibles
      const interval = setInterval(() => {
        fetchData();
        fetchKPIData(); // Rafraîchir aussi les KPIs
@@ -924,14 +1059,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
            {['Jour', 'Semaine', 'Mois', 'Année'].map((p) => (
              <button
                key={p}
-               onClick={() => {
+               onClick={async () => {
                  setPeriod(p.toLowerCase() as any);
                  // Réinitialiser les sous-filtres lors du changement de période
-                 setSelectedWeek(0);
-                 setSelectedMonth(0);
-                 // Réinitialiser l'année si on change de période
-                 if (p.toLowerCase() !== 'annee') {
+                 if (p.toLowerCase() === 'semaine') {
+                   setSelectedWeek(0); // Semaine actuelle
+                 } else if (p.toLowerCase() === 'mois') {
+                   setSelectedMonth(new Date().getMonth() + 1); // Mois actuel (1-12)
+                 } else if (p.toLowerCase() === 'annee') {
+                   // Garder l'année sélectionnée ou utiliser l'année actuelle
+                   if (!availableYears.includes(selectedYear)) {
+                     setSelectedYear(new Date().getFullYear());
+                   }
+                 } else {
+                   // Jour - réinitialiser l'année
                    setSelectedYear(new Date().getFullYear());
+                 }
+                 
+                 // Rafraîchir les options de filtres si nécessaire
+                 if (p.toLowerCase() === 'annee') {
+                   await fetchAvailableYears();
                  }
                }}
                style={{
@@ -956,18 +1103,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                <select
                  value={selectedWeek}
                  onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                 disabled={filterOptionsLoading}
                  style={{
                    padding: '6px 10px',
                    borderRadius: 6,
                    border: '1px solid #ddd',
-                   fontSize: 13
+                   fontSize: 13,
+                   opacity: filterOptionsLoading ? 0.6 : 1
                  }}
                >
-                 <option value={0}>Cette semaine</option>
-                 <option value={-1}>Semaine précédente</option>
-                 <option value={-2}>Il y a 2 semaines</option>
-                 <option value={-3}>Il y a 3 semaines</option>
-                 <option value={-4}>Il y a 4 semaines</option>
+                 {filterOptionsLoading ? (
+                   <option>Chargement...</option>
+                 ) : (
+                   <>
+                     <option value={0}>Cette semaine</option>
+                     {availableWeeks.map(week => (
+                       <option key={week.value} value={week.value}>
+                         {week.label}
+                       </option>
+                     ))}
+                   </>
+                 )}
                </select>
              </div>
            )}
@@ -978,18 +1134,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                <select
                  value={selectedMonth}
                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                 disabled={filterOptionsLoading}
                  style={{
                    padding: '6px 10px',
                    borderRadius: 6,
                    border: '1px solid #ddd',
-                   fontSize: 13
+                   fontSize: 13,
+                   opacity: filterOptionsLoading ? 0.6 : 1
                  }}
                >
-                 <option value={0}>Ce mois</option>
-                 <option value={-1}>Mois précédent</option>
-                 <option value={-2}>Il y a 2 mois</option>
-                 <option value={-3}>Il y a 3 mois</option>
-                 <option value={-6}>Il y a 6 mois</option>
+                 {filterOptionsLoading ? (
+                   <option>Chargement...</option>
+                 ) : (
+                   <>
+                     <option value={0}>Ce mois</option>
+                     {availableMonths.map(month => (
+                       <option key={month.value} value={month.value}>
+                         {month.label}
+                       </option>
+                     ))}
+                   </>
+                 )}
                </select>
              </div>
            )}
@@ -1000,18 +1165,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                <select
                  value={selectedYear}
                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                 disabled={filterOptionsLoading}
                  style={{
                    padding: '6px 10px',
                    borderRadius: 6,
                    border: '1px solid #ddd',
-                   fontSize: 13
+                   fontSize: 13,
+                   opacity: filterOptionsLoading ? 0.6 : 1
                  }}
                >
-                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                   <option key={year} value={year}>
-                     {year === new Date().getFullYear() ? `${year} (actuelle)` : year}
-                   </option>
-                 ))}
+                 {filterOptionsLoading ? (
+                   <option>Chargement...</option>
+                 ) : (
+                   availableYears.map(year => (
+                     <option key={year} value={year}>
+                       {year === new Date().getFullYear() ? `${year} (actuelle)` : year}
+                     </option>
+                   ))
+                 )}
                </select>
              </div>
            )}
@@ -1076,7 +1247,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           
           {/* Bouton discret pour actualiser les KPIs */}
           <button
-            onClick={() => fetchKPIData()}
+            onClick={async () => {
+              await refreshFilterOptions();
+              fetchKPIData();
+            }}
             disabled={kpiLoading}
             style={{
               background: colors.primary,
@@ -1094,7 +1268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
             }}
             title="Actualiser les données KPI depuis la base de données"
           >
-            {kpiLoading ? '🔄' : '📊'} KPIs
+            {kpiLoading ? '🔄' : '🔄'} Actualiser
           </button>
         </div>
       </div>
@@ -1109,20 +1283,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         marginLeft: 'auto',
         marginRight: 'auto'
       }}>
-        {/* Indicateur de chargement des KPIs */}
-        {kpiLoading && (
-          <div style={{
-            background: colors.background,
-            border: `2px solid ${colors.primary}`,
-            padding: 24,
-            borderRadius: 12,
-            textAlign: 'center',
-            gridColumn: '1 / -1'
-          }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>🔄</div>
-            <div style={{ fontSize: 14, color: colors.textLight }}>Chargement des KPIs...</div>
-          </div>
-        )}
+
 
         {/* Affichage des erreurs KPI */}
         {kpiError && (
@@ -1284,24 +1445,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
          )}
        </div>
 
-       {/* Debug info pour les KPIs SQL - Version simplifiée */}
-       {data.kpiBundle && (
-         <div style={{
-           background: '#f8f9fa',
-           border: '1px solid #dee2e6',
-           borderRadius: 8,
-           padding: 12,
-           margin: '0 24px 16px',
-           fontSize: 11,
-           color: colors.textLight,
-           textAlign: 'center'
-         }}>
-           <strong>Données SQL:</strong> 
-           {data.kpiBundle.global ? ' ✅ Global' : ' ❌ Global'} | 
-           {data.kpiBundle.utilisateurs && data.kpiBundle.utilisateurs.length > 0 ? `✅ Utilisateurs (${data.kpiBundle.utilisateurs.length})` : ' ❌ Utilisateurs'} | 
-           {data.kpiBundle.metadata ? ' ✅ Metadata' : ' ❌ Metadata'}
-         </div>
-       )}
+
 
       {/* Indicateur de dernière mise à jour */}
       <div style={{
@@ -1310,41 +1454,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         color: colors.textLight,
         fontSize: 12
       }}>
-        Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')} | 
-        <button 
-          onClick={() => {
-            fetchData(true);
-            fetchKPIData();
-          }}
-          disabled={refreshing || kpiLoading}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: (refreshing || kpiLoading) ? colors.textLight : colors.primary,
-            textDecoration: 'underline',
-            cursor: (refreshing || kpiLoading) ? 'not-allowed' : 'pointer',
-            marginLeft: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4
-          }}
-        >
-          {(refreshing || kpiLoading) ? (
-            <>
-              <div style={{ 
-                width: 12, 
-                height: 12, 
-                border: '2px solid #ccc', 
-                borderTop: `2px solid ${colors.primary}`, 
-                borderRadius: '50%', 
-                animation: 'spin 1s linear infinite' 
-              }} />
-              Actualisation...
-            </>
-          ) : (
-            'Actualiser maintenant'
-          )}
-        </button>
+        Dernière mise à jour : {lastUpdate.toLocaleTimeString('fr-FR')}
       </div>
 
       {/* Contenu principal */}
@@ -1641,6 +1751,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
            </div>
          )}
       </div>
+
+      {/* Footer avec statut des données SQL */}
+      {data.kpiBundle && (
+        <div style={{
+          background: '#f8f9fa',
+          border: '1px solid #dee2e6',
+          borderRadius: 8,
+          padding: 12,
+          margin: '24px',
+          fontSize: 11,
+          color: colors.textLight,
+          textAlign: 'center'
+        }}>
+          <strong>Données SQL:</strong> 
+          {data.kpiBundle.global ? ' ✅ Global' : ' ❌ Global'} | 
+          {data.kpiBundle.utilisateurs && data.kpiBundle.utilisateurs.length > 0 ? `✅ Utilisateurs (${data.kpiBundle.utilisateurs.length})` : ' ❌ Utilisateurs'} | 
+          {data.kpiBundle.metadata ? ' ✅ Metadata' : ' ❌ Metadata'}
+        </div>
+      )}
     </div>
   );
 };
