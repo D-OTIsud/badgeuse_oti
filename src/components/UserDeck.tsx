@@ -47,6 +47,172 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
+// Composant pour une section de lieu
+const LocationSection: React.FC<{
+  locationName: string;
+  users: Utilisateur[];
+  onSelect: (user: Utilisateur) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}> = ({ locationName, users, onSelect, isCollapsed, onToggleCollapse }) => (
+  <div style={{ marginBottom: 24 }}>
+    <div
+      onClick={onToggleCollapse}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 20px',
+        background: '#f8f9fa',
+        borderRadius: '12px 12px 0 0',
+        border: '1px solid #e0e0e0',
+        borderBottom: 'none',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+      }}
+      onMouseOver={e => (e.currentTarget.style.background = '#e9ecef')}
+      onMouseOut={e => (e.currentTarget.style.background = '#f8f9fa')}
+    >
+      <h3 style={{ 
+        margin: 0, 
+        fontSize: 18, 
+        fontWeight: 600, 
+        color: '#1976d2',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8
+      }}>
+        📍 {locationName}
+        <span style={{ 
+          fontSize: 14, 
+          fontWeight: 500, 
+          color: '#666',
+          background: '#fff',
+          padding: '4px 8px',
+          borderRadius: '12px',
+          border: '1px solid #e0e0e0'
+        }}>
+          {users.length} utilisateur{users.length > 1 ? 's' : ''}
+        </span>
+      </h3>
+      <div style={{ 
+        fontSize: 20, 
+        color: '#666',
+        transition: 'transform 0.2s',
+        transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)'
+      }}>
+        ▼
+      </div>
+    </div>
+    
+    {!isCollapsed && (
+      <div style={{
+        border: '1px solid #e0e0e0',
+        borderTop: 'none',
+        borderRadius: '0 0 12px 12px',
+        padding: '20px',
+        background: '#fff'
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: 14,
+          justifyContent: 'center',
+          alignItems: 'start',
+        }}>
+          {users.map((user) => (
+            <div
+              key={user.id}
+              style={{
+                border: '1px solid #e0e0e0',
+                borderRadius: 12,
+                padding: 10,
+                minWidth: 0,
+                maxWidth: 180,
+                height: 140,
+                maxHeight: 140,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                cursor: 'pointer',
+                background: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                transition: 'box-shadow 0.2s',
+                marginBottom: 8,
+                overflow: 'hidden',
+                justifyContent: 'center',
+              }}
+              onClick={() => onSelect(user)}
+              onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
+              onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
+            >
+              {user.avatar ? (
+                <img src={user.avatar} alt="avatar" style={{ 
+                  width: 48, 
+                  height: 48, 
+                  borderRadius: '50%', 
+                  marginBottom: 8, 
+                  objectFit: 'cover', 
+                  border: '2px solid #1976d2',
+                  boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                }} />
+              ) : (
+                <div style={{ 
+                  width: 48, 
+                  height: 48, 
+                  borderRadius: '50%', 
+                  marginBottom: 8, 
+                  background: '#f4f6fa', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: 20, 
+                  color: '#bbb', 
+                  border: '2px solid #1976d2',
+                  boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                }}>
+                  👤
+                </div>
+              )}
+              <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
+              <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
+              <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.email}</div>
+              <div style={{ 
+                marginTop: 4, 
+                fontSize: 10, 
+                fontWeight: 500, 
+                textAlign: 'center', 
+                whiteSpace: 'nowrap', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4
+              }}>
+                <div style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: user.status === 'Entré' ? '#4caf50' : 
+                                 user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                }} />
+                <span style={{ 
+                  color: user.status === 'Entré' ? '#4caf50' : 
+                         user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                }}>
+                  {user.status === 'Entré' ? 'Actif' : (user.status || 'Non badgé')}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationName }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +221,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   const [success, setSuccess] = useState<string | null>(null);
   const nfcAbortRef = useRef<AbortController | null>(null);
   const [nfcLoading, setNfcLoading] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   
      // États pour la vérification des permissions
    const [permissionsChecked, setPermissionsChecked] = useState(false);
@@ -72,7 +239,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
         .from('appbadge_utilisateurs')
         .select('id, nom, prenom, service, email, status, avatar, lieux, role')
         .eq('actif', true)
-        .order('nom', { ascending: true });
+        .order('prenom', { ascending: true }); // Trier par prénom
       if (!error && data) setUsers(data);
       setLoading(false);
     };
@@ -100,11 +267,11 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 user.id === payload.new.id 
                   ? { ...user, ...payload.new }
                   : user
-              )
+              ).sort((a, b) => a.prenom.localeCompare(b.prenom))
             );
           } else if (payload.eventType === 'INSERT') {
             // Ajouter le nouvel utilisateur
-            setUsers(prevUsers => [...prevUsers, payload.new as Utilisateur].sort((a, b) => a.nom.localeCompare(b.nom)));
+            setUsers(prevUsers => [...prevUsers, payload.new as Utilisateur].sort((a, b) => a.prenom.localeCompare(b.prenom)));
           } else if (payload.eventType === 'DELETE') {
             // Supprimer l'utilisateur
             setUsers(prevUsers => prevUsers.filter(user => user.id !== payload.old.id));
@@ -330,6 +497,40 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
       user.prenom?.toLowerCase().includes(q)
     );
   });
+
+  // Grouper les utilisateurs par lieu et trier par prénom
+  const groupedUsers = filteredUsers.reduce((groups, user) => {
+    const location = user.lieux || 'Non badgé';
+    if (!groups[location]) {
+      groups[location] = [];
+    }
+    groups[location].push(user);
+    return groups;
+  }, {} as Record<string, Utilisateur[]>);
+
+  // Trier les lieux (Non badgé en dernier)
+  const sortedLocations = Object.keys(groupedUsers).sort((a, b) => {
+    if (a === 'Non badgé') return 1;
+    if (b === 'Non badgé') return -1;
+    return a.localeCompare(b);
+  });
+
+  // Trier les utilisateurs dans chaque groupe par prénom
+  Object.keys(groupedUsers).forEach(location => {
+    groupedUsers[location].sort((a, b) => a.prenom.localeCompare(b.prenom));
+  });
+
+  const toggleSection = (location: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(location)) {
+        newSet.delete(location);
+      } else {
+        newSet.add(location);
+      }
+      return newSet;
+    });
+  };
 
   // Composant de vérification des permissions
   const PermissionsCheck = () => {
@@ -577,112 +778,20 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
       </div>
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
       {success && <SuccessPopup message={success} onClose={() => setSuccess(null)} />}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: 14,
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'start',
-          width: '100%',
-          maxWidth: 700,
-          margin: '0 auto',
-        }}
-      >
-        {filteredUsers.map((user) => (
-          <div
-            key={user.id}
-            style={{
-              border: '1px solid #e0e0e0',
-              borderRadius: 12,
-              padding: 10,
-              minWidth: 0,
-              maxWidth: 180,
-              height: 140,
-              maxHeight: 140,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-              cursor: 'pointer',
-              background: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              transition: 'box-shadow 0.2s',
-              marginBottom: 8,
-              overflow: 'hidden',
-              justifyContent: 'center',
-            }}
-            onClick={() => onSelect(user)}
-            onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
-            onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
-          >
-            {user.avatar ? (
-              <img src={user.avatar} alt="avatar" style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: '50%', 
-                marginBottom: 8, 
-                objectFit: 'cover', 
-                border: '2px solid #1976d2',
-                boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-              }} />
-            ) : (
-              <div style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: '50%', 
-                marginBottom: 8, 
-                background: '#f4f6fa', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: 20, 
-                color: '#bbb', 
-                border: '2px solid #1976d2',
-                boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-              }}>
-                👤
-              </div>
-            )}
-            <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
-            <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
-            <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.email}</div>
-            <div style={{ 
-              marginTop: 4, 
-              fontSize: 10, 
-              fontWeight: 500, 
-              textAlign: 'center', 
-              whiteSpace: 'nowrap', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4
-            }}>
-              <div style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: user.status === 'Entré' ? '#4caf50' : 
-                               user.status === 'En pause' ? '#ff9800' : '#cccccc'
-              }} />
-              <span style={{ 
-                color: user.status === 'Entré' ? '#4caf50' : 
-                       user.status === 'En pause' ? '#ff9800' : '#cccccc'
-              }}>
-                {user.status === 'Entré' ? 'Actif' : (user.status || 'Non badgé')}
-              </span>
-            </div>
-            {user.lieux && (
-              <div style={{ fontSize: 9, color: '#888', marginTop: 2, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
-                {user.lieux}
-              </div>
-            )}
-          </div>
+      
+      <div style={{ width: '100%', maxWidth: 700, margin: '0 auto' }}>
+        {sortedLocations.map((location) => (
+          <LocationSection
+            key={location}
+            locationName={location}
+            users={groupedUsers[location]}
+            onSelect={onSelect}
+            isCollapsed={collapsedSections.has(location)}
+            onToggleCollapse={() => toggleSection(location)}
+          />
         ))}
       </div>
+      
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 8 }}>
         <NfcLogo />
       </div>
