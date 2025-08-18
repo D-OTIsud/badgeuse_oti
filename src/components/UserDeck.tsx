@@ -82,7 +82,7 @@ const LocationSection: React.FC<{
         alignItems: 'center',
         gap: 8
       }}>
-        📍 {locationName}
+        {locationName}
         <span style={{ 
           fontSize: 14, 
           fontWeight: 500, 
@@ -213,6 +213,137 @@ const LocationSection: React.FC<{
   </div>
 );
 
+// Composant pour le filtre latéral
+const LocationFilter: React.FC<{
+  locations: string[];
+  selectedLocation: string | null;
+  onLocationSelect: (location: string | null) => void;
+  userCounts: Record<string, number>;
+}> = ({ locations, selectedLocation, onLocationSelect, userCounts }) => (
+  <div style={{
+    width: 280,
+    background: '#fff',
+    borderRadius: 16,
+    padding: '24px 20px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    border: '1px solid #f0f0f0',
+    height: 'fit-content',
+    position: 'sticky',
+    top: 20,
+  }}>
+    <h3 style={{
+      margin: '0 0 20px 0',
+      fontSize: 18,
+      fontWeight: 600,
+      color: '#1976d2',
+      borderBottom: '2px solid #f0f0f0',
+      paddingBottom: '12px'
+    }}>
+      Filtres par lieu
+    </h3>
+    
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        onClick={() => onLocationSelect(null)}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          background: selectedLocation === null ? '#1976d2' : '#f8f9fa',
+          color: selectedLocation === null ? '#fff' : '#333',
+          border: '1px solid #e0e0e0',
+          borderRadius: 12,
+          cursor: 'pointer',
+          fontSize: 14,
+          fontWeight: 500,
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}
+        onMouseOver={e => {
+          if (selectedLocation !== null) {
+            e.currentTarget.style.background = '#e9ecef';
+          }
+        }}
+        onMouseOut={e => {
+          if (selectedLocation !== null) {
+            e.currentTarget.style.background = '#f8f9fa';
+          }
+        }}
+      >
+        <span>Tous les lieux</span>
+        <span style={{
+          background: selectedLocation === null ? '#fff' : '#1976d2',
+          color: selectedLocation === null ? '#1976d2' : '#fff',
+          padding: '4px 8px',
+          borderRadius: '12px',
+          fontSize: '12',
+          fontWeight: '600',
+          minWidth: '20px',
+          textAlign: 'center'
+        }}>
+          {Object.values(userCounts).reduce((sum, count) => sum + count, 0)}
+        </span>
+      </button>
+    </div>
+    
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {locations.map((location) => (
+        <button
+          key={location}
+          onClick={() => onLocationSelect(location)}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            background: selectedLocation === location ? '#1976d2' : '#f8f9fa',
+            color: selectedLocation === location ? '#fff' : '#333',
+            border: '1px solid #e0e0e0',
+            borderRadius: 12,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            textAlign: 'left'
+          }}
+          onMouseOver={e => {
+            if (selectedLocation !== location) {
+              e.currentTarget.style.background = '#e9ecef';
+            }
+          }}
+          onMouseOut={e => {
+            if (selectedLocation !== location) {
+              e.currentTarget.style.background = '#f8f9fa';
+            }
+          }}
+        >
+          <span style={{ 
+            textDecoration: location === 'Non badgé' ? 'italic' : 'normal',
+            opacity: location === 'Non badgé' ? 0.8 : 1
+          }}>
+            {location}
+          </span>
+          <span style={{
+            background: selectedLocation === location ? '#fff' : '#1976d2',
+            color: selectedLocation === location ? '#1976d2' : '#fff',
+            padding: '4px 8px',
+            borderRadius: '12px',
+            fontSize: '12',
+            fontWeight: '600',
+            minWidth: '20px',
+            textAlign: 'center'
+          }}>
+            {userCounts[location]}
+          </span>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationName }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +352,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   const [success, setSuccess] = useState<string | null>(null);
   const nfcAbortRef = useRef<AbortController | null>(null);
   const [nfcLoading, setNfcLoading] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   
      // États pour la vérification des permissions
    const [permissionsChecked, setPermissionsChecked] = useState(false);
@@ -520,16 +651,19 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
     groupedUsers[location].sort((a, b) => a.prenom.localeCompare(b.prenom));
   });
 
-  const toggleSection = (location: string) => {
-    setCollapsedSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(location)) {
-        newSet.delete(location);
-      } else {
-        newSet.add(location);
-      }
-      return newSet;
-    });
+  // Créer un objet avec les comptes d'utilisateurs par lieu
+  const userCounts = Object.keys(groupedUsers).reduce((counts, location) => {
+    counts[location] = groupedUsers[location].length;
+    return counts;
+  }, {} as Record<string, number>);
+
+  // Filtrer les utilisateurs selon le lieu sélectionné
+  const displayedUsers = selectedLocation 
+    ? groupedUsers[selectedLocation] || []
+    : filteredUsers;
+
+  const handleLocationSelect = (location: string | null) => {
+    setSelectedLocation(location);
   };
 
   // Composant de vérification des permissions
@@ -744,7 +878,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: 700 }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 1200 }}>
           <input
             type="text"
             placeholder="Rechercher par nom ou prénom..."
@@ -779,17 +913,126 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
       {nfcMessage && <div style={{ color: '#1976d2', marginBottom: 12 }}>{nfcMessage}</div>}
       {success && <SuccessPopup message={success} onClose={() => setSuccess(null)} />}
       
-      <div style={{ width: '100%', maxWidth: 700, margin: '0 auto' }}>
-        {sortedLocations.map((location) => (
-          <LocationSection
-            key={location}
-            locationName={location}
-            users={groupedUsers[location]}
-            onSelect={onSelect}
-            isCollapsed={collapsedSections.has(location)}
-            onToggleCollapse={() => toggleSection(location)}
-          />
-        ))}
+      
+
+      <div style={{ 
+        display: 'flex', 
+        gap: '32px', 
+        maxWidth: '1200px', 
+        margin: '0 auto',
+        alignItems: 'flex-start'
+      }}>
+        {/* Filtre latéral */}
+        <LocationFilter
+          locations={sortedLocations}
+          selectedLocation={selectedLocation}
+          onLocationSelect={handleLocationSelect}
+          userCounts={userCounts}
+        />
+        
+        {/* Grille des utilisateurs */}
+        <div style={{ flex: 1 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: 14,
+            justifyContent: 'center',
+            alignItems: 'start',
+          }}>
+            {displayedUsers.map((user) => (
+              <div
+                key={user.id}
+                style={{
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 12,
+                  padding: 10,
+                  minWidth: 0,
+                  maxWidth: 180,
+                  height: 140,
+                  maxHeight: 140,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                  cursor: 'pointer',
+                  background: '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  transition: 'box-shadow 0.2s',
+                  marginBottom: 8,
+                  overflow: 'hidden',
+                  justifyContent: 'center',
+                }}
+                onClick={() => onSelect(user)}
+                onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
+                onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
+              >
+                {user.avatar ? (
+                  <img src={user.avatar} alt="avatar" style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: '50%', 
+                    marginBottom: 8, 
+                    objectFit: 'cover', 
+                    border: '2px solid #1976d2',
+                    boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                  }} />
+                ) : (
+                  <div style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: '50%', 
+                    marginBottom: 8, 
+                    background: '#f4f6fa', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    fontSize: 20, 
+                    color: '#bbb', 
+                    border: '2px solid #1976d2',
+                    boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+                  }}>
+                    👤
+                  </div>
+                )}
+                <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
+                <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
+                <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.email}</div>
+                <div style={{ 
+                  marginTop: 4, 
+                  fontSize: 10, 
+                  fontWeight: 500, 
+                  textAlign: 'center', 
+                  whiteSpace: 'nowrap', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4
+                }}>
+                  <div style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: user.status === 'Entré' ? '#4caf50' : 
+                                   user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                  }} />
+                  <span style={{ 
+                    color: user.status === 'Entré' ? '#4caf50' : 
+                           user.status === 'En pause' ? '#ff9800' : '#cccccc'
+                  }}>
+                    {user.status === 'Entré' ? 'Actif' : (user.status || 'Non badgé')}
+                  </span>
+                </div>
+                {user.lieux && (
+                  <div style={{ fontSize: 9, color: '#888', marginTop: 2, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                    {user.lieux}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 8 }}>
