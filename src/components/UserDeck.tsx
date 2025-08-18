@@ -160,13 +160,13 @@ const LocationFilter: React.FC<{
   </div>
 );
 
-// Composant pour afficher tous les utilisateurs groupés par lieu (sans sections)
-const UsersByLocation: React.FC<{
-  groupedUsers: Record<string, Utilisateur[]>;
-  sortedLocations: string[];
-  onSelect: (user: Utilisateur) => void;
-}> = ({ groupedUsers, sortedLocations, onSelect }) => (
-  <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto' }}>
+ // Composant pour afficher tous les utilisateurs groupés par lieu (sans sections)
+ const UsersByLocation: React.FC<{
+   groupedUsers: Record<string, Utilisateur[]>;
+   sortedLocations: string[];
+   onSelect: (user: Utilisateur) => void;
+ }> = ({ groupedUsers, sortedLocations, onSelect }) => (
+   <div style={{ width: '100%', maxWidth: 800, margin: '0 auto' }}>
     {/* Grille de toutes les cartes */}
     <div style={{
       display: 'grid',
@@ -203,28 +203,28 @@ const UsersByLocation: React.FC<{
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
-                         {/* Indicateur de lieu avec code couleur */}
-             <div style={{
-               position: 'absolute',
-               top: '-12px',
-               left: '8px',
-               background: location === 'Entre-Deux' ? '#76B097' :
-                          location === 'Bourg-Murat' ? '#B34B3D' :
-                          location === 'Le Baril' ? '#0F6885' :
-                          location === 'Manapany' ? '#DAB848' :
-                          location === 'Télétravail' ? '#8B5A96' :
-                          location === 'inconnu' ? '#6B7280' :
-                          location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
-               color: '#fff',
-               padding: '3px 8px',
-               borderRadius: '12px',
-               fontSize: '10',
-               fontWeight: '600',
-               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-               minWidth: 'fit-content'
-             }}>
-               {location}
-             </div>
+                                      {/* Indicateur de lieu avec code couleur */}
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                left: '8px',
+                background: location === 'Entre-Deux' ? '#76B097' :
+                           location === 'Bourg-Murat' ? '#B34B3D' :
+                           location === 'Le Baril' ? '#0F6885' :
+                           location === 'Manapany' ? '#DAB848' :
+                           location === 'Télétravail' ? '#8B5A96' :
+                           location === 'inconnu' ? '#6B7280' :
+                           location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
+                color: '#fff',
+                padding: '2px 6px',
+                borderRadius: '10px',
+                fontSize: '8',
+                fontWeight: '500',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                minWidth: 'fit-content'
+              }}>
+                {location}
+              </div>
             
                          {user.avatar ? (
                <img src={user.avatar} alt="avatar" style={{ 
@@ -831,8 +831,8 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
           <LottieLoader />
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: 1200 }}>
+             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+         <div style={{ position: 'relative', width: '100%', maxWidth: 800 }}>
           <input
             type="text"
             placeholder="Rechercher par nom ou prénom..."
