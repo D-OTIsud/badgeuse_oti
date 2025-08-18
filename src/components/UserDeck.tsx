@@ -218,30 +218,30 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
                                                                 {/* Indicateur de lieu avec code couleur */}
-                <div style={{
-                  position: 'absolute',
-                  top: '-6px',
-                  left: 0,
-                  background: location === 'Entre-Deux' ? '#76B097' :
-                             location === 'Bourg-Murat' ? '#B34B3D' :
-                             location === 'Le Baril' ? '#0F6885' :
-                             location === 'Manapany' ? '#DAB848' :
-                             location === 'Télétravail' ? '#8B5A96' :
-                             location === 'inconnu' ? '#6B7280' :
-                             location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
-                  color: '#fff',
-                  padding: '2px 6px',
-                  borderRadius: '0 8px 8px 0',
-                  fontSize: '7',
-                  fontWeight: '500',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  minWidth: 'fit-content',
-                  maxWidth: '80px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  zIndex: 1
-                }}>
+                                 <div style={{
+                   position: 'absolute',
+                   top: '-6px',
+                   left: 0,
+                   background: location === 'Entre-Deux' ? '#76B097' :
+                              location === 'Bourg-Murat' ? '#B34B3D' :
+                              location === 'Le Baril' ? '#0F6885' :
+                              location === 'Manapany' ? '#DAB848' :
+                              location === 'Télétravail' ? '#8B5A96' :
+                              location === 'inconnu' ? '#6B7280' :
+                              location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
+                   color: '#fff',
+                   padding: '2px 6px',
+                   borderRadius: '0 8px 8px 0',
+                   fontSize: '6',
+                   fontWeight: '500',
+                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                   minWidth: 'fit-content',
+                   maxWidth: '80px',
+                   whiteSpace: 'nowrap',
+                   overflow: 'hidden',
+                   textOverflow: 'ellipsis',
+                   zIndex: 1
+                 }}>
                   {location}
                 </div>
             
