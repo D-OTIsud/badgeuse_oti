@@ -67,7 +67,8 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
      opacity: 0.9,
      width: '100%',
      maxWidth: 800,
-     margin: '0 auto 20px auto'
+     margin: '0 auto 20px auto',
+     boxSizing: 'border-box'
    }}>
     <button
       onClick={() => onLocationSelect(null)}
@@ -209,7 +210,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                                                    {/* Indicateur de lieu avec code couleur */}
                <div style={{
                  position: 'absolute',
-                 top: '-12px',
+                 top: '-8px',
                  left: '8px',
                  background: location === 'Entre-Deux' ? '#76B097' :
                             location === 'Bourg-Murat' ? '#B34B3D' :
@@ -219,13 +220,16 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                             location === 'inconnu' ? '#6B7280' :
                             location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
                  color: '#fff',
-                 padding: '3px 8px',
-                 borderRadius: '12px',
-                 fontSize: '9',
+                 padding: '2px 6px',
+                 borderRadius: '10px',
+                 fontSize: '7',
                  fontWeight: '600',
-                 boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                  minWidth: 'fit-content',
-                 letterSpacing: '0.5px'
+                 maxWidth: '80px',
+                 whiteSpace: 'nowrap',
+                 overflow: 'hidden',
+                 textOverflow: 'ellipsis'
                }}>
                  {location}
                </div>
@@ -235,7 +239,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                  width: 48, 
                  height: 48, 
                  borderRadius: '50%', 
-                 marginTop: 8,
+                 marginTop: 12,
                  marginBottom: 8, 
                  objectFit: 'cover', 
                  border: '2px solid #1976d2',
@@ -246,7 +250,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                  width: 48, 
                  height: 48, 
                  borderRadius: '50%', 
-                 marginTop: 8,
+                 marginTop: 12,
                  marginBottom: 8, 
                  background: '#f4f6fa', 
                  display: 'flex', 
