@@ -203,21 +203,21 @@ const UsersByLocation: React.FC<{
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
-            {/* Indicateur de lieu discret */}
-            <div style={{
-              position: 'absolute',
-              top: '6px',
-              right: '6px',
-              background: '#f0f0f0',
-              color: '#666',
-              padding: '2px 6px',
-              borderRadius: '8px',
-              fontSize: '9',
-              fontWeight: '500',
-              opacity: 0.8
-            }}>
-              {location}
-            </div>
+                         {/* Indicateur de lieu discret */}
+             <div style={{
+               position: 'absolute',
+               top: '6px',
+               left: '6px',
+               background: '#f0f0f0',
+               color: '#666',
+               padding: '2px 6px',
+               borderRadius: '8px',
+               fontSize: '9',
+               fontWeight: '500',
+               opacity: 0.8
+             }}>
+               {location}
+             </div>
             
             {user.avatar ? (
               <img src={user.avatar} alt="avatar" style={{ 
