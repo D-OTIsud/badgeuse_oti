@@ -47,122 +47,132 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
- // Composant pour le filtre par lieu (version discrète)
+  // Composant pour le filtre par lieu (dropdown discret)
  const LocationFilter: React.FC<{
    locations: string[];
    selectedLocation: string | null;
    onLocationSelect: (location: string | null) => void;
    userCounts: Record<string, number>;
- }> = ({ locations, selectedLocation, onLocationSelect, userCounts }) => (
-   <div style={{
-     display: 'flex',
-     gap: '8px',
-     flexWrap: 'wrap',
-     justifyContent: 'center',
-     marginBottom: '20px',
-     padding: '8px 12px',
-     background: '#f8f9fa',
-     borderRadius: '8px',
-     border: '1px solid #e0e0e0',
-     opacity: 0.9,
-     width: '100%',
-     maxWidth: 800,
-     margin: '0 auto 20px auto',
-     boxSizing: 'border-box'
-   }}>
-    <button
-      onClick={() => onLocationSelect(null)}
-      style={{
-        padding: '6px 12px',
-        background: selectedLocation === null ? '#1976d2' : 'transparent',
-        color: selectedLocation === null ? '#fff' : '#666',
-        border: '1px solid #e0e0e0',
-        borderRadius: '16px',
-        cursor: 'pointer',
-        fontSize: 12,
-        fontWeight: 500,
-        transition: 'all 0.2s ease',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}
-      onMouseOver={e => {
-        if (selectedLocation !== null) {
-          e.currentTarget.style.background = '#e9ecef';
-        }
-      }}
-      onMouseOut={e => {
-        if (selectedLocation !== null) {
-          e.currentTarget.style.background = 'transparent';
-        }
-      }}
-    >
-      <span>Tous</span>
-      <span style={{
-        background: selectedLocation === null ? '#fff' : '#1976d2',
-        color: selectedLocation === null ? '#1976d2' : '#fff',
-        padding: '1px 4px',
-        borderRadius: '8px',
-        fontSize: '10',
-        fontWeight: '600',
-        minWidth: '14px',
-        textAlign: 'center'
-      }}>
-        {Object.values(userCounts).reduce((sum, count) => sum + count, 0)}
-      </span>
-    </button>
-    
-    {locations.map((location) => (
-      <button
-        key={location}
-        onClick={() => onLocationSelect(location)}
-        style={{
-          padding: '6px 12px',
-          background: selectedLocation === location ? '#1976d2' : 'transparent',
-          color: selectedLocation === location ? '#fff' : '#666',
-          border: '1px solid #e0e0e0',
-          borderRadius: '16px',
-          cursor: 'pointer',
-          fontSize: 12,
-          fontWeight: 500,
-          transition: 'all 0.2s ease',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px'
-        }}
-        onMouseOver={e => {
-          if (selectedLocation !== location) {
-            e.currentTarget.style.background = '#e9ecef';
-          }
-        }}
-        onMouseOut={e => {
-          if (selectedLocation !== location) {
-            e.currentTarget.style.background = 'transparent';
-          }
-        }}
-      >
-        <span style={{ 
-          textDecoration: location === 'Non badgé' ? 'italic' : 'normal',
-          opacity: location === 'Non badgé' ? 0.8 : 1
-        }}>
-          {location}
-        </span>
-        <span style={{
-          background: selectedLocation === location ? '#fff' : '#1976d2',
-          color: selectedLocation === location ? '#1976d2' : '#fff',
-          padding: '1px 4px',
-          borderRadius: '8px',
-          fontSize: '10',
-          fontWeight: '600',
-          minWidth: '14px',
-          textAlign: 'center'
-        }}>
-          {userCounts[location]}
-        </span>
-      </button>
-    ))}
-  </div>
-);
+ }> = ({ locations, selectedLocation, onLocationSelect, userCounts }) => {
+   const [isOpen, setIsOpen] = useState(false);
+   
+   return (
+     <div style={{
+       position: 'relative',
+       width: '100%',
+       maxWidth: 800,
+       margin: '0 auto 20px auto',
+       boxSizing: 'border-box'
+     }}>
+       <button
+         onClick={() => setIsOpen(!isOpen)}
+         style={{
+           width: '100%',
+           padding: '8px 12px',
+           background: '#fff',
+           border: '1px solid #e0e0e0',
+           borderRadius: '6px',
+           cursor: 'pointer',
+           fontSize: '14px',
+           color: '#333',
+           display: 'flex',
+           alignItems: 'center',
+           justifyContent: 'space-between',
+           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+         }}
+       >
+         <span>
+           {selectedLocation ? `${selectedLocation} (${userCounts[selectedLocation]})` : `Tous les lieux (${Object.values(userCounts).reduce((sum, count) => sum + count, 0)})`}
+         </span>
+         <span style={{ fontSize: '12px', color: '#666' }}>▼</span>
+       </button>
+       
+       {isOpen && (
+         <div style={{
+           position: 'absolute',
+           top: '100%',
+           left: 0,
+           right: 0,
+           background: '#fff',
+           border: '1px solid #e0e0e0',
+           borderRadius: '6px',
+           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+           zIndex: 1000,
+           maxHeight: '300px',
+           overflowY: 'auto'
+         }}>
+           <div
+             onClick={() => {
+               onLocationSelect(null);
+               setIsOpen(false);
+             }}
+             style={{
+               padding: '10px 12px',
+               cursor: 'pointer',
+               borderBottom: '1px solid #f0f0f0',
+               background: selectedLocation === null ? '#f8f9fa' : 'transparent',
+               fontWeight: selectedLocation === null ? '600' : '400'
+             }}
+           >
+             Tous les lieux ({Object.values(userCounts).reduce((sum, count) => sum + count, 0)})
+           </div>
+           
+           {locations.map((location) => (
+             <div
+               key={location}
+               onClick={() => {
+                 onLocationSelect(location);
+                 setIsOpen(false);
+               }}
+               style={{
+                 padding: '10px 12px',
+                 cursor: 'pointer',
+                 borderBottom: '1px solid #f0f0f0',
+                 background: selectedLocation === location ? '#f8f9fa' : 'transparent',
+                 fontWeight: selectedLocation === location ? '600' : '400',
+                 display: 'flex',
+                 justifyContent: 'space-between',
+                 alignItems: 'center'
+               }}
+             >
+               <span style={{ 
+                 textDecoration: location === 'Non badgé' ? 'italic' : 'normal',
+                 opacity: location === 'Non badgé' ? 0.8 : 1
+               }}>
+                 {location}
+               </span>
+               <span style={{
+                 background: '#e9ecef',
+                 color: '#666',
+                 padding: '2px 6px',
+                 borderRadius: '12px',
+                 fontSize: '11px',
+                 fontWeight: '500'
+               }}>
+                 {userCounts[location]}
+               </span>
+             </div>
+           ))}
+         </div>
+       )}
+       
+       {/* Overlay pour fermer le dropdown en cliquant ailleurs */}
+       {isOpen && (
+         <div
+           onClick={() => setIsOpen(false)}
+           style={{
+             position: 'fixed',
+             top: 0,
+             left: 0,
+             right: 0,
+             bottom: 0,
+             zIndex: 999
+           }}
+         />
+       )}
+     </div>
+   );
+ };
 
  // Composant pour afficher tous les utilisateurs groupés par lieu (sans sections)
  const UsersByLocation: React.FC<{
@@ -210,8 +220,8 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                                                    {/* Indicateur de lieu avec code couleur */}
                <div style={{
                  position: 'absolute',
-                 top: '-8px',
-                 left: '8px',
+                 top: '6px',
+                 left: '6px',
                  background: location === 'Entre-Deux' ? '#76B097' :
                             location === 'Bourg-Murat' ? '#B34B3D' :
                             location === 'Le Baril' ? '#0F6885' :
@@ -220,16 +230,17 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                             location === 'inconnu' ? '#6B7280' :
                             location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
                  color: '#fff',
-                 padding: '2px 6px',
-                 borderRadius: '10px',
-                 fontSize: '7',
+                 padding: '3px 8px',
+                 borderRadius: '12px',
+                 fontSize: '8',
                  fontWeight: '600',
-                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                 boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
                  minWidth: 'fit-content',
-                 maxWidth: '80px',
+                 maxWidth: '90px',
                  whiteSpace: 'nowrap',
                  overflow: 'hidden',
-                 textOverflow: 'ellipsis'
+                 textOverflow: 'ellipsis',
+                 zIndex: 1
                }}>
                  {location}
                </div>
@@ -239,7 +250,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                  width: 48, 
                  height: 48, 
                  borderRadius: '50%', 
-                 marginTop: 12,
+                 marginTop: 8,
                  marginBottom: 8, 
                  objectFit: 'cover', 
                  border: '2px solid #1976d2',
@@ -250,7 +261,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
                  width: 48, 
                  height: 48, 
                  borderRadius: '50%', 
-                 marginTop: 12,
+                 marginTop: 8,
                  marginBottom: 8, 
                  background: '#f4f6fa', 
                  display: 'flex', 
