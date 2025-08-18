@@ -206,15 +206,16 @@ const UsersByLocation: React.FC<{
                          {/* Indicateur de lieu discret */}
              <div style={{
                position: 'absolute',
-               top: '6px',
-               left: '6px',
+               top: '-8px',
+               left: '8px',
                background: '#f0f0f0',
                color: '#666',
                padding: '2px 6px',
                borderRadius: '8px',
                fontSize: '9',
                fontWeight: '500',
-               opacity: 0.8
+               opacity: 0.8,
+               border: '1px solid #e0e0e0'
              }}>
                {location}
              </div>
