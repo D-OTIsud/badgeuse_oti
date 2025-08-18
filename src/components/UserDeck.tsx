@@ -203,51 +203,59 @@ const UsersByLocation: React.FC<{
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
-                         {/* Indicateur de lieu discret */}
+                         {/* Indicateur de lieu avec code couleur */}
              <div style={{
                position: 'absolute',
-               top: '-8px',
+               top: '-12px',
                left: '8px',
-               background: '#f0f0f0',
-               color: '#666',
-               padding: '2px 6px',
-               borderRadius: '8px',
-               fontSize: '9',
-               fontWeight: '500',
-               opacity: 0.8,
-               border: '1px solid #e0e0e0'
+               background: location === 'Entre-Deux' ? '#76B097' :
+                          location === 'Bourg-Murat' ? '#B34B3D' :
+                          location === 'Le Baril' ? '#0F6885' :
+                          location === 'Manapany' ? '#DAB848' :
+                          location === 'Télétravail' ? '#8B5A96' :
+                          location === 'inconnu' ? '#6B7280' :
+                          location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
+               color: '#fff',
+               padding: '3px 8px',
+               borderRadius: '12px',
+               fontSize: '10',
+               fontWeight: '600',
+               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+               minWidth: 'fit-content'
              }}>
                {location}
              </div>
             
-            {user.avatar ? (
-              <img src={user.avatar} alt="avatar" style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: '50%', 
-                marginBottom: 8, 
-                objectFit: 'cover', 
-                border: '2px solid #1976d2',
-                boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-              }} />
-            ) : (
-              <div style={{ 
-                width: 48, 
-                height: 48, 
-                borderRadius: '50%', 
-                marginBottom: 8, 
-                background: '#f4f6fa', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: 20, 
-                color: '#bbb', 
-                border: '2px solid #1976d2',
-                boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
-              }}>
-                👤
-              </div>
-            )}
+                         {user.avatar ? (
+               <img src={user.avatar} alt="avatar" style={{ 
+                 width: 48, 
+                 height: 48, 
+                 borderRadius: '50%', 
+                 marginTop: 8,
+                 marginBottom: 8, 
+                 objectFit: 'cover', 
+                 border: '2px solid #1976d2',
+                 boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+               }} />
+             ) : (
+               <div style={{ 
+                 width: 48, 
+                 height: 48, 
+                 borderRadius: '50%', 
+                 marginTop: 8,
+                 marginBottom: 8, 
+                 background: '#f4f6fa', 
+                 display: 'flex', 
+                 alignItems: 'center', 
+                 justifyContent: 'center', 
+                 fontSize: 20, 
+                 color: '#bbb', 
+                 border: '2px solid #1976d2',
+                 boxShadow: '0 2px 8px rgba(25,118,210,0.15)'
+               }}>
+                 👤
+               </div>
+             )}
             <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.prenom} {user.nom}</div>
             <div style={{ color: '#555', fontSize: 10, marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.service}</div>
             <div style={{ fontSize: 9, color: '#888', marginBottom: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{user.email}</div>
