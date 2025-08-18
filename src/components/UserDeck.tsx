@@ -47,25 +47,28 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-// Composant pour le filtre par lieu (version discrète)
-const LocationFilter: React.FC<{
-  locations: string[];
-  selectedLocation: string | null;
-  onLocationSelect: (location: string | null) => void;
-  userCounts: Record<string, number>;
-}> = ({ locations, selectedLocation, onLocationSelect, userCounts }) => (
-  <div style={{
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginBottom: '20px',
-    padding: '8px 12px',
-    background: '#f8f9fa',
-    borderRadius: '8px',
-    border: '1px solid #e0e0e0',
-    opacity: 0.9
-  }}>
+ // Composant pour le filtre par lieu (version discrète)
+ const LocationFilter: React.FC<{
+   locations: string[];
+   selectedLocation: string | null;
+   onLocationSelect: (location: string | null) => void;
+   userCounts: Record<string, number>;
+ }> = ({ locations, selectedLocation, onLocationSelect, userCounts }) => (
+   <div style={{
+     display: 'flex',
+     gap: '8px',
+     flexWrap: 'wrap',
+     justifyContent: 'center',
+     marginBottom: '20px',
+     padding: '8px 12px',
+     background: '#f8f9fa',
+     borderRadius: '8px',
+     border: '1px solid #e0e0e0',
+     opacity: 0.9,
+     width: '100%',
+     maxWidth: 800,
+     margin: '0 auto 20px auto'
+   }}>
     <button
       onClick={() => onLocationSelect(null)}
       style={{
@@ -203,28 +206,29 @@ const LocationFilter: React.FC<{
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
-                                      {/* Indicateur de lieu avec code couleur */}
-              <div style={{
-                position: 'absolute',
-                top: '-12px',
-                left: '8px',
-                background: location === 'Entre-Deux' ? '#76B097' :
-                           location === 'Bourg-Murat' ? '#B34B3D' :
-                           location === 'Le Baril' ? '#0F6885' :
-                           location === 'Manapany' ? '#DAB848' :
-                           location === 'Télétravail' ? '#8B5A96' :
-                           location === 'inconnu' ? '#6B7280' :
-                           location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
-                color: '#fff',
-                padding: '2px 6px',
-                borderRadius: '10px',
-                fontSize: '8',
-                fontWeight: '500',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                minWidth: 'fit-content'
-              }}>
-                {location}
-              </div>
+                                                   {/* Indicateur de lieu avec code couleur */}
+               <div style={{
+                 position: 'absolute',
+                 top: '-12px',
+                 left: '8px',
+                 background: location === 'Entre-Deux' ? '#76B097' :
+                            location === 'Bourg-Murat' ? '#B34B3D' :
+                            location === 'Le Baril' ? '#0F6885' :
+                            location === 'Manapany' ? '#DAB848' :
+                            location === 'Télétravail' ? '#8B5A96' :
+                            location === 'inconnu' ? '#6B7280' :
+                            location === 'Non badgé' ? '#9CA3AF' : '#f0f0f0',
+                 color: '#fff',
+                 padding: '3px 8px',
+                 borderRadius: '12px',
+                 fontSize: '9',
+                 fontWeight: '600',
+                 boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                 minWidth: 'fit-content',
+                 letterSpacing: '0.5px'
+               }}>
+                 {location}
+               </div>
             
                          {user.avatar ? (
                <img src={user.avatar} alt="avatar" style={{ 
