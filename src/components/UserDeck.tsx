@@ -321,13 +321,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
   const [success, setSuccess] = useState<string | null>(null);
   const nfcAbortRef = useRef<AbortController | null>(null);
   const [nfcLoading, setNfcLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
-  
-     // États pour la vérification des permissions
-   const [permissionsChecked, setPermissionsChecked] = useState(false);
-   const [showPermissionsScreen, setShowPermissionsScreen] = useState(false);
-   const [gpsPermission, setGpsPermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt');
-   const [nfcPermission, setNfcPermission] = useState<'granted' | 'denied' | 'unsupported'>('unsupported');
+     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -384,60 +378,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
     return () => {
       subscription.unsubscribe();
     };
-  }, [isIPAuthorized]); // Ajouter isIPAuthorized comme dépendance pour forcer le rechargement
-
-     // Vérification des permissions en arrière-plan
-   useEffect(() => {
-     const checkPermissions = async () => {
-       let gpsGranted = false;
-       let nfcGranted = false;
-       let needsPermissionScreen = false;
-
-       // Vérifier la permission GPS rapidement
-       if ('geolocation' in navigator) {
-         try {
-           // Test rapide de la permission GPS (timeout court)
-           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-             navigator.geolocation.getCurrentPosition(resolve, reject, { 
-               timeout: 2000,
-               enableHighAccuracy: false 
-             });
-           });
-           setGpsPermission('granted');
-           gpsGranted = true;
-         } catch (error: any) {
-           if (error.code === 1) {
-             setGpsPermission('denied');
-             needsPermissionScreen = true;
-           } else {
-             setGpsPermission('prompt');
-             needsPermissionScreen = true;
-           }
-         }
-       } else {
-         setGpsPermission('unsupported');
-         needsPermissionScreen = true;
-       }
-
-       // Vérifier la permission NFC
-       if (isNfcSupported()) {
-         setNfcPermission('granted');
-         nfcGranted = true;
-       } else {
-         setNfcPermission('unsupported');
-       }
-
-       // Marquer comme vérifié et décider si afficher l'écran de permissions
-       setPermissionsChecked(true);
-       
-       // Afficher l'écran de permissions seulement si nécessaire
-       if (needsPermissionScreen) {
-         setShowPermissionsScreen(true);
-       }
-     };
-
-     checkPermissions();
-   }, []);
+     }, [isIPAuthorized]); // Ajouter isIPAuthorized comme dépendance pour forcer le rechargement
 
   // NFC listener auto (background, silencieux)
   useEffect(() => {
@@ -475,27 +416,91 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
               .limit(1);
             if (!userError && usersFound && usersFound.length > 0) {
               const user = usersFound[0];
-              // Récupérer la position GPS
-              let latitude: number | null = null;
-              let longitude: number | null = null;
-              try {
-                await new Promise<void>((resolve) => {
-                  if (!('geolocation' in navigator)) return resolve();
-                  navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                      latitude = pos.coords.latitude;
-                      longitude = pos.coords.longitude;
-                      resolve();
-                    },
-                    () => resolve(),
-                    { enableHighAccuracy: true, timeout: 7000 }
-                  );
-                });
-              } catch {}
-              // Logique selon l'autorisation IP
-              const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
-              const isAE = user.role === 'A-E';
-              const isFirstBadgeAE = isAE && !user.lieux;
+                                            // Récupérer la position GPS
+               let latitude: number | null = null;
+               let longitude: number | null = null;
+               let hasGpsData = false;
+               let gpsErrorReason = '';
+               let gpsErrorCode: string | null = null;
+               
+               try {
+                 await new Promise<void>((resolve, reject) => {
+                   if (!('geolocation' in navigator)) {
+                     gpsErrorReason = 'GPS non supporté par le navigateur';
+                     gpsErrorCode = 'UNSUPPORTED';
+                     return resolve();
+                   }
+                   
+                   navigator.geolocation.getCurrentPosition(
+                     (pos) => {
+                       // Limiter à 3 décimales maximum
+                       latitude = Math.round(pos.coords.latitude * 1000) / 1000;
+                       longitude = Math.round(pos.coords.longitude * 1000) / 1000;
+                       hasGpsData = true;
+                       resolve();
+                     },
+                     (error) => {
+                       // Capturer les erreurs GPS spécifiques
+                       switch (error.code) {
+                         case 1:
+                           gpsErrorCode = 'PERMISSION_DENIED';
+                           gpsErrorReason = 'Permission GPS refusée par l\'utilisateur';
+                           break;
+                         case 2:
+                           gpsErrorCode = 'POSITION_UNAVAILABLE';
+                           gpsErrorReason = 'Position GPS temporairement indisponible';
+                           break;
+                         case 3:
+                           gpsErrorCode = 'TIMEOUT';
+                           gpsErrorReason = 'Timeout GPS (7 secondes dépassées)';
+                           break;
+                         default:
+                           gpsErrorCode = 'UNKNOWN_ERROR';
+                           gpsErrorReason = `Erreur GPS inconnue: ${error.message}`;
+                       }
+                       resolve();
+                     },
+                     { enableHighAccuracy: true, timeout: 7000 }
+                   );
+                 });
+               } catch (error) {
+                 gpsErrorCode = 'EXCEPTION';
+                 gpsErrorReason = `Exception GPS: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+               }
+               
+               // Appeler le webhook si pas de données GPS
+               if (!hasGpsData) {
+                 try {
+                   await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
+                     method: 'POST',
+                     headers: {
+                       'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({
+                       user_email: user.email,
+                       user_name: `${user.prenom} ${user.nom}`,
+                       user_role: user.role,
+                       badge_code: numero_badge,
+                       timestamp: new Date().toISOString(),
+                       message: 'Badgeage sans données GPS - notification envoyée',
+                       gps_error_code: gpsErrorCode,
+                       gps_error_reason: gpsErrorReason,
+                       device_info: {
+                         user_agent: navigator.userAgent,
+                         platform: navigator.platform,
+                         language: navigator.language
+                       }
+                     })
+                   });
+                 } catch (webhookError) {
+                   console.error('Erreur webhook:', webhookError);
+                 }
+               }
+               
+               // Logique selon l'autorisation IP
+               const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
+               const isAE = user.role === 'A-E';
+               const isFirstBadgeAE = isAE && !user.lieux;
 
               // Cas A-E :
               if (isAE) {
@@ -510,13 +515,14 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                   };
                   const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
                   setNfcLoading(false);
-                  if (!insertError) {
-                    setSuccess(`Badge enregistré (entrée) pour ${user.prenom} ${user.nom}`);
-                    setTimeout(() => setSuccess(null), 3000);
-                    setNfcMessage(null);
-                  } else {
-                    setNfcMessage("Erreur lors de l'enregistrement du badge.");
-                  }
+                                     if (!insertError) {
+                     const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
+                     setSuccess(`Badge enregistré (entrée) pour ${user.prenom} ${user.nom} - ${gpsStatus}`);
+                     setTimeout(() => setSuccess(null), 3000);
+                     setNfcMessage(null);
+                   } else {
+                     setNfcMessage("Erreur lors de l'enregistrement du badge.");
+                   }
                 } else {
                   setNfcLoading(false);
                   // Après premier badgeage : rediriger vers le formulaire pour choisir le type d'action
@@ -542,13 +548,14 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 }
                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
                 setNfcLoading(false);
-                if (!insertError) {
-                  setSuccess(`Badge enregistré pour ${user.prenom} ${user.nom}`);
-                  setTimeout(() => setSuccess(null), 3000);
-                  setNfcMessage(null);
-                } else {
-                  setNfcMessage("Erreur lors de l'enregistrement du badge.");
-                }
+                                 if (!insertError) {
+                   const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
+                   setSuccess(`Badge enregistré pour ${user.prenom} ${user.nom} - ${gpsStatus}`);
+                   setTimeout(() => setSuccess(null), 3000);
+                   setNfcMessage(null);
+                 } else {
+                   setNfcMessage("Erreur lors de l'enregistrement du badge.");
+                 }
               } else if (isManagerOrAdmin) {
                 // Admin/Manager sur réseau inconnu : badgeage direct, lieu = Télétravail, pas de webhook, pas de formulaire
                 const insertData: any = {
@@ -560,13 +567,14 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 };
                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
                 setNfcLoading(false);
-                if (!insertError) {
-                  setSuccess(`Badge enregistré (Télétravail) pour ${user.prenom} ${user.nom}`);
-                  setTimeout(() => setSuccess(null), 3000);
-                  setNfcMessage(null);
-                } else {
-                  setNfcMessage("Erreur lors de l'enregistrement du badge.");
-                }
+                                 if (!insertError) {
+                   const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
+                   setSuccess(`Badge enregistré (Télétravail) pour ${user.prenom} ${user.nom} - ${gpsStatus}`);
+                   setTimeout(() => setSuccess(null), 3000);
+                   setNfcMessage(null);
+                 } else {
+                   setNfcMessage("Erreur lors de l'enregistrement du badge.");
+                 }
               } else {
                 // IP non autorisée : rediriger vers le formulaire avec commentaire obligatoire
                 setNfcLoading(false);
@@ -639,201 +647,9 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
     ? [selectedLocation]
     : sortedLocations;
 
-  // Composant de vérification des permissions
-  const PermissionsCheck = () => {
-         const requestGpsPermission = async () => {
-       try {
-         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-           navigator.geolocation.getCurrentPosition(resolve, reject, { 
-             timeout: 5000,
-             enableHighAccuracy: false // Précision réduite pour éviter les problèmes
-           });
-         });
-         setGpsPermission('granted');
-         // Masquer l'écran de permissions si GPS est maintenant accordé
-         if (gpsPermission === 'granted' && (!isNfcSupported() || nfcPermission === 'granted')) {
-           setShowPermissionsScreen(false);
-         }
-       } catch (error: any) {
-         console.error('Erreur GPS:', error);
-         if (error.code === 1) {
-           setGpsPermission('denied');
-         } else {
-           setGpsPermission('prompt');
-         }
-       }
-     };
-
-         const requestNfcPermission = async () => {
-       try {
-         const NDEFReader = (window as any).NDEFReader;
-         const ndef = new NDEFReader();
-         await ndef.scan();
-         setNfcPermission('granted');
-         // Masquer l'écran de permissions si NFC est maintenant accordé et GPS aussi
-         if (nfcPermission === 'granted' && gpsPermission === 'granted') {
-           setShowPermissionsScreen(false);
-         }
-       } catch (error) {
-         setNfcPermission('denied');
-       }
-     };
-
-    return (
-      <div style={{
-        background: '#fff',
-        borderRadius: 16,
-        maxWidth: 600,
-        margin: '40px auto',
-        padding: 32,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-        textAlign: 'center'
-      }}>
-                 <h2 style={{ marginTop: 0, color: '#1976d2', fontWeight: 700 }}>Permissions requises</h2>
-         <p style={{ color: '#666', marginBottom: 24 }}>
-           Pour fonctionner correctement, l'application a besoin d'accéder à votre position GPS (approximative).
-         </p>
-        
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-           {/* GPS Permission */}
-           <div style={{
-             padding: 16,
-             border: '1px solid #e0e0e0',
-             borderRadius: 8,
-             background: '#f8f8f8'
-           }}>
-             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-               <span style={{ fontWeight: 600 }}>📍 Géolocalisation</span>
-               <span style={{
-                 padding: '4px 8px',
-                 borderRadius: 4,
-                 fontSize: 12,
-                 fontWeight: 600,
-                 background: gpsPermission === 'granted' ? '#4caf50' : 
-                            gpsPermission === 'denied' ? '#f44336' : '#ff9800',
-                 color: '#fff'
-               }}>
-                 {gpsPermission === 'granted' ? 'Autorisé' : 
-                  gpsPermission === 'denied' ? 'Refusé' : 
-                  gpsPermission === 'unsupported' ? 'Non supporté' : 'En attente'}
-               </span>
-             </div>
-             <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
-               Nécessaire pour enregistrer votre position approximative lors du badgeage
-             </p>
-             {gpsPermission === 'prompt' && (
-               <button 
-                 onClick={requestGpsPermission}
-                 style={{
-                   marginTop: 8,
-                   padding: '8px 16px',
-                   background: '#1976d2',
-                   color: '#fff',
-                   border: 'none',
-                   borderRadius: 6,
-                   cursor: 'pointer',
-                   fontSize: 14
-                 }}
-               >
-                 Autoriser la géolocalisation
-               </button>
-             )}
-           </div>
-
-           {/* NFC Permission - seulement si supporté */}
-           {isNfcSupported() && (
-             <div style={{
-               padding: 16,
-               border: '1px solid #e0e0e0',
-               borderRadius: 8,
-               background: '#f8f8f8'
-             }}>
-               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                 <span style={{ fontWeight: 600 }}>📱 NFC</span>
-                 <span style={{
-                   padding: '4px 8px',
-                   borderRadius: 4,
-                   fontSize: 12,
-                   fontWeight: 600,
-                   background: nfcPermission === 'granted' ? '#4caf50' : 
-                              nfcPermission === 'denied' ? '#f44336' : '#ff9800',
-                   color: '#fff'
-                 }}>
-                   {nfcPermission === 'granted' ? 'Autorisé' : 
-                    nfcPermission === 'denied' ? 'Refusé' : 'Non supporté'}
-                 </span>
-               </div>
-               <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
-                 Nécessaire pour scanner les badges NFC
-               </p>
-               {nfcPermission === 'denied' && (
-                 <button 
-                   onClick={requestNfcPermission}
-                   style={{
-                     marginTop: 8,
-                     padding: '8px 16px',
-                     background: '#1976d2',
-                     color: '#fff',
-                     border: 'none',
-                     borderRadius: 6,
-                     cursor: 'pointer',
-                     fontSize: 14
-                   }}
-                 >
-                   Réessayer NFC
-                 </button>
-               )}
-             </div>
-           )}
-         </div>
-
-                 {/* Avertissement RH si permissions non accordées */}
-         {(gpsPermission === 'denied' || (isNfcSupported() && nfcPermission === 'denied')) && (
-           <div style={{
-             background: '#fff3cd',
-             border: '1px solid #ffeaa7',
-             borderRadius: 8,
-             color: '#856404',
-             padding: '16px',
-             marginBottom: 24,
-             fontSize: 14,
-             fontWeight: 500
-           }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-               <span style={{ fontSize: 18 }}>⚠️</span>
-               <span style={{ fontWeight: 600 }}>Avertissement RH</span>
-             </div>
-             <p style={{ margin: 0, lineHeight: 1.4 }}>
-               L'utilisation de l'application sans les permissions requises peut entraîner une notification aux ressources humaines.
-             </p>
-           </div>
-         )}
-
-         <button 
-           onClick={() => setShowPermissionsScreen(false)}
-           style={{
-             padding: '12px 24px',
-             background: '#1976d2',
-             color: '#fff',
-             border: 'none',
-             borderRadius: 8,
-             cursor: 'pointer',
-             fontSize: 16,
-             fontWeight: 600
-           }}
-         >
-           Continuer
-         </button>
-      </div>
-    );
-  };
+  
 
      if (loading) return <div>Chargement...</div>;
-   
-   // Afficher l'écran de permissions seulement si nécessaire
-   if (showPermissionsScreen) {
-     return <PermissionsCheck />;
-   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', position: 'relative' }}>
