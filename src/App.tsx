@@ -69,7 +69,6 @@ function App() {
   const isAdmin = true;
 
   const handleSelectUser = useCallback(async (user: Utilisateur) => {
-    console.log('🔍 handleSelectUser appelé pour:', user.prenom, user.nom, 'à', new Date().toISOString());
     setLoading(true);
     setWebhookError(null);
     // Récupérer le badge actif
