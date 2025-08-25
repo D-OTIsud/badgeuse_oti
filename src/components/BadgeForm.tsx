@@ -339,7 +339,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         {mode === 'connexion' && (
           <div style={{ marginBottom: 24, width: '100%' }}>
             <div style={{ marginBottom: 18, fontSize: 17, textAlign: 'center', color: '#555' }}>
-              Connectez-vous a votre estpace personel avec votre compte Google :
+              Connectez-vous à votre espace personnel avec votre compte Google :
             </div>
             <button
               type="button"
@@ -376,6 +376,49 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               {loading ? 'Connexion...' : 'Se connecter avec Google'}
+            </button>
+          </div>
+        )}
+        {mode === 'connexion' && (
+          <div style={{ marginBottom: 12, width: '100%' }}>
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  const { data: sessionData } = await supabase.auth.getSession();
+                  if (sessionData?.session) {
+                    if (onConnect) onConnect(utilisateur);
+                  } else {
+                    setError("Vous n'êtes pas connecté. Veuillez utiliser le bouton Google.");
+                  }
+                } catch (e) {
+                  setError('Erreur lors de la vérification de la session.');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: '#1976d2',
+                border: '1px solid #1976d2',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#fff',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {loading ? 'Ouverture…' : 'Aller à mon espace personnel'}
             </button>
           </div>
         )}
