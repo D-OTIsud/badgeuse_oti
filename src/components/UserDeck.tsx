@@ -213,7 +213,34 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
               justifyContent: 'center',
               position: 'relative'
             }}
-            onClick={() => onSelect(user)}
+                         onClick={async () => {
+               // Appeler le webhook "Badgeuse_token generator" quand on clique sur une carte
+               try {
+                 await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+                   method: 'POST',
+                   headers: {
+                     'Content-Type': 'application/json',
+                   },
+                   body: JSON.stringify({
+                     user_email: user.email,
+                     user_name: `${user.prenom} ${user.nom}`,
+                     user_role: user.role,
+                     timestamp: new Date().toISOString(),
+                     action: 'carte_cliquee',
+                     device_info: {
+                       user_agent: navigator.userAgent,
+                       platform: navigator.platform,
+                       language: navigator.language
+                     }
+                   })
+                 });
+               } catch (webhookError) {
+                 console.error('Erreur webhook Badgeuse_token generator:', webhookError);
+               }
+               
+               // Appeler la fonction onSelect originale
+               onSelect(user);
+             }}
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
@@ -468,34 +495,8 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                  gpsErrorReason = `Exception GPS: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
                }
                
-               // Appeler le webhook si pas de données GPS
-               if (!hasGpsData) {
-                 try {
-                   await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
-                     method: 'POST',
-                     headers: {
-                       'Content-Type': 'application/json',
-                     },
-                     body: JSON.stringify({
-                       user_email: user.email,
-                       user_name: `${user.prenom} ${user.nom}`,
-                       user_role: user.role,
-                       badge_code: numero_badge,
-                       timestamp: new Date().toISOString(),
-                       message: 'Badgeage sans données GPS - notification envoyée',
-                       gps_error_code: gpsErrorCode,
-                       gps_error_reason: gpsErrorReason,
-                       device_info: {
-                         user_agent: navigator.userAgent,
-                         platform: navigator.platform,
-                         language: navigator.language
-                       }
-                     })
-                   });
-                 } catch (webhookError) {
-                   console.error('Erreur webhook:', webhookError);
-                 }
-               }
+                               // Le webhook GPS sera appelé seulement lors de l'enregistrement d'une entrée sans GPS
+                // Pas besoin de l'appeler ici, on l'appellera après l'insertion réussie
                
                // Logique selon l'autorisation IP
                const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
@@ -513,9 +514,39 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                     longitude,
                     type_action: 'entrée',
                   };
-                  const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
-                  setNfcLoading(false);
-                                     if (!insertError) {
+                                     const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                   setNfcLoading(false);
+                   
+                   if (!insertError) {
+                     // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
+                     if (!hasGpsData) {
+                       try {
+                         await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
+                           method: 'POST',
+                           headers: {
+                             'Content-Type': 'application/json',
+                           },
+                           body: JSON.stringify({
+                             user_email: user.email,
+                             user_name: `${user.prenom} ${user.nom}`,
+                             user_role: user.role,
+                             badge_code: numero_badge,
+                             timestamp: new Date().toISOString(),
+                             message: 'Badgeage sans données GPS - notification envoyée',
+                             gps_error_code: gpsErrorCode,
+                             gps_error_reason: gpsErrorReason,
+                             device_info: {
+                               user_agent: navigator.userAgent,
+                               platform: navigator.platform,
+                               language: navigator.language
+                             }
+                           })
+                         });
+                       } catch (webhookError) {
+                         console.error('Erreur webhook GPS:', webhookError);
+                       }
+                     }
+                     
                      const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
                      setSuccess(`Badge enregistré (entrée) pour ${user.prenom} ${user.nom} - ${gpsStatus}`);
                      setTimeout(() => setSuccess(null), 3000);
@@ -546,9 +577,39 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 if (isFirstBadgeAE) {
                   insertData.type_action = 'entrée';
                 }
-                const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
-                setNfcLoading(false);
-                                 if (!insertError) {
+                                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                 setNfcLoading(false);
+                 
+                 if (!insertError) {
+                   // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
+                   if (!hasGpsData) {
+                     try {
+                       await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
+                         method: 'POST',
+                         headers: {
+                           'Content-Type': 'application/json',
+                         },
+                         body: JSON.stringify({
+                           user_email: user.email,
+                           user_name: `${user.prenom} ${user.nom}`,
+                           user_role: user.role,
+                           badge_code: numero_badge,
+                           timestamp: new Date().toISOString(),
+                           message: 'Badgeage sans données GPS - notification envoyée',
+                           gps_error_code: gpsErrorCode,
+                           gps_error_reason: gpsErrorReason,
+                           device_info: {
+                             user_agent: navigator.userAgent,
+                             platform: navigator.platform,
+                             language: navigator.language
+                           }
+                         })
+                       });
+                     } catch (webhookError) {
+                       console.error('Erreur webhook GPS:', webhookError);
+                     }
+                   }
+                   
                    const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
                    setSuccess(`Badge enregistré pour ${user.prenom} ${user.nom} - ${gpsStatus}`);
                    setTimeout(() => setSuccess(null), 3000);
@@ -565,9 +626,39 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                   longitude,
                   lieux: 'Télétravail',
                 };
-                const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
-                setNfcLoading(false);
-                                 if (!insertError) {
+                                 const { error: insertError } = await supabase.from('appbadge_badgeages').insert(insertData);
+                 setNfcLoading(false);
+                 
+                 if (!insertError) {
+                   // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
+                   if (!hasGpsData) {
+                     try {
+                       await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
+                         method: 'POST',
+                         headers: {
+                           'Content-Type': 'application/json',
+                         },
+                         body: JSON.stringify({
+                           user_email: user.email,
+                           user_name: `${user.prenom} ${user.nom}`,
+                           user_role: user.role,
+                           badge_code: numero_badge,
+                           timestamp: new Date().toISOString(),
+                           message: 'Badgeage sans données GPS - notification envoyée',
+                           gps_error_code: gpsErrorCode,
+                           gps_error_reason: gpsErrorReason,
+                           device_info: {
+                             user_agent: navigator.userAgent,
+                             platform: navigator.platform,
+                             language: navigator.language
+                           }
+                         })
+                       });
+                     } catch (webhookError) {
+                       console.error('Erreur webhook GPS:', webhookError);
+                     }
+                   }
+                   
                    const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
                    setSuccess(`Badge enregistré (Télétravail) pour ${user.prenom} ${user.nom} - ${gpsStatus}`);
                    setTimeout(() => setSuccess(null), 3000);
