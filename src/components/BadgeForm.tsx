@@ -163,7 +163,44 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           setLoading(false);
           return;
         }
-        if (onConnect) onConnect(utilisateur);
+        // Create Supabase Auth session
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: utilisateur.email,
+            password: input // Use the 4-digit code as password
+          });
+          
+          if (error) {
+            // If password auth fails, try to create a new user or use magic link
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: utilisateur.email,
+              password: input,
+              options: {
+                data: {
+                  user_id: utilisateur.id,
+                  nom: utilisateur.nom,
+                  prenom: utilisateur.prenom
+                }
+              }
+            });
+            
+            if (signUpError) {
+              console.error('Auth error:', signUpError);
+              setError('Erreur lors de la création de la session.');
+              setLoading(false);
+              return;
+            }
+          }
+          
+          // Successfully authenticated
+          if (onConnect) onConnect(utilisateur);
+        } catch (authError) {
+          console.error('Auth error:', authError);
+          setError('Erreur lors de la création de la session.');
+          setLoading(false);
+          return;
+        }
+        
         setLoading(false);
         return;
       } catch (err) {
@@ -252,29 +289,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           <LottieLoader />
         </div>
       )}
-      {/* Toggle Badger / Connexion */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignSelf: 'stretch' }}>
-        <button type="button" onClick={() => setMode('badger')} style={{
-          flex: 1,
-          padding: '10px 12px',
-          borderRadius: 8,
-          border: mode === 'badger' ? '2px solid #1976d2' : '1.5px solid #bbb',
-          background: mode === 'badger' ? '#e3f2fd' : '#f8f8f8',
-          color: '#1976d2',
-          fontWeight: 700,
-          cursor: 'pointer'
-        }}>Badger</button>
-        <button type="button" onClick={() => setMode('connexion')} style={{
-          flex: 1,
-          padding: '10px 12px',
-          borderRadius: 8,
-          border: mode === 'connexion' ? '2px solid #1976d2' : '1.5px solid #bbb',
-          background: mode === 'connexion' ? '#e3f2fd' : '#f8f8f8',
-          color: '#1976d2',
-          fontWeight: 700,
-          cursor: 'pointer'
-        }}>Connexion</button>
-      </div>
+
       <form onSubmit={handleBadge} style={{
         maxWidth: 420,
         margin: '48px auto',
@@ -467,6 +482,27 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         }}>
           {loading ? (mode === 'connexion' ? 'Connexion...' : 'Badge en cours...') : (mode === 'connexion' ? 'Se connecter' : 'Badger')}
         </button>
+        {/* Toggle Badger / Connexion */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, alignSelf: 'stretch' }}>
+          <button type="button" onClick={() => setMode('badger')} style={{
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: mode === 'badger' ? '2px solid #1976d2' : '1.5px solid #bbb',
+            background: mode === 'badger' ? '#e3f2fd' : '#f8f8f8',
+            color: '#1976d2',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}>Badger</button>
+          <button type="button" onClick={() => setMode('connexion')} style={{
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: mode === 'connexion' ? '2px solid #1976d2' : '1.5px solid #bbb',
+            background: mode === 'connexion' ? '#e3f2fd' : '#f8f8f8',
+            color: '#1976d2',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}>Connexion</button>
+        </div>
         {geoError && (
           <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>
         )}

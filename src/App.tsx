@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import UserDeck from './components/UserDeck';
 import BadgeForm from './components/BadgeForm';
 import Header from './components/Header';
@@ -66,6 +67,7 @@ function App() {
   const [deckKey, setDeckKey] = useState(Date.now());
   const [showAdminPage, setShowAdminPage] = useState(false);
   const [showPortalFor, setShowPortalFor] = useState<Utilisateur | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   // MOCK : à remplacer par la vraie logique d'authentification/autorisation
   const isAdmin = true;
@@ -132,6 +134,19 @@ function App() {
     checkIP();
   }, []);
 
+  // Check Supabase session on mount and listen for auth changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleBack = (successMsg?: string) => {
     setBadgeageCtx(null);
     setShowPortalFor(null);
@@ -142,6 +157,11 @@ function App() {
       setSuccessMessage(successMsg);
       setTimeout(() => setSuccessMessage(null), 3000);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setShowPortalFor(null);
   };
 
   // Affichage du chargement IP
@@ -182,8 +202,8 @@ function App() {
                 locationLongitude={ipCheck?.longitude}
                 locationName={ipCheck?.locationName}
               />
-            ) : showPortalFor ? (
-              <UserPortal utilisateur={showPortalFor} onClose={() => setShowPortalFor(null)} />
+            ) : showPortalFor && session ? (
+              <UserPortal utilisateur={showPortalFor} onClose={() => setShowPortalFor(null)} onLogout={handleLogout} />
             ) : (
               <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} locationName={ipCheck?.locationName} />
             )}
