@@ -148,6 +148,9 @@ function App() {
             const authedEmail = session.user?.email || '';
             if (authedEmail && user.email && authedEmail.toLowerCase() === user.email.toLowerCase()) {
               setShowPortalFor(user);
+            } else {
+              // User doesn't match - clear localStorage and don't open portal
+              console.log('Authenticated user email does not match selected card user');
             }
             localStorage.removeItem('portalUser');
           }
@@ -175,6 +178,9 @@ function App() {
             const authedEmail = session.user?.email || '';
             if (authedEmail && user.email && authedEmail.toLowerCase() === user.email.toLowerCase()) {
               setShowPortalFor(user);
+            } else {
+              // User doesn't match - clear localStorage and don't open portal
+              console.log('Authenticated user email does not match selected card user');
             }
             localStorage.removeItem('portalUser');
           }
@@ -218,6 +224,10 @@ function App() {
             const authedEmail = s.session?.user?.email || '';
             if (authedEmail && user.email && authedEmail.toLowerCase() === user.email.toLowerCase()) {
               setShowPortalFor(user);
+            } else {
+              // User doesn't match - clear localStorage and don't open portal
+              // This allows the new user to see the connection button again
+              console.log('Authenticated user email does not match selected card user');
             }
             localStorage.removeItem('portalUser');
           }
