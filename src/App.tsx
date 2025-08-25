@@ -187,16 +187,14 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // If this window is the OAuth popup, finalize the session and close immediately
+  // Full-page redirect flow: handle return from OAuth, open portal immediately
   useEffect(() => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const isOAuth = urlParams.get('oauth') === '1';
-      const hasOpener = typeof window !== 'undefined' && !!(window as any).opener;
-      if (isOAuth && hasOpener) {
+      const isOAuthReturn = urlParams.get('oauth') === '1';
+      if (isOAuthReturn) {
         (async () => {
           try {
-            // Ensure session is exchanged if needed
             const anyAuth: any = supabase.auth as any;
             if (typeof anyAuth.exchangeCodeForSession === 'function') {
               await anyAuth.exchangeCodeForSession();
@@ -204,44 +202,17 @@ function App() {
               await supabase.auth.getSession();
             }
           } catch {}
-          // Notify parent and close popup
-          try {
-            (window as any).opener.postMessage({ type: 'supabase_oauth_complete' }, window.location.origin);
-          } catch {}
-          try {
-            window.close();
-          } catch {}
-        })();
-      }
-    } catch {}
-  }, []);
-
-  // Parent window: listen for popup completion to open the portal immediately
-  useEffect(() => {
-    const handler = (ev: MessageEvent) => {
-      try {
-        if (ev.origin !== window.location.origin) return;
-        if (ev.data && ev.data.type === 'supabase_oauth_complete') {
+          // Restore user and clean URL
           const raw = localStorage.getItem('portalUser');
           if (raw) {
             const user = JSON.parse(raw) as Utilisateur;
             setShowPortalFor(user);
             localStorage.removeItem('portalUser');
           }
-          const anyWindow: any = window as any;
-          if (anyWindow.__oauthPopup && !anyWindow.__oauthPopup.closed) {
-            anyWindow.__oauthPopup.close();
-            anyWindow.__oauthPopup = null;
-          }
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('oauth') === '1') {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        }
-      } catch {}
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })();
+      }
+    } catch {}
   }, []);
 
 

@@ -141,49 +141,35 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
          // Connexion: utiliser Google OAuth pour ouvrir le portail, sans badgeage
      if (mode === 'connexion') {
        try {
-         // Use Google OAuth for connection mode
+        // If already authenticated in Supabase, open portal immediately (no Google screen)
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session) {
+          if (onConnect) onConnect(utilisateur);
+          setLoading(false);
+          return;
+        }
+
+        // Persist selected user so we can reopen the portal after OAuth redirect
         try {
-          // Persist selected user so we can reopen the portal after OAuth redirect
-          try {
-            localStorage.setItem('portalUser', JSON.stringify(utilisateur));
-          } catch {}
-          const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: `${window.location.origin}?oauth=1`,
-              // Open in popup instead of full-page redirect
-              skipBrowserRedirect: true,
-              queryParams: {
-                access_type: 'offline',
-                prompt: 'consent',
-              },
-            }
-          });
-          
-          if (error) {
-            console.error('Google OAuth error:', error);
-            setError('Erreur lors de la connexion Google. Veuillez réessayer.');
-            setLoading(false);
-            return;
+          localStorage.setItem('portalUser', JSON.stringify(utilisateur));
+        } catch {}
+
+        // Use Google OAuth with full-page redirect (no popup). Avoid forcing consent screens.
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}?oauth=1`,
           }
-          
-          // Open the OAuth URL in a centered popup
-          if (data && (data as any).url) {
-            const w = 520; const h = 640;
-            const y = window.top ? Math.max(0, ((window.top.outerHeight - h) / 2) + (window.top.screenY || 0)) : 0;
-            const x = window.top ? Math.max(0, ((window.top.outerWidth - w) / 2) + (window.top.screenX || 0)) : 0;
-            const popup = window.open((data as any).url, 'supabase_oauth', `width=${w},height=${h},left=${x},top=${y}`);
-            (window as any).__oauthPopup = popup;
-          }
-          console.log('Google OAuth popup opened');
-        } catch (authError) {
-          console.error('Auth error:', authError);
-          setError('Erreur lors de la connexion. Veuillez réessayer.');
+        });
+        
+        if (error) {
+          console.error('Google OAuth error:', error);
+          setError('Erreur lors de la connexion Google. Veuillez réessayer.');
           setLoading(false);
           return;
         }
         
-        setLoading(false);
+        // Browser will redirect away now
         return;
       } catch (err) {
         setError("Erreur lors de la connexion.");
@@ -353,7 +339,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         {mode === 'connexion' && (
           <div style={{ marginBottom: 24, width: '100%' }}>
             <div style={{ marginBottom: 18, fontSize: 17, textAlign: 'center', color: '#555' }}>
-              Connectez-vous avec votre compte Google :
+              Connectez-vous a votre estpace personel avec votre compte Google :
             </div>
             <button
               type="button"
