@@ -259,21 +259,21 @@ function App() {
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
             {loading && <div style={{ color: '#1976d2', marginBottom: 16 }}>Connexion au badge...</div>}
             {webhookError && <div style={{ color: 'red', marginBottom: 16 }}>{webhookError}</div>}
-            {badgeageCtx ? (
+            {showPortalFor && session ? (
+              <UserPortal utilisateur={showPortalFor} onClose={() => setShowPortalFor(null)} onLogout={handleLogout} />
+            ) : badgeageCtx ? (
               <BadgeForm
                 utilisateur={badgeageCtx.utilisateur}
                 badgeId={badgeageCtx.badgeId}
                 heure={badgeageCtx.heure}
                 onBack={handleBack}
-                onConnect={(u) => setShowPortalFor(u)}
+                onConnect={(u) => { setShowPortalFor(u); setBadgeageCtx(null); }}
                 isIPAuthorized={ipCheck?.isAuthorized ?? true}
                 userIP={ipCheck?.userIP}
                 locationLatitude={ipCheck?.latitude}
                 locationLongitude={ipCheck?.longitude}
                 locationName={ipCheck?.locationName}
               />
-            ) : showPortalFor && session ? (
-              <UserPortal utilisateur={showPortalFor} onClose={() => setShowPortalFor(null)} onLogout={handleLogout} />
             ) : (
               <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} locationName={ipCheck?.locationName} />
             )}
