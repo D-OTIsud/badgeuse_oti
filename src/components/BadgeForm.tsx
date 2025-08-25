@@ -163,40 +163,26 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           setLoading(false);
           return;
         }
-        // Create Supabase Auth session
+        // Sign in to existing Supabase account (created by admin)
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: utilisateur.email,
-            password: input // Use the 4-digit code as password
+            password: `badge_${utilisateur.id}_${input}` // Password format: badge_USERID_CODE
           });
           
-          if (error) {
-            // If password auth fails, try to create a new user or use magic link
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-              email: utilisateur.email,
-              password: input,
-              options: {
-                data: {
-                  user_id: utilisateur.id,
-                  nom: utilisateur.nom,
-                  prenom: utilisateur.prenom
-                }
-              }
-            });
-            
-            if (signUpError) {
-              console.error('Auth error:', signUpError);
-              setError('Erreur lors de la création de la session.');
-              setLoading(false);
-              return;
-            }
+          if (signInError) {
+            console.error('Signin error:', signInError);
+            setError('Compte utilisateur non trouvé. Veuillez contacter l\'administrateur pour créer votre compte.');
+            setLoading(false);
+            return;
           }
           
           // Successfully authenticated
+          console.log('Supabase authentication successful');
           if (onConnect) onConnect(utilisateur);
         } catch (authError) {
           console.error('Auth error:', authError);
-          setError('Erreur lors de la création de la session.');
+          setError('Erreur lors de la connexion. Veuillez réessayer.');
           setLoading(false);
           return;
         }

@@ -147,6 +147,8 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+
+
   const handleBack = (successMsg?: string) => {
     setBadgeageCtx(null);
     setShowPortalFor(null);
