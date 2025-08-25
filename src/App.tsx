@@ -6,6 +6,7 @@ import { supabase } from './supabaseClient';
 import { checkIPAuthorization, getWelcomeMessage } from './services/ipService';
 import AdminPage from './components/AdminPage';
 import LottieLoader from './components/LottieLoader';
+import UserPortal from './components/UserPortal';
 
 export type Utilisateur = {
   id: string;
@@ -64,6 +65,7 @@ function App() {
   const [ipCheckLoading, setIpCheckLoading] = useState(true);
   const [deckKey, setDeckKey] = useState(Date.now());
   const [showAdminPage, setShowAdminPage] = useState(false);
+  const [showPortalFor, setShowPortalFor] = useState<Utilisateur | null>(null);
 
   // MOCK : à remplacer par la vraie logique d'authentification/autorisation
   const isAdmin = true;
@@ -132,6 +134,7 @@ function App() {
 
   const handleBack = (successMsg?: string) => {
     setBadgeageCtx(null);
+    setShowPortalFor(null);
     setWebhookError(null);
     // Forcer le rechargement du deck en ajoutant un timestamp
     setDeckKey(Date.now());
@@ -172,12 +175,15 @@ function App() {
                 badgeId={badgeageCtx.badgeId}
                 heure={badgeageCtx.heure}
                 onBack={handleBack}
+                onConnect={(u) => setShowPortalFor(u)}
                 isIPAuthorized={ipCheck?.isAuthorized ?? true}
                 userIP={ipCheck?.userIP}
                 locationLatitude={ipCheck?.latitude}
                 locationLongitude={ipCheck?.longitude}
                 locationName={ipCheck?.locationName}
               />
+            ) : showPortalFor ? (
+              <UserPortal utilisateur={showPortalFor} onClose={() => setShowPortalFor(null)} />
             ) : (
               <UserDeck key={deckKey} onSelect={handleSelectUser} isIPAuthorized={ipCheck?.isAuthorized ?? true} locationName={ipCheck?.locationName} />
             )}

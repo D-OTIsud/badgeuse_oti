@@ -14,6 +14,7 @@ interface BadgeFormProps {
   locationLongitude?: string;
   locationName?: string;
   badgeMethod?: 'manual' | 'nfc'; // Ajout de la méthode de badge
+  onConnect?: (user: Utilisateur) => void; // Connexion au portail utilisateur
 }
 
 const splitCode = (code: string) => {
@@ -45,7 +46,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP, locationLatitude, locationLongitude, locationName, badgeMethod = 'manual' }) => {
+const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBack, isIPAuthorized = true, userIP, locationLatitude, locationLongitude, locationName, badgeMethod = 'manual', onConnect }) => {
   const [code, setCode] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -57,6 +58,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [showSuccess, setShowSuccess] = useState(false);
   const [gpsConsent, setGpsConsent] = useState(true);
   const [typeAction, setTypeAction] = useState<'entrée' | 'sortie' | 'pause' | 'retour'>('entrée');
+  const [mode, setMode] = useState<'badger' | 'connexion'>('badger');
 
   // Détection des rôles
   const isManagerOrAdmin = utilisateur.role === 'Manager' || utilisateur.role === 'Admin';
@@ -135,6 +137,41 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     setLoading(true);
     setMessage(null);
     setError(null);
+
+    // Connexion: vérifier le code à 4 chiffres et ouvrir le portail, sans badgeage
+    if (mode === 'connexion') {
+      try {
+        // Récupérer le badge actif pour obtenir le code courant et l'historique
+        const { data: badges, error: badgeError } = await supabase
+          .from('appbadge_badges')
+          .select('numero_badge, numero_badge_history, actif')
+          .eq('utilisateur_id', utilisateur.id)
+          .eq('actif', true)
+          .limit(1);
+
+        if (badgeError || !badges || badges.length === 0) {
+          setError('Aucun badge actif associé à cet utilisateur.');
+          setLoading(false);
+          return;
+        }
+        const currentCode = badges[0]?.numero_badge ? String(badges[0]?.numero_badge) : '';
+        const history: string[] = Array.isArray(badges[0]?.numero_badge_history) ? badges[0]?.numero_badge_history : [];
+        const input = code.trim();
+
+        if (input.length !== 4 || !(input === currentCode || history.includes(input))) {
+          setError('Code de connexion invalide.');
+          setLoading(false);
+          return;
+        }
+        if (onConnect) onConnect(utilisateur);
+        setLoading(false);
+        return;
+      } catch (err) {
+        setError("Erreur lors de la connexion.");
+        setLoading(false);
+        return;
+      }
+    }
     let finalLatitude = latitude;
     let finalLongitude = longitude;
     // Pour Manager/Admin ou A-E, GPS obligatoire (précision selon rôle)
@@ -191,7 +228,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   // - Premier badgeage : pas de champ code, pas de champ type d'action, mais transmettre code (auto), utilisateur_id, GPS, type_action = 'entrée'
   // - Après : uniquement champ type d'action, pas de champ code, transmettre code (auto), utilisateur_id, GPS, type_action (choisi)
   // Pour les autres rôles : comportement classique
-  const showCodeInput = !isAE;
+  // En mode connexion: exiger la saisie du code pour tous les rôles
+  const showCodeInput = mode === 'connexion' ? true : !isAE;
   // Pour A-E, deuxième badgeage : afficher uniquement le dropdown type d'action
   const showTypeAction = (isAE && !isFirstBadgeAE) || (!isAE && !lieuConnu);
   // Correction : Admin/Manager ne voient jamais les avertissements ni commentaire ni case GPS
@@ -214,6 +252,29 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           <LottieLoader />
         </div>
       )}
+      {/* Toggle Badger / Connexion */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignSelf: 'stretch' }}>
+        <button type="button" onClick={() => setMode('badger')} style={{
+          flex: 1,
+          padding: '10px 12px',
+          borderRadius: 8,
+          border: mode === 'badger' ? '2px solid #1976d2' : '1.5px solid #bbb',
+          background: mode === 'badger' ? '#e3f2fd' : '#f8f8f8',
+          color: '#1976d2',
+          fontWeight: 700,
+          cursor: 'pointer'
+        }}>Badger</button>
+        <button type="button" onClick={() => setMode('connexion')} style={{
+          flex: 1,
+          padding: '10px 12px',
+          borderRadius: 8,
+          border: mode === 'connexion' ? '2px solid #1976d2' : '1.5px solid #bbb',
+          background: mode === 'connexion' ? '#e3f2fd' : '#f8f8f8',
+          color: '#1976d2',
+          fontWeight: 700,
+          cursor: 'pointer'
+        }}>Connexion</button>
+      </div>
       <form onSubmit={handleBadge} style={{
         maxWidth: 420,
         margin: '48px auto',
@@ -247,12 +308,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           </div>
         </div>
         {/* CODE à 4 chiffres */}
-        {showCodeInput && !isAE && (
+        {showCodeInput && (
           <div style={{ marginBottom: 18, fontSize: 17, width: '100%' }}>
             Saisissez le code à 4 chiffres :
           </div>
         )}
-        {showCodeInput && !isAE && (
+        {showCodeInput && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
             {codeArr.map((val, idx) => (
               <input
@@ -390,7 +451,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           </div>
         )}
         {/* BOUTON BADGER */}
-        <button type="submit" disabled={loading || (showCodeInput && code.length !== 4) || !!geoError || (showCommentaire && !commentaire.trim())} style={{
+        <button type="submit" disabled={loading || (mode === 'connexion' && code.length !== 4) || (showCodeInput && mode !== 'connexion' && code.length !== 4 && !isAE) || !!geoError || (showCommentaire && !commentaire.trim())} style={{
           fontSize: 20,
           background: '#1976d2',
           color: '#fff',
@@ -404,7 +465,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
           transition: 'background 0.2s',
         }}>
-          {loading ? 'Badge en cours...' : 'Badger'}
+          {loading ? (mode === 'connexion' ? 'Connexion...' : 'Badge en cours...') : (mode === 'connexion' ? 'Se connecter' : 'Badger')}
         </button>
         {geoError && (
           <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>

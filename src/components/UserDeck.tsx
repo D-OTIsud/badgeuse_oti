@@ -352,7 +352,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
           filter: 'actif=eq.true'
         },
         (payload) => {
-          console.log('Changement détecté:', payload);
+          // log supprimé (bruit inutile en production)
           
           // Mettre à jour seulement l'utilisateur modifié
           if (payload.eventType === 'UPDATE') {

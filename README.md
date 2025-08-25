@@ -97,3 +97,16 @@ docker run -p 3000:3000 badgeuse-oti
 ## Support
 
 Pour toute question ou problème, contactez l'équipe IT de l'OTI du SUD. 
+
+## Documentation
+
+La documentation détaillée est organisée par thème:
+
+- Démarrage et configuration: `README_CONFIG.md`
+- Fonctions SQL et exemples: `README_FUNCTIONS.md`, `test_functions.sql`, `database_functions.sql`
+- Guide de déploiement: `DEPLOYMENT_GUIDE.md`, `Dockerfile`, `nginx.conf`
+- Contrôle d'accès IP: `IP_ACCESS_CONTROL.md`
+- Améliorations Dashboard: `DASHBOARD_IMPROVEMENTS.md`, `GRAPHIQUES_IMPLEMENTATION.md`
+- Exemples d'usage et typings: `EXAMPLES_USAGE.md`, `EXAMPLES_TYPED.md`
+
+Astuce: utilisez la recherche du dépôt pour retrouver rapidement un sujet.
