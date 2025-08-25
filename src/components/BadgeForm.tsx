@@ -72,28 +72,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   // Masquer le champ type d'action si le lieu est connu (locationName défini ou Admin/Manager sur réseau inconnu)
   const lieuConnu = (isManagerOrAdmin && !isIPAuthorized) || (isIPAuthorized && locationName);
 
-  // Appel du webhook à l'ouverture du formulaire (une seule fois)
-  React.useEffect(() => {
-    if (utilisateur.role && utilisateur.role !== 'A-E') {
-      (async () => {
-        try {
-          console.log('[WEBHOOK] Appel webhook n8n (ouverture formulaire)...');
-          const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              utilisateur_id: utilisateur.id,
-              badge_id: badgeId,
-              user_email: utilisateur.email,
-            }),
-          });
-          console.log('[WEBHOOK] Réponse webhook', res.status, res.statusText);
-        } catch (e: any) {
-          console.error('Erreur webhook (ouverture formulaire):', e);
-        }
-      })();
-    }
-  }, [utilisateur.id, badgeId, utilisateur.email, utilisateur.role]);
+  // (Supprimé) L'appel webhook de génération de code est désormais géré au clic carte dans App.tsx
 
   React.useEffect(() => {
     // Si IP autorisée, utiliser les coordonnées de la base de données
