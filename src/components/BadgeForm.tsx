@@ -151,6 +151,8 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
             provider: 'google',
             options: {
               redirectTo: `${window.location.origin}?oauth=1`,
+              // Open in popup instead of full-page redirect
+              skipBrowserRedirect: true,
               queryParams: {
                 access_type: 'offline',
                 prompt: 'consent',
@@ -165,8 +167,15 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
             return;
           }
           
-          // OAuth redirect will happen automatically
-          console.log('Google OAuth initiated successfully');
+          // Open the OAuth URL in a centered popup
+          if (data && (data as any).url) {
+            const w = 520; const h = 640;
+            const y = window.top ? Math.max(0, ((window.top.outerHeight - h) / 2) + (window.top.screenY || 0)) : 0;
+            const x = window.top ? Math.max(0, ((window.top.outerWidth - w) / 2) + (window.top.screenX || 0)) : 0;
+            const popup = window.open((data as any).url, 'supabase_oauth', `width=${w},height=${h},left=${x},top=${y}`);
+            (window as any).__oauthPopup = popup;
+          }
+          console.log('Google OAuth popup opened');
         } catch (authError) {
           console.error('Auth error:', authError);
           setError('Erreur lors de la connexion. Veuillez réessayer.');

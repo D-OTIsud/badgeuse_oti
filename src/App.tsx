@@ -138,37 +138,48 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      // If returning from OAuth and we have a session, restore the selected user from localStorage
+      // If we have a session (OAuth completed in a popup or redirect), restore portal user and close popup
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const isOAuthReturn = urlParams.get('oauth') === '1';
-        if (isOAuthReturn && session && !showPortalFor) {
+        if (session && !showPortalFor) {
           const raw = localStorage.getItem('portalUser');
           if (raw) {
             const user = JSON.parse(raw) as Utilisateur;
             setShowPortalFor(user);
+            localStorage.removeItem('portalUser');
           }
-          // Clean up URL and storage
+        }
+        const anyWindow: any = window as any;
+        if (anyWindow.__oauthPopup && !anyWindow.__oauthPopup.closed) {
+          anyWindow.__oauthPopup.close();
+          anyWindow.__oauthPopup = null;
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('oauth') === '1') {
           window.history.replaceState({}, document.title, window.location.pathname);
-          localStorage.removeItem('portalUser');
         }
       } catch {}
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // If session established after OAuth, restore portal user if present
+      // If session established after OAuth (popup or redirect), restore portal user and close popup
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const isOAuthReturn = urlParams.get('oauth') === '1';
-        if (isOAuthReturn && session && !showPortalFor) {
+        if (session && !showPortalFor) {
           const raw = localStorage.getItem('portalUser');
           if (raw) {
             const user = JSON.parse(raw) as Utilisateur;
             setShowPortalFor(user);
+            localStorage.removeItem('portalUser');
           }
+        }
+        const anyWindow: any = window as any;
+        if (anyWindow.__oauthPopup && !anyWindow.__oauthPopup.closed) {
+          anyWindow.__oauthPopup.close();
+          anyWindow.__oauthPopup = null;
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('oauth') === '1') {
           window.history.replaceState({}, document.title, window.location.pathname);
-          localStorage.removeItem('portalUser');
         }
       } catch {}
     });
