@@ -154,11 +154,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           localStorage.setItem('portalUser', JSON.stringify(utilisateur));
         } catch {}
 
-        // Use Google OAuth with full-page redirect (no popup). Avoid forcing consent screens.
-        const { error } = await supabase.auth.signInWithOAuth({
+        // Request OAuth URL and perform a full-page redirect manually to ensure navigation
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}?oauth=1`,
+            skipBrowserRedirect: true,
           }
         });
         
@@ -168,8 +169,11 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           setLoading(false);
           return;
         }
+
+        if (data && (data as any).url) {
+          window.location.assign((data as any).url as string);
+        }
         
-        // Browser will redirect away now
         return;
       } catch (err) {
         setError("Erreur lors de la connexion.");
