@@ -33,8 +33,7 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0, color: '#1976d2' }}>Mon espace</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onLogout} style={{ background: '#dc3545', border: '1px solid #dc3545', color: '#fff', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}>Déconnexion</button>
-            <button onClick={onClose} style={{ background: 'none', border: '1px solid #1976d2', color: '#1976d2', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}>Fermer</button>
+            <button onClick={onLogout} style={{ background: 'none', border: '1px solid #1976d2', color: '#1976d2', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}>Fermer</button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
