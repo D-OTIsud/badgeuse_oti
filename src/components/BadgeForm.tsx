@@ -138,32 +138,10 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
     setMessage(null);
     setError(null);
 
-    // Connexion: vérifier le code à 4 chiffres et ouvrir le portail, sans badgeage
-    if (mode === 'connexion') {
-      try {
-        // Récupérer le badge actif pour obtenir le code courant et l'historique
-        const { data: badges, error: badgeError } = await supabase
-          .from('appbadge_badges')
-          .select('numero_badge, numero_badge_history, actif')
-          .eq('utilisateur_id', utilisateur.id)
-          .eq('actif', true)
-          .limit(1);
-
-        if (badgeError || !badges || badges.length === 0) {
-          setError('Aucun badge actif associé à cet utilisateur.');
-          setLoading(false);
-          return;
-        }
-        const currentCode = badges[0]?.numero_badge ? String(badges[0]?.numero_badge) : '';
-        const history: string[] = Array.isArray(badges[0]?.numero_badge_history) ? badges[0]?.numero_badge_history : [];
-        const input = code.trim();
-
-        if (input.length !== 4 || !(input === currentCode || history.includes(input))) {
-          setError('Code de connexion invalide.');
-          setLoading(false);
-          return;
-        }
-        // Use Google OAuth for connection mode
+         // Connexion: utiliser Google OAuth pour ouvrir le portail, sans badgeage
+     if (mode === 'connexion') {
+       try {
+         // Use Google OAuth for connection mode
         try {
           const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
