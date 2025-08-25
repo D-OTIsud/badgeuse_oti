@@ -155,11 +155,11 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         } catch {}
 
         // Request OAuth URL and perform a full-page redirect manually to ensure navigation
-        const { data, error } = await supabase.auth.signInWithOAuth({
+        const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}?oauth=1`,
-            skipBrowserRedirect: true,
+            // Let Supabase SDK handle the full-page redirect for better compatibility
           }
         });
         
@@ -168,10 +168,6 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           setError('Erreur lors de la connexion Google. Veuillez réessayer.');
           setLoading(false);
           return;
-        }
-
-        if (data && (data as any).url) {
-          window.location.assign((data as any).url as string);
         }
         
         return;
