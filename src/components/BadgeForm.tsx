@@ -483,25 +483,39 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           {loading ? (mode === 'connexion' ? 'Connexion...' : 'Badge en cours...') : (mode === 'connexion' ? 'Se connecter' : 'Badger')}
         </button>
         {/* Toggle Badger / Connexion */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, alignSelf: 'stretch' }}>
-          <button type="button" onClick={() => setMode('badger')} style={{
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: mode === 'badger' ? '2px solid #1976d2' : '1.5px solid #bbb',
-            background: mode === 'badger' ? '#e3f2fd' : '#f8f8f8',
-            color: '#1976d2',
-            fontWeight: 700,
-            cursor: 'pointer'
-          }}>Badger</button>
-          <button type="button" onClick={() => setMode('connexion')} style={{
-            padding: '10px 12px',
-            borderRadius: 8,
-            border: mode === 'connexion' ? '2px solid #1976d2' : '1.5px solid #bbb',
-            background: mode === 'connexion' ? '#e3f2fd' : '#f8f8f8',
-            color: '#1976d2',
-            fontWeight: 700,
-            cursor: 'pointer'
-          }}>Connexion</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 12, gap: 8 }}>
+          <label htmlFor="mode-toggle" style={{
+            position: 'relative',
+            display: 'inline-block',
+            width: '60px',
+            height: '34px',
+            backgroundColor: mode === 'connexion' ? '#34C759' : '#E9E9EA', // iOS green for ON, light grey for OFF
+            borderRadius: '34px',
+            cursor: 'pointer',
+            transition: 'background-color 0.4s',
+          }}>
+            <input
+              type="checkbox"
+              id="mode-toggle"
+              checked={mode === 'connexion'}
+              onChange={(e) => setMode(e.target.checked ? 'connexion' : 'badger')}
+              style={{ display: 'none' }}
+            />
+            <span style={{
+              position: 'absolute',
+              left: mode === 'connexion' ? '26px' : '4px',
+              top: '4px',
+              width: '26px',
+              height: '26px',
+              backgroundColor: 'white',
+              borderRadius: '50%',
+              transition: 'left 0.4s',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}></span>
+          </label>
+          <span style={{ fontSize: 14, color: '#555' }}>
+            {mode === 'badger' ? 'Mode: Badger' : 'Mode: Connexion'}
+          </span>
         </div>
         {geoError && (
           <div style={{ color: 'red', marginBottom: 16 }}>{geoError}</div>
