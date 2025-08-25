@@ -144,7 +144,11 @@ function App() {
           const raw = localStorage.getItem('portalUser');
           if (raw) {
             const user = JSON.parse(raw) as Utilisateur;
-            setShowPortalFor(user);
+            // Ensure the authenticated user matches the selected card
+            const authedEmail = session.user?.email || '';
+            if (authedEmail && user.email && authedEmail.toLowerCase() === user.email.toLowerCase()) {
+              setShowPortalFor(user);
+            }
             localStorage.removeItem('portalUser');
           }
         }
@@ -168,7 +172,10 @@ function App() {
           const raw = localStorage.getItem('portalUser');
           if (raw) {
             const user = JSON.parse(raw) as Utilisateur;
-            setShowPortalFor(user);
+            const authedEmail = session.user?.email || '';
+            if (authedEmail && user.email && authedEmail.toLowerCase() === user.email.toLowerCase()) {
+              setShowPortalFor(user);
+            }
             localStorage.removeItem('portalUser');
           }
         }
@@ -206,7 +213,12 @@ function App() {
           const raw = localStorage.getItem('portalUser');
           if (raw) {
             const user = JSON.parse(raw) as Utilisateur;
-            setShowPortalFor(user);
+            // Verify current session matches selected user email
+            const { data: s } = await supabase.auth.getSession();
+            const authedEmail = s.session?.user?.email || '';
+            if (authedEmail && user.email && authedEmail.toLowerCase() === user.email.toLowerCase()) {
+              setShowPortalFor(user);
+            }
             localStorage.removeItem('portalUser');
           }
           window.history.replaceState({}, document.title, window.location.pathname);
