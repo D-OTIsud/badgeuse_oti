@@ -213,34 +213,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
               justifyContent: 'center',
               position: 'relative'
             }}
-                         onClick={async () => {
-               // Appeler le webhook "Badgeuse_token generator" quand on clique sur une carte
-               try {
-                 await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-                   method: 'POST',
-                   headers: {
-                     'Content-Type': 'application/json',
-                   },
-                   body: JSON.stringify({
-                     user_email: user.email,
-                     user_name: `${user.prenom} ${user.nom}`,
-                     user_role: user.role,
-                     timestamp: new Date().toISOString(),
-                     action: 'carte_cliquee',
-                     device_info: {
-                       user_agent: navigator.userAgent,
-                       platform: navigator.platform,
-                       language: navigator.language
-                     }
-                   })
-                 });
-               } catch (webhookError) {
-                 console.error('Erreur webhook Badgeuse_token generator:', webhookError);
-               }
-               
-               // Appeler la fonction onSelect originale
-               onSelect(user);
-             }}
+                         onClick={() => onSelect(user)}
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
