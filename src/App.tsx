@@ -75,6 +75,26 @@ function App() {
   const handleSelectUser = useCallback(async (user: Utilisateur) => {
     setLoading(true);
     setWebhookError(null);
+    
+    // Check if there's an active session and if the user matches
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user?.email) {
+      const authedEmail = session.user.email.toLowerCase();
+      const cardEmail = user.email.toLowerCase();
+      
+      if (authedEmail !== cardEmail) {
+        // User clicked on a different card - terminate their session immediately
+        console.log('User clicked on different card, terminating session');
+        await supabase.auth.signOut();
+        setSession(null);
+        setShowPortalFor(null);
+        // Clear any stored portal user
+        try {
+          localStorage.removeItem('portalUser');
+        } catch {}
+      }
+    }
+    
     // Récupérer le badge actif
     const { data: badges, error: badgeError } = await supabase
       .from('appbadge_badges')
