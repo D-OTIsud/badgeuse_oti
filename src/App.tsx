@@ -138,10 +138,39 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      // If returning from OAuth and we have a session, restore the selected user from localStorage
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isOAuthReturn = urlParams.get('oauth') === '1';
+        if (isOAuthReturn && session && !showPortalFor) {
+          const raw = localStorage.getItem('portalUser');
+          if (raw) {
+            const user = JSON.parse(raw) as Utilisateur;
+            setShowPortalFor(user);
+          }
+          // Clean up URL and storage
+          window.history.replaceState({}, document.title, window.location.pathname);
+          localStorage.removeItem('portalUser');
+        }
+      } catch {}
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // If session established after OAuth, restore portal user if present
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isOAuthReturn = urlParams.get('oauth') === '1';
+        if (isOAuthReturn && session && !showPortalFor) {
+          const raw = localStorage.getItem('portalUser');
+          if (raw) {
+            const user = JSON.parse(raw) as Utilisateur;
+            setShowPortalFor(user);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+          localStorage.removeItem('portalUser');
+        }
+      } catch {}
     });
 
     return () => subscription.unsubscribe();

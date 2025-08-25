@@ -143,10 +143,14 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
        try {
          // Use Google OAuth for connection mode
         try {
+          // Persist selected user so we can reopen the portal after OAuth redirect
+          try {
+            localStorage.setItem('portalUser', JSON.stringify(utilisateur));
+          } catch {}
           const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-              redirectTo: window.location.origin,
+              redirectTo: `${window.location.origin}?oauth=1`,
               queryParams: {
                 access_type: 'offline',
                 prompt: 'consent',
