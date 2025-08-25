@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import UserDeck from './components/UserDeck';
 import BadgeForm from './components/BadgeForm';
 import Header from './components/Header';
@@ -68,7 +68,8 @@ function App() {
   // MOCK : à remplacer par la vraie logique d'authentification/autorisation
   const isAdmin = true;
 
-  const handleSelectUser = async (user: Utilisateur) => {
+  const handleSelectUser = useCallback(async (user: Utilisateur) => {
+    console.log('🔍 handleSelectUser appelé pour:', user.prenom, user.nom, 'à', new Date().toISOString());
     setLoading(true);
     setWebhookError(null);
     // Récupérer le badge actif
@@ -106,7 +107,7 @@ function App() {
     
     setBadgeageCtx({ utilisateur: user, badgeId, heure: new Date() });
     setLoading(false);
-  };
+  }, [ipCheck]);
 
   // Nouvelle version : onBack peut recevoir un message de succès
   // Vérification de l'IP au chargement de l'app

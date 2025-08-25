@@ -213,7 +213,10 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
               justifyContent: 'center',
               position: 'relative'
             }}
-                         onClick={() => onSelect(user)}
+                         onClick={() => {
+               console.log('🖱️ Clic sur carte pour:', user.prenom, user.nom, 'à', new Date().toISOString());
+               onSelect(user);
+             }}
             onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
             onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
           >
@@ -314,6 +317,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
 );
 
 const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationName }) => {
+  console.log('🔄 UserDeck render à', new Date().toISOString());
   const [users, setUsers] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
