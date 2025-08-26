@@ -179,44 +179,106 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
    groupedUsers: Record<string, Utilisateur[]>;
    sortedLocations: string[];
    onSelect: (user: Utilisateur) => void;
- }> = ({ groupedUsers, sortedLocations, onSelect }) => (
-   <div style={{ width: '100%', maxWidth: 800, margin: '0 auto' }}>
-    {/* Grille de toutes les cartes */}
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-      gap: 14,
-      justifyContent: 'center',
-      alignItems: 'start',
-    }}>
-      {sortedLocations.map((location) => 
-        groupedUsers[location].map((user) => (
-          <div
-            key={user.id}
-            style={{
-              border: '1px solid #e0e0e0',
-              borderRadius: 12,
-              padding: 10,
-              minWidth: 0,
-              maxWidth: 180,
-              height: 140,
-              maxHeight: 140,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-              cursor: 'pointer',
-              background: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              transition: 'box-shadow 0.2s',
-              marginBottom: 8,
-              overflow: 'hidden',
-              justifyContent: 'center',
-              position: 'relative'
-            }}
-                         onClick={() => onSelect(user)}
-            onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
-            onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
-          >
+ }> = ({ groupedUsers, sortedLocations, onSelect }) => {
+   const handleResendCode = async (user: Utilisateur, event: React.MouseEvent) => {
+     event.stopPropagation(); // Empêcher le clic sur la carte
+     
+     try {
+       // Récupérer le badge actif de l'utilisateur
+       const { data: badges, error: badgeError } = await supabase
+         .from('appbadge_badges')
+         .select('id')
+         .eq('utilisateur_id', user.id)
+         .eq('actif', true)
+         .limit(1);
+       
+       if (badgeError || !badges || badges.length === 0) {
+         console.error('Aucun badge actif trouvé pour cet utilisateur');
+         return;
+       }
+       
+       const badgeId = badges[0].id;
+       
+       // Appeler le webhook pour renvoyer le code
+       await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           utilisateur_id: user.id,
+           badge_id: badgeId,
+           user_email: user.email,
+         }),
+       });
+       
+       console.log(`Code renvoyé pour ${user.prenom} ${user.nom}`);
+     } catch (error) {
+       console.error('Erreur lors de l\'envoi du code:', error);
+     }
+   };
+
+   return (
+     <div style={{ width: '100%', maxWidth: 800, margin: '0 auto' }}>
+      {/* Grille de toutes les cartes */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+        gap: 14,
+        justifyContent: 'center',
+        alignItems: 'start',
+      }}>
+        {sortedLocations.map((location) => 
+          groupedUsers[location].map((user) => (
+            <div
+              key={user.id}
+              style={{
+                border: '1px solid #e0e0e0',
+                borderRadius: 12,
+                padding: 10,
+                minWidth: 0,
+                maxWidth: 180,
+                height: 140,
+                maxHeight: 140,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                cursor: 'pointer',
+                background: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                transition: 'box-shadow 0.2s',
+                marginBottom: 8,
+                overflow: 'hidden',
+                justifyContent: 'center',
+                position: 'relative'
+              }}
+              onClick={() => onSelect(user)}
+              onMouseOver={e => (e.currentTarget.style.boxShadow = '0 6px 18px rgba(25,118,210,0.10)')}
+              onMouseOut={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)')}
+            >
+              {/* Lien "Renvoyer le code" - petit et discret */}
+              <button
+                onClick={(e) => handleResendCode(user, e)}
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  background: 'none',
+                  border: 'none',
+                  color: '#1976d2',
+                  fontSize: 10,
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  borderRadius: 4,
+                  textDecoration: 'underline',
+                  zIndex: 2,
+                  opacity: 0.7,
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseOut={(e) => e.currentTarget.style.opacity = '0.7'}
+                title="Renvoyer le code de badgeage"
+              >
+                ↻
+              </button>
                                                                 {/* Indicateur de lieu avec code couleur */}
                                  <div style={{
                    position: 'absolute',
