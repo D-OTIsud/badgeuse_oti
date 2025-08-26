@@ -50,6 +50,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [code, setCode] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -243,6 +244,41 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
 
   const codeArr = splitCode(code);
 
+  const handleResendCode = async () => {
+    setLoading(true);
+    setResendMessage(null);
+    try {
+      // Récupérer le badge actif de l'utilisateur
+      const { data: badges, error: badgeError } = await supabase
+        .from('appbadge_badges')
+        .select('id')
+        .eq('utilisateur_id', utilisateur.id)
+        .eq('actif', true)
+        .limit(1);
+      if (badgeError || !badges || badges.length === 0) {
+        setResendMessage("Aucun badge actif trouvé");
+        setLoading(false);
+        return;
+      }
+      const activeBadgeId = badges[0].id as string;
+      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          utilisateur_id: utilisateur.id,
+          badge_id: activeBadgeId,
+          user_email: utilisateur.email,
+        }),
+      });
+      setResendMessage('Code renvoyé.');
+    } catch (e) {
+      setResendMessage("Erreur lors de l'envoi du code");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setResendMessage(null), 2500);
+    }
+  };
+
   // Affichage conditionnel des champs
   // Pour A-E :
   // - Premier badgeage : pas de champ code, pas de champ type d'action, mais transmettre code (auto), utilisateur_id, GPS, type_action = 'entrée'
@@ -270,6 +306,31 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           zIndex: 2000
         }}>
           <LottieLoader />
+        </div>
+      )}
+      {/* Bouton Renvoyer le code */}
+      <div style={{ width: '100%', marginTop: 4, marginBottom: 8, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleResendCode}
+          disabled={loading}
+          title="Renvoyer le code de badgeage"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#1976d2',
+            fontSize: 13,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            textDecoration: 'underline',
+            opacity: loading ? 0.6 : 0.9
+          }}
+        >
+          Renvoyer le code
+        </button>
+      </div>
+      {resendMessage && (
+        <div style={{ color: '#1976d2', marginTop: 4, marginBottom: 8 }}>
+          {resendMessage}
         </div>
       )}
 
