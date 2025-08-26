@@ -374,6 +374,7 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
     </div>
   </div>
 );
+};
 
 const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationName }) => {
   const [users, setUsers] = useState<Utilisateur[]>([]);
