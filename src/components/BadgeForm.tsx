@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Utilisateur } from '../App';
 import LottieLoader from './LottieLoader';
+import rotateRightIcon from '../icons/rotate-right-solid-full.svg';
 
 interface BadgeFormProps {
   utilisateur: Utilisateur;
@@ -62,6 +63,7 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [mode, setMode] = useState<'badger' | 'connexion'>('badger');
   const [hasSession, setHasSession] = useState(false);
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null);
+  const [resendHover, setResendHover] = useState(false);
 
   // Détection des rôles
   const isManagerOrAdmin = utilisateur.role === 'Manager' || utilisateur.role === 'Admin';
@@ -323,34 +325,53 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         {showSuccess && (
           <SuccessPopup message={`Bonne journée ${utilisateur.prenom} !`} onClose={() => { setShowSuccess(false); onBack(); }} />
         )}
-        {/* En-tête: Retour à gauche, Renvoyer le code à droite */}
+        {/* En-tête: Retour à gauche, Renvoyer le code (icône) à droite */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, width: '100%' }}>
           <button type="button" onClick={() => window.location.reload()} style={{ background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer', padding: 0 }}>
             ← Retour
           </button>
-          <button
-            type="button"
-            onClick={handleResendCode}
-            disabled={loading}
-            title="Renvoyer le code de badgeage"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#1976d2',
-              fontSize: 14,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              textDecoration: 'underline',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: 0
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M12 5v3.5l3.5-3.5L12 1.5V5a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5z" fill="#1976d2"/>
-            </svg>
-            Renvoyer le code
-          </button>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={loading}
+              title="Renvoyer le code"
+              onMouseEnter={() => setResendHover(true)}
+              onMouseLeave={() => setResendHover(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                padding: 6,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s',
+              }}
+            >
+              <img src={rotateRightIcon} alt="" style={{ width: 18, height: 18, opacity: loading ? 0.5 : 0.9 }} />
+            </button>
+            {resendHover && !loading && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 6,
+                background: '#fff',
+                color: '#333',
+                padding: '6px 10px',
+                fontSize: 12,
+                border: '1px solid #e0e0e0',
+                borderRadius: 6,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                whiteSpace: 'nowrap',
+                zIndex: 10
+              }}>
+                Renvoyer le code
+              </div>
+            )}
+          </div>
         </div>
         {resendMessage && (
           <div style={{ color: '#1976d2', marginTop: -8, marginBottom: 8, alignSelf: 'flex-end', width: '100%', textAlign: 'right' }}>
