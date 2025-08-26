@@ -308,32 +308,6 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
           <LottieLoader />
         </div>
       )}
-      {/* Bouton Renvoyer le code */}
-      <div style={{ width: '100%', marginTop: 4, marginBottom: 8, display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={handleResendCode}
-          disabled={loading}
-          title="Renvoyer le code de badgeage"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#1976d2',
-            fontSize: 13,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            textDecoration: 'underline',
-            opacity: loading ? 0.6 : 0.9
-          }}
-        >
-          Renvoyer le code
-        </button>
-      </div>
-      {resendMessage && (
-        <div style={{ color: '#1976d2', marginTop: 4, marginBottom: 8 }}>
-          {resendMessage}
-        </div>
-      )}
-
              <form onSubmit={mode === 'badger' ? handleBadge : (e) => e.preventDefault()} style={{
         maxWidth: 420,
         margin: '48px auto',
@@ -349,9 +323,40 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         {showSuccess && (
           <SuccessPopup message={`Bonne journée ${utilisateur.prenom} !`} onClose={() => { setShowSuccess(false); onBack(); }} />
         )}
-        <button type="button" onClick={() => window.location.reload()} style={{ marginBottom: 16, alignSelf: 'flex-start', background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer' }}>
-          ← Retour
-        </button>
+        {/* En-tête: Retour à gauche, Renvoyer le code à droite */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, width: '100%' }}>
+          <button type="button" onClick={() => window.location.reload()} style={{ background: 'none', border: 'none', color: '#1976d2', fontSize: 22, cursor: 'pointer', padding: 0 }}>
+            ← Retour
+          </button>
+          <button
+            type="button"
+            onClick={handleResendCode}
+            disabled={loading}
+            title="Renvoyer le code de badgeage"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#1976d2',
+              fontSize: 14,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              textDecoration: 'underline',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: 0
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M12 5v3.5l3.5-3.5L12 1.5V5a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5z" fill="#1976d2"/>
+            </svg>
+            Renvoyer le code
+          </button>
+        </div>
+        {resendMessage && (
+          <div style={{ color: '#1976d2', marginTop: -8, marginBottom: 8, alignSelf: 'flex-end', width: '100%', textAlign: 'right' }}>
+            {resendMessage}
+          </div>
+        )}
         {/* AVATAR, NOM, EMAIL */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 24, width: '100%' }}>
           {utilisateur.avatar ? (
