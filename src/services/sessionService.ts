@@ -29,8 +29,9 @@ export const formatDuration = (minutes: number): string => {
 
 export const formatTime = (timestamp: string): string => {
   // The timestamp is already in Reunion local time despite the +00 marker
-  // Parse it directly without timezone conversion
-  const date = new Date(timestamp);
+  // Remove the timezone info and parse as local time
+  const localTimestamp = timestamp.replace(/\+00$/, '');
+  const date = new Date(localTimestamp);
   return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit'
