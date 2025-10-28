@@ -28,23 +28,23 @@ export const formatDuration = (minutes: number): string => {
 };
 
 export const formatTime = (timestamp: string): string => {
-  // Convert UTC timestamp to Reunion local time (UTC+4)
+  // The timestamp is already in Reunion local time despite the +00 marker
+  // Parse it directly without timezone conversion
   const date = new Date(timestamp);
   return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Indian/Reunion'
+    minute: '2-digit'
   });
 };
 
 export const formatDate = (dateString: string): string => {
-  // Convert UTC date to Reunion local time (UTC+4)
+  // The date is already in Reunion local time despite the +00 marker
+  // Parse it directly without timezone conversion
   const date = new Date(dateString);
   return date.toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
-    timeZone: 'Indian/Reunion'
+    day: 'numeric'
   });
 };
