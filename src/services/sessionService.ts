@@ -28,14 +28,18 @@ export const formatDuration = (minutes: number): string => {
 };
 
 export const formatTime = (timestamp: string): string => {
-  return new Date(timestamp).toLocaleTimeString('fr-FR', {
+  // Parse the timestamp directly as local time (no timezone conversion)
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit'
   });
 };
 
 export const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('fr-FR', {
+  // Parse the date directly as local time (no timezone conversion)
+  const date = new Date(dateString);
+  return date.toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

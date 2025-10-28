@@ -1,5 +1,6 @@
 import React from 'react';
 import type { UserSession } from '../types';
+import { formatTime, formatDate, formatDuration } from '../services/sessionService';
 
 interface SessionEditFormProps {
   session: UserSession;
@@ -80,7 +81,7 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
             color: '#666',
             marginBottom: 8
           }}>
-            Session du {new Date(session.jour_local).toLocaleDateString('fr-FR')}
+            Session du {formatDate(session.jour_local)}
           </div>
           <div style={{
             display: 'grid',
@@ -89,13 +90,13 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
             fontSize: 14
           }}>
             <div>
-              <strong>Entrée:</strong> {new Date(session.entree_ts).toLocaleTimeString('fr-FR')}
+              <strong>Entrée:</strong> {formatTime(session.entree_ts)}
             </div>
             <div>
-              <strong>Sortie:</strong> {new Date(session.sortie_ts).toLocaleTimeString('fr-FR')}
+              <strong>Sortie:</strong> {formatTime(session.sortie_ts)}
             </div>
             <div>
-              <strong>Durée:</strong> {Math.floor(session.duree_minutes / 60)}h{Math.round(session.duree_minutes % 60).toString().padStart(2, '0')}
+              <strong>Durée:</strong> {formatDuration(session.duree_minutes)}
             </div>
             <div>
               <strong>Lieu:</strong> {session.lieux || 'Non spécifié'}
