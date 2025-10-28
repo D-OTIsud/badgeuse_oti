@@ -28,13 +28,7 @@ export const formatDuration = (minutes: number): string => {
 };
 
 export const formatTime = (timestamp: string): string => {
-  // Extract time directly from the timestamp string to avoid timezone conversion
-  // Format: "2025-10-27T09:02:37.114865+00" -> extract "09:02"
-  const timeMatch = timestamp.match(/(\d{2}):(\d{2})/);
-  if (timeMatch) {
-    return timeMatch[0]; // Returns "09:02"
-  }
-  // Fallback if format is unexpected
+  // Parse timestamp and display as local time (database stores local time)
   const date = new Date(timestamp);
   return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
@@ -43,8 +37,7 @@ export const formatTime = (timestamp: string): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  // The date is already in Reunion local time despite the +00 marker
-  // Parse it directly without timezone conversion
+  // Parse date and display in local time (database stores local time)
   const date = new Date(dateString);
   return date.toLocaleDateString('fr-FR', {
     weekday: 'long',
