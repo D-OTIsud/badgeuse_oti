@@ -142,3 +142,17 @@ export interface KPIUsersYearParams {
   p_service?: string | null;
   p_role?: string | null;
 }
+
+// Types pour les sessions utilisateur
+export interface UserSession {
+  utilisateur_id: string;
+  nom: string;
+  prenom: string;
+  jour_local: string;
+  entree_id: string;
+  entree_ts: string;
+  sortie_id: string;
+  sortie_ts: string;
+  lieux: string;
+  duree_minutes: number;
+}
