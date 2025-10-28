@@ -44,12 +44,9 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [isAssociating, setIsAssociating] = useState(false);
   const nfcAbortRef = useRef<AbortController | null>(null);
   
-  // Admin code auth
+  // Admin Google OAuth auth
   const [selectedAdmin, setSelectedAdmin] = useState('');
-  const [adminCode, setAdminCode] = useState('');
-  const [isRequestingCode, setIsRequestingCode] = useState(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
-  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Section de l'administration actuelle
   const [adminSection, setAdminSection] = useState<string | null>(null);
@@ -111,121 +108,99 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
      fetchUsers();
    }, []);
 
-  // Demander le code pour un administrateur
-  const handleRequestAdminCode = async () => {
+   // Handle admin OAuth return
+   useEffect(() => {
+     const handleAdminOAuthReturn = async () => {
+       try {
+         const urlParams = new URLSearchParams(window.location.search);
+         const isAdminOAuthReturn = urlParams.get('admin_oauth') === '1';
+         
+         if (isAdminOAuthReturn) {
+           // Check if we have a session and admin user in localStorage
+           const { data: sessionData } = await supabase.auth.getSession();
+           const raw = localStorage.getItem('adminUser');
+           
+           if (sessionData?.session && raw) {
+             const adminUser = JSON.parse(raw);
+             const authedEmail = sessionData.session.user?.email || '';
+             
+             if (authedEmail && adminUser.email && authedEmail.toLowerCase() === adminUser.email.toLowerCase()) {
+               setAdminUser(adminUser);
+               setSelectedAdmin('');
+               setAuthError('');
+             } else {
+               setAuthError('Email Google ne correspond pas à l\'administrateur sélectionné.');
+             }
+             localStorage.removeItem('adminUser');
+           }
+         }
+       } catch (error) {
+         console.error('Error handling admin OAuth return:', error);
+       }
+     };
+     
+     handleAdminOAuthReturn();
+   }, []);
+
+  // Google OAuth pour administrateur
+  const handleAdminGoogleAuth = async () => {
     if (!selectedAdmin) {
       setAuthError('Veuillez sélectionner un administrateur.');
       return;
     }
     
-    setIsRequestingCode(true);
+    setIsConnecting(true);
     setAuthError('');
     
     try {
       const selectedUser = users.find(u => u.id === selectedAdmin);
       if (!selectedUser) {
         setAuthError('Administrateur non trouvé.');
-        setIsRequestingCode(false);
+        setIsConnecting(false);
         return;
       }
 
-                    // Récupérer le numéro de badge de l'utilisateur
-       const { data: badges, error: badgeError } = await supabase
-         .from('appbadge_badges')
-         .select('numero_badge')
-         .eq('utilisateur_id', selectedUser.id)
-         .eq('actif', true)
-         .limit(1);
-
-       if (badgeError || !badges || badges.length === 0) {
-         setAuthError('Aucun badge actif trouvé pour cet administrateur.');
-         setIsRequestingCode(false);
-         return;
-       }
-
-       const badgeId = badges[0].numero_badge;
-
-       // Appel du webhook pour envoyer le code
-        const res = await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            utilisateur_id: selectedUser.id,
-            badge_id: badgeId,
-            user_email: selectedUser.email,
-            user_role: selectedUser.role,
-          }),
-        });
-
-      if (res.ok) {
-        setShowCodeInput(true);
-        setAuthError('');
-      } else {
-        setAuthError('Erreur lors de l\'envoi du code. Veuillez réessayer.');
+      // If already authenticated in Supabase, verify email and proceed
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        const authedEmail = sessionData.session.user?.email || '';
+        if (authedEmail && selectedUser.email && authedEmail.toLowerCase() === selectedUser.email.toLowerCase()) {
+          setAdminUser(selectedUser);
+          setIsConnecting(false);
+          return;
+        } else {
+          setAuthError('Email Google ne correspond pas à l\'administrateur sélectionné.');
+          setIsConnecting(false);
+          return;
+        }
       }
-    } catch (e) {
-      setAuthError('Erreur lors de l\'envoi du code. Veuillez réessayer.');
-    }
-    
-    setIsRequestingCode(false);
-  };
 
-  // Vérifier le code administrateur
-  const handleVerifyAdminCode = async () => {
-    if (adminCode.length !== 4) {
-      setAuthError('Le code doit contenir 4 chiffres.');
+      // Persist selected admin so we can verify after OAuth redirect
+      try {
+        localStorage.setItem('adminUser', JSON.stringify(selectedUser));
+      } catch {}
+
+      // Request OAuth URL and perform a full-page redirect
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}?admin_oauth=1`,
+        }
+      });
+      
+      if (error) {
+        console.error('Google OAuth error:', error);
+        setAuthError('Erreur lors de la connexion Google. Veuillez réessayer.');
+        setIsConnecting(false);
+        return;
+      }
+      
+      return;
+    } catch (err) {
+      setAuthError("Erreur lors de la connexion.");
+      setIsConnecting(false);
       return;
     }
-
-    setIsVerifyingCode(true);
-    setAuthError('');
-
-    try {
-      const selectedUser = users.find(u => u.id === selectedAdmin);
-      if (!selectedUser) {
-        setAuthError('Administrateur non trouvé.');
-        setIsVerifyingCode(false);
-        return;
-      }
-
-      // Vérifier le code en interrogeant la table appbadge_badges
-      const { data: badges, error } = await supabase
-        .from('appbadge_badges')
-        .select('numero_badge_history')
-        .eq('utilisateur_id', selectedUser.id)
-        .eq('actif', true)
-        .limit(1);
-
-      if (error) {
-        setAuthError('Erreur lors de la vérification du code.');
-        setIsVerifyingCode(false);
-        return;
-      }
-
-      if (!badges || badges.length === 0) {
-        setAuthError('Aucun badge actif trouvé pour cet administrateur.');
-        setIsVerifyingCode(false);
-        return;
-      }
-
-      const badge = badges[0];
-      const numeroBadgeHistory = badge.numero_badge_history || [];
-
-      // Vérifier si le code fourni fait partie de l'array numero_badge_history
-      if (numeroBadgeHistory.includes(adminCode)) {
-        setAdminUser(selectedUser);
-        setShowCodeInput(false);
-        setAdminCode('');
-        setSelectedAdmin('');
-        setAuthError('');
-      } else {
-        setAuthError('Code incorrect. Veuillez réessayer.');
-      }
-    } catch (e) {
-      setAuthError('Erreur lors de la vérification du code.');
-    }
-
-    setIsVerifyingCode(false);
   };
 
   // Association NFC à un utilisateur
@@ -413,9 +388,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <button onClick={onClose} style={{ float: 'right', background: 'none', border: 'none', fontSize: 28, color: '#1976d2', cursor: 'pointer' }}>×</button>
         <h2 style={{ marginTop: 0 }}>Authentification Admin</h2>
         
-        {!showCodeInput ? (
-          <>
-            <p style={{ marginBottom: 20 }}>Sélectionnez un administrateur pour recevoir un code de connexion :</p>
+        <p style={{ marginBottom: 20 }}>Sélectionnez un administrateur et connectez-vous avec Google :</p>
             
             {/* Sélection de l'administrateur */}
             <div style={{ marginBottom: 20 }}>
@@ -485,7 +458,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </div>
             </div>
             
-            <button onClick={handleRequestAdminCode} disabled={!selectedAdmin || isRequestingCode} style={{
+            <button onClick={handleAdminGoogleAuth} disabled={!selectedAdmin || isConnecting} style={{
               fontSize: 18,
               background: '#1976d2',
               color: '#fff',
@@ -493,77 +466,13 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               borderRadius: 8,
               padding: '14px 0',
               fontWeight: 700,
-              cursor: !selectedAdmin || isRequestingCode ? 'not-allowed' : 'pointer',
+              cursor: !selectedAdmin || isConnecting ? 'not-allowed' : 'pointer',
               boxShadow: '0 2px 8px rgba(25,118,210,0.08)',
               transition: 'background 0.2s',
               width: '100%',
             }}>
-              {isRequestingCode ? 'Envoi du code...' : 'Demander le code'}
+              {isConnecting ? 'Connexion...' : '🔐 Connexion Google'}
             </button>
-          </>
-        ) : (
-          <>
-            <p style={{ marginBottom: 20 }}>Saisissez le code à 4 chiffres reçu :</p>
-            
-            {/* Champ de saisie du code */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontWeight: 600, color: '#1976d2', fontSize: 15, marginBottom: 8, display: 'block' }}>Code à 4 chiffres :</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={adminCode}
-                onChange={e => setAdminCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && adminCode.length === 4 && !isVerifyingCode) {
-                    handleVerifyAdminCode();
-                  }
-                }}
-                placeholder="0000"
-                style={{
-                  fontSize: 24,
-                  padding: 12,
-                  borderRadius: 8,
-                  border: '1.5px solid #bbb',
-                  width: '100%',
-                  textAlign: 'center',
-                  letterSpacing: 4,
-                  fontWeight: 600,
-                }}
-                disabled={isVerifyingCode}
-                autoFocus
-              />
-            </div>
-            
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => { setShowCodeInput(false); setAdminCode(''); setSelectedAdmin(''); setAuthError(''); }} style={{
-                fontSize: 16,
-                background: 'none',
-                color: '#666',
-                border: '1px solid #ccc',
-                borderRadius: 8,
-                padding: '12px 20px',
-                cursor: 'pointer',
-                flex: 1,
-              }}>
-                Retour
-              </button>
-              <button onClick={handleVerifyAdminCode} disabled={adminCode.length !== 4 || isVerifyingCode} style={{
-                fontSize: 16,
-                background: '#1976d2',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '12px 20px',
-                fontWeight: 700,
-                cursor: adminCode.length !== 4 || isVerifyingCode ? 'not-allowed' : 'pointer',
-                flex: 1,
-              }}>
-                {isVerifyingCode ? 'Vérification...' : 'Se connecter'}
-              </button>
-            </div>
-          </>
-        )}
         
         {authError && <div style={{ color: 'red', marginTop: 12, fontSize: 14 }}>{authError}</div>}
       </div>

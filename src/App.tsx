@@ -223,6 +223,8 @@ function App() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const isOAuthReturn = urlParams.get('oauth') === '1';
+      const isAdminOAuthReturn = urlParams.get('admin_oauth') === '1';
+      
       if (isOAuthReturn) {
         (async () => {
           try {
@@ -248,6 +250,33 @@ function App() {
               console.log('Authenticated user email does not match selected card user');
             }
             localStorage.removeItem('portalUser');
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })();
+      } else if (isAdminOAuthReturn) {
+        (async () => {
+          try {
+            const anyAuth: any = supabase.auth as any;
+            if (typeof anyAuth.exchangeCodeForSession === 'function') {
+              await anyAuth.exchangeCodeForSession();
+            } else {
+              await supabase.auth.getSession();
+            }
+          } catch {}
+          // Restore admin user and clean URL
+          const raw = localStorage.getItem('adminUser');
+          if (raw) {
+            const adminUser = JSON.parse(raw);
+            // Verify current session matches selected admin email
+            const { data: s } = await supabase.auth.getSession();
+            const authedEmail = s.session?.user?.email || '';
+            if (authedEmail && adminUser.email && authedEmail.toLowerCase() === adminUser.email.toLowerCase()) {
+              // Admin OAuth successful - the AdminPage component will handle the rest
+              console.log('Admin OAuth successful for:', adminUser.email);
+            } else {
+              console.log('Authenticated user email does not match selected admin user');
+            }
+            localStorage.removeItem('adminUser');
           }
           window.history.replaceState({}, document.title, window.location.pathname);
         })();
