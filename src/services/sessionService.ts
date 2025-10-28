@@ -28,10 +28,14 @@ export const formatDuration = (minutes: number): string => {
 };
 
 export const formatTime = (timestamp: string): string => {
-  // The timestamp is already in Reunion local time despite the +00 marker
-  // Remove the timezone info and parse as local time
-  const localTimestamp = timestamp.replace(/\+00$/, '');
-  const date = new Date(localTimestamp);
+  // Extract time directly from the timestamp string to avoid timezone conversion
+  // Format: "2025-10-27T09:02:37.114865+00" -> extract "09:02"
+  const timeMatch = timestamp.match(/(\d{2}):(\d{2})/);
+  if (timeMatch) {
+    return timeMatch[0]; // Returns "09:02"
+  }
+  // Fallback if format is unexpected
+  const date = new Date(timestamp);
   return date.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit'
