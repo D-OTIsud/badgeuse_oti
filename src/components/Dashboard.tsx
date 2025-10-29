@@ -2583,17 +2583,42 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                 const departAnticipe = selectedUserForKPIDetails.depart_anticipe_minutes || 0;
                 const heuresAttendues = selectedUserForKPIDetails.heures_attendues_minutes || 0;
                 
-                // New calculation: Primary indicator is work completion vs expected hours
-                // Then subtract penalties (delays/early departures) relative to expected hours
-                // Formula: ((Travail net - Retards - Départs anticipés) / Heures attendues) × 100
-                // This way part-time employees are evaluated fairly against their contract hours
-                const baseScore = heuresAttendues > 0 
-                  ? ((travailNet - retard - departAnticipe) / heuresAttendues) * 100
-                  : travailNet > 0
-                    ? ((travailNet - retard - departAnticipe) / Math.max(travailNet, 1)) * 100  // Fallback to old method if no expected hours
-                    : 0;
+                // Improved calculation: Extra worked hours compensate for delays
+                // Logic: If worked > expected, extra hours offset delays proportionally
+                // Formula accounts for the fact that working extra compensates for time lost to delays
+                
+                let baseScore = 0;
+                
+                if (heuresAttendues > 0) {
+                  // Calculate how much extra work was done beyond expected
+                  const extraWork = Math.max(0, travailNet - heuresAttendues);
+                  const totalPenalties = retard + departAnticipe;
+                  
+                  // Extra work compensates for delays (up to the amount of extra work)
+                  const compensatedPenalties = Math.min(extraWork, totalPenalties);
+                  const uncompensatedPenalties = Math.max(0, totalPenalties - compensatedPenalties);
+                  
+                  // If they worked at least as much as expected:
+                  //   Base score = (worked / expected) × 100 (gives credit for extra work, can exceed 100%)
+                  //   Subtract only uncompensated penalties
+                  // Otherwise: Standard penalty calculation
+                  if (travailNet >= heuresAttendues) {
+                    // Give credit for working extra: base score can exceed 100%
+                    const workCompletionPercentage = (travailNet / heuresAttendues) * 100;
+                    // Subtract only penalties that weren't compensated by extra work
+                    const penaltyPercentage = (uncompensatedPenalties / heuresAttendues) * 100;
+                    baseScore = workCompletionPercentage - penaltyPercentage;
+                  } else {
+                    // Standard calculation when they didn't work enough
+                    const effectiveWork = travailNet - uncompensatedPenalties;
+                    baseScore = (effectiveWork / heuresAttendues) * 100;
+                  }
+                } else if (travailNet > 0) {
+                  // Fallback to old method if no expected hours
+                  baseScore = ((travailNet - retard - departAnticipe) / Math.max(travailNet, 1)) * 100;
+                }
                     
-                const scorePerformance = Math.max(0, Math.min(100, Math.round(baseScore)));
+                const scorePerformance = Math.max(0, Math.min(150, Math.round(baseScore)));  // Cap at 150%
                 
                 const getScoreColor = (score: number) => {
                   if (score >= 80) return '#4caf50';
@@ -2659,13 +2684,38 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     }}>
                       {heuresAttendues > 0 ? (
                         <>
-                          <div>Calcul : (Travail net - Retards - Départs anticipés) / Heures attendues × 100</div>
-                          <div style={{ marginTop: '4px' }}>
-                            = ({travailNet} - {retard} - {departAnticipe}) / {Math.round(heuresAttendues)} × 100 = {scorePerformance}%
-                          </div>
-                          <div style={{ marginTop: '2px', fontSize: '9px', fontStyle: 'italic' }}>
-                            Basé sur {Math.round(heuresAttendues / 60)}h attendues (contrat: {selectedUserForKPIDetails.heures_contractuelles_semaine || 35}h/semaine)
-                          </div>
+                          {(() => {
+                            const extraWork = Math.max(0, travailNet - heuresAttendues);
+                            const totalPenalties = retard + departAnticipe;
+                            const compensatedPenalties = Math.min(extraWork, totalPenalties);
+                            const uncompensatedPenalties = Math.max(0, totalPenalties - compensatedPenalties);
+                            const effectiveWork = travailNet - uncompensatedPenalties;
+                            
+                            return (
+                              <>
+                                <div>Calcul : (Travail net - Pénalités non compensées) / Heures attendues × 100</div>
+                                <div style={{ marginTop: '4px', fontSize: '9px' }}>
+                                  Travail net: {travailNet} min, Heures attendues: {Math.round(heuresAttendues)} min
+                                </div>
+                                {extraWork > 0 && (
+                                  <div style={{ marginTop: '2px', fontSize: '9px', color: '#4caf50' }}>
+                                    ✓ Travail supplémentaire: +{extraWork} min (compense {compensatedPenalties} min de pénalités)
+                                  </div>
+                                )}
+                                {uncompensatedPenalties > 0 && (
+                                  <div style={{ marginTop: '2px', fontSize: '9px' }}>
+                                    Pénalités restantes: {uncompensatedPenalties} min
+                                  </div>
+                                )}
+                                <div style={{ marginTop: '4px' }}>
+                                  = ({effectiveWork} / {Math.round(heuresAttendues)}) × 100 = {scorePerformance}%
+                                </div>
+                                <div style={{ marginTop: '2px', fontSize: '9px', fontStyle: 'italic' }}>
+                                  Basé sur {Math.round(heuresAttendues / 60)}h attendues (contrat: {selectedUserForKPIDetails.heures_contractuelles_semaine || 35}h/semaine)
+                                </div>
+                              </>
+                            );
+                          })()}
                         </>
                       ) : (
                         <>
