@@ -2104,13 +2104,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     const retard = userKPI.retard_minutes || 0;
                     const pause = userKPI.pause_total_minutes || 0;
                     const departAnticipe = userKPI.depart_anticipe_minutes || 0;
+                    const heuresAttendues = userKPI.heures_attendues_minutes || 0;
                     
-                    // Calculer le score de performance (0-100)
-                    const scorePerformance = Math.max(0, Math.min(100, 
-                      Math.round((travailNet - retard - departAnticipe) / Math.max(travailNet, 1) * 100)
-                    ));
+                    // Use same calculation as modal: Extra worked hours compensate for delays
+                    let scorePerformance = 0;
+                    
+                    if (heuresAttendues > 0) {
+                      // Calculate how much extra work was done beyond expected
+                      const extraWork = Math.max(0, travailNet - heuresAttendues);
+                      const totalPenalties = retard + departAnticipe;
+                      
+                      // Extra work compensates for delays (up to the amount of extra work)
+                      const compensatedPenalties = Math.min(extraWork, totalPenalties);
+                      const uncompensatedPenalties = Math.max(0, totalPenalties - compensatedPenalties);
+                      
+                      // If they worked at least as much as expected:
+                      //   Base score = (worked / expected) × 100 (gives credit for extra work)
+                      //   Subtract only uncompensated penalties
+                      if (travailNet >= heuresAttendues) {
+                        const workCompletionPercentage = (travailNet / heuresAttendues) * 100;
+                        const penaltyPercentage = (uncompensatedPenalties / heuresAttendues) * 100;
+                        scorePerformance = workCompletionPercentage - penaltyPercentage;
+                      } else {
+                        // Standard calculation when they didn't work enough
+                        const effectiveWork = travailNet - uncompensatedPenalties;
+                        scorePerformance = (effectiveWork / heuresAttendues) * 100;
+                      }
+                    } else if (travailNet > 0) {
+                      // Fallback to old method if no expected hours
+                      scorePerformance = ((travailNet - retard - departAnticipe) / Math.max(travailNet, 1)) * 100;
+                    }
+                    
+                    // Round and cap between 0-150%
+                    scorePerformance = Math.max(0, Math.min(150, Math.round(scorePerformance)));
                     
                     const getScoreColor = (score: number) => {
+                      // Scores over 100% are excellent (exceeded expectations)
+                      if (score >= 100) return '#4caf50'; // Green
                       if (score >= 80) return '#4caf50'; // Green
                       if (score >= 60) return '#ff9800'; // Orange
                       return '#f44336'; // Red
