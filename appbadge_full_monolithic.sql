@@ -643,7 +643,8 @@ delta_by_day AS (
   GROUP BY p.utilisateur_id, ((COALESCE(p.proposed_entree_ts, b_in.date_heure) AT TIME ZONE 'Indian/Reunion'::text)::date)
 ),
 user_lieux AS (
-  SELECT u.id AS utilisateur_id, u.lieux FROM appbadge_utilisateurs u
+  SELECT u.id AS utilisateur_id, u.lieux, COALESCE(u.heures_contractuelles_semaine, 35.0) AS heures_contractuelles_semaine
+  FROM appbadge_utilisateurs u
 ),
 ref AS (
   SELECT r1.lieux, r1.heure_debut, r1.heure_fin
@@ -655,12 +656,18 @@ SELECT f.utilisateur_id, f.nom, f.prenom, f.jour_local,
        GREATEST(COALESCE(mt.pause_total_minutes_t, 0::numeric) + COALESCE(dd.pause_delta_minutes_day, 0::numeric), 0::numeric) AS pause_total_minutes,
        GREATEST(COALESCE(mt.travail_total_minutes_t, 0::numeric) - GREATEST(COALESCE(mt.pause_total_minutes_t, 0::numeric) + COALESCE(dd.pause_delta_minutes_day, 0::numeric), 0::numeric), 0::numeric) AS travail_net_minutes,
        ul.lieux, r.heure_debut, r.heure_fin,
+       -- For part-time workers (< 35h/week): no daily arrival/departure penalties
+       -- For full-time workers: calculate delay based on location schedule
        CASE
+         WHEN ul.heures_contractuelles_semaine < 35.0 THEN 0::numeric
          WHEN r.heure_debut IS NOT NULL AND f.premiere_entree_ts IS NOT NULL
            THEN floor(GREATEST(EXTRACT(epoch FROM f.premiere_entree_ts - (f.jour_local::timestamp without time zone + r.heure_debut::interval)::timestamp with time zone) / 60.0, 0::numeric))
          ELSE NULL::numeric
        END AS retard_minutes,
+       -- For part-time workers (< 35h/week): no daily arrival/departure penalties
+       -- For full-time workers: calculate early departure based on location schedule
        CASE
+         WHEN ul.heures_contractuelles_semaine < 35.0 THEN 0::numeric
          WHEN r.heure_fin IS NOT NULL AND f.derniere_sortie_ts IS NOT NULL
            THEN floor(GREATEST(EXTRACT(epoch FROM (f.jour_local::timestamp without time zone + r.heure_fin::interval)::timestamp with time zone - f.derniere_sortie_ts) / 60.0, 0::numeric))
          ELSE NULL::numeric
@@ -1920,16 +1927,41 @@ AS $function$
     FROM users_with_data uwd
     INNER JOIN public.appbadge_utilisateurs u ON u.id = uwd.utilisateur_id
   ),
+  user_penalties AS (
+    SELECT
+      f.utilisateur_id,
+      -- Total work for this user in the period
+      COALESCE(SUM(f.travail_net_minutes),0)::bigint AS total_travail_net,
+      -- For part-time workers: calculate weekly deficit once for the period
+      -- For full-time workers: sum daily arrival delays
+      CASE
+        WHEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) < 35.0 THEN
+          GREATEST(0::bigint, (
+            MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 / 5.0 * 
+            COALESCE((SELECT days_count FROM actual_days_count), 1.0)
+          )::bigint - COALESCE(SUM(f.travail_net_minutes),0)::bigint)
+        ELSE
+          COALESCE(SUM(f.retard_minutes),0)::bigint
+      END AS total_retard,
+      -- Early departures: only for full-time workers
+      CASE
+        WHEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) < 35.0 THEN 0::bigint
+        ELSE COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint
+      END AS total_depart_anticipe
+    FROM filtered f
+    LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
+    GROUP BY f.utilisateur_id
+  ),
   agg_global AS (
     SELECT
-      COALESCE(SUM(f.travail_total_minutes),0)::bigint    AS travail_total_minutes,
-      COALESCE(SUM(f.pause_total_minutes),0)::bigint      AS pause_total_minutes,
-      COALESCE(SUM(f.travail_net_minutes),0)::bigint      AS travail_net_minutes,
-      COALESCE(SUM(f.retard_minutes),0)::bigint           AS retard_minutes,
-      COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes,
+      (SELECT COALESCE(SUM(travail_total_minutes),0)::bigint FROM filtered) AS travail_total_minutes,
+      (SELECT COALESCE(SUM(pause_total_minutes),0)::bigint FROM filtered) AS pause_total_minutes,
+      (SELECT COALESCE(SUM(travail_net_minutes),0)::bigint FROM filtered) AS travail_net_minutes,
+      -- Sum user-level penalties (already correctly calculated per user, once per user)
+      COALESCE((SELECT SUM(total_retard) FROM user_penalties),0)::bigint AS retard_minutes,
+      COALESCE((SELECT SUM(total_depart_anticipe) FROM user_penalties),0)::bigint AS depart_anticipe_minutes,
       -- Calculate total expected minutes based on users who actually have badge data
       (SELECT COALESCE(SUM(heures_attendues_minutes), 0)::numeric FROM user_expected) AS heures_attendues_minutes
-    FROM filtered f
   ),
   agg_users AS (
     SELECT
@@ -1942,8 +1974,9 @@ AS $function$
       COALESCE(SUM(f.travail_total_minutes),0)::bigint    AS travail_total_minutes,
       COALESCE(SUM(f.pause_total_minutes),0)::bigint      AS pause_total_minutes,
       COALESCE(SUM(f.travail_net_minutes),0)::bigint      AS travail_net_minutes,
-      COALESCE(SUM(f.retard_minutes),0)::bigint           AS retard_minutes,
-      COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes,
+      -- Use the pre-calculated penalties from user_penalties CTE
+      COALESCE(up.total_retard, 0::bigint) AS retard_minutes,
+      COALESCE(up.total_depart_anticipe, 0::bigint) AS depart_anticipe_minutes,
       -- Contract hours per week from user
       MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) AS heures_contractuelles_semaine,
       -- Calculate expected minutes based on actual days with data, not requested period
@@ -1951,8 +1984,9 @@ AS $function$
       COALESCE((SELECT days_count FROM actual_days_count), 1.0) AS heures_attendues_minutes
     FROM filtered f
     LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
+    LEFT JOIN user_penalties up ON up.utilisateur_id = f.utilisateur_id
     CROSS JOIN bounds b
-    GROUP BY f.utilisateur_id
+    GROUP BY f.utilisateur_id, up.total_retard, up.total_depart_anticipe
   ),
   users_json AS (
     SELECT jsonb_agg(
@@ -2156,15 +2190,40 @@ AS $function$
     from filtered f
     left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
   ),
+  user_penalties as (
+    select
+      f.utilisateur_id,
+      -- Total work for this user in the period
+      coalesce(sum(f.travail_net_minutes),0)::bigint as total_travail_net,
+      -- For part-time workers: calculate weekly deficit once for the period
+      -- For full-time workers: sum daily arrival delays
+      case
+        when max(coalesce(u.heures_contractuelles_semaine, 35.0)) < 35.0 then
+          greatest(0::bigint, (
+            max(coalesce(u.heures_contractuelles_semaine, 35.0)) * 60.0 / 5.0 * 
+            coalesce((select days_count from actual_days_count), 1.0)
+          )::bigint - coalesce(sum(f.travail_net_minutes),0)::bigint)
+        else
+          coalesce(sum(f.retard_minutes),0)::bigint
+      end as total_retard,
+      -- Early departures: only for full-time workers
+      case
+        when max(coalesce(u.heures_contractuelles_semaine, 35.0)) < 35.0 then 0::bigint
+        else coalesce(sum(f.depart_anticipe_minutes),0)::bigint
+      end as total_depart_anticipe
+    from filtered f
+    left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
+    group by f.utilisateur_id
+  ),
   agg_global as (
     select
-      coalesce(sum(f.travail_total_minutes),0)::bigint    as travail_total_minutes,
-      coalesce(sum(f.pause_total_minutes),0)::bigint      as pause_total_minutes,
-      coalesce(sum(f.travail_net_minutes),0)::bigint      as travail_net_minutes,
-      coalesce(sum(f.retard_minutes),0)::bigint           as retard_minutes,
-      coalesce(sum(f.depart_anticipe_minutes),0)::bigint  as depart_anticipe_minutes,
+      (select coalesce(sum(travail_total_minutes),0)::bigint from filtered) as travail_total_minutes,
+      (select coalesce(sum(pause_total_minutes),0)::bigint from filtered) as pause_total_minutes,
+      (select coalesce(sum(travail_net_minutes),0)::bigint from filtered) as travail_net_minutes,
+      -- Sum user-level penalties (already correctly calculated per user, once per user)
+      coalesce((select sum(total_retard) from user_penalties),0)::bigint as retard_minutes,
+      coalesce((select sum(total_depart_anticipe) from user_penalties),0)::bigint as depart_anticipe_minutes,
       (select coalesce(sum(heures_attendues_minutes), 0)::numeric from user_expected) as heures_attendues_minutes
-    from filtered f
   ),
   agg_users as (
     select
@@ -2177,14 +2236,16 @@ AS $function$
       coalesce(sum(f.travail_total_minutes),0)::bigint    as travail_total_minutes,
       coalesce(sum(f.pause_total_minutes),0)::bigint      as pause_total_minutes,
       coalesce(sum(f.travail_net_minutes),0)::bigint      as travail_net_minutes,
-      coalesce(sum(f.retard_minutes),0)::bigint           as retard_minutes,
-      coalesce(sum(f.depart_anticipe_minutes),0)::bigint  as depart_anticipe_minutes,
+      -- Use the pre-calculated penalties from user_penalties CTE
+      coalesce(up.total_retard, 0::bigint) as retard_minutes,
+      coalesce(up.total_depart_anticipe, 0::bigint) as depart_anticipe_minutes,
       max(coalesce(u.heures_contractuelles_semaine, 35.0)) as heures_contractuelles_semaine,
       max(ue.heures_attendues_minutes) as heures_attendues_minutes
     from filtered f
     left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
     left join user_expected ue on ue.utilisateur_id = f.utilisateur_id
-    group by f.utilisateur_id
+    left join user_penalties up on up.utilisateur_id = f.utilisateur_id
+    group by f.utilisateur_id, up.total_retard, up.total_depart_anticipe
   ),
   users_json as (
     select jsonb_agg(
