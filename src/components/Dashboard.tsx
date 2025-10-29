@@ -2581,9 +2581,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                 const travailNet = selectedUserForKPIDetails.travail_net_minutes || 0;
                 const retard = selectedUserForKPIDetails.retard_minutes || 0;
                 const departAnticipe = selectedUserForKPIDetails.depart_anticipe_minutes || 0;
-                const scorePerformance = Math.max(0, Math.min(100, 
-                  Math.round((travailNet - retard - departAnticipe) / Math.max(travailNet, 1) * 100)
-                ));
+                const heuresAttendues = selectedUserForKPIDetails.heures_attendues_minutes || 0;
+                
+                // New calculation: Primary indicator is work completion vs expected hours
+                // Then subtract penalties (delays/early departures) relative to expected hours
+                // Formula: ((Travail net - Retards - Départs anticipés) / Heures attendues) × 100
+                // This way part-time employees are evaluated fairly against their contract hours
+                const baseScore = heuresAttendues > 0 
+                  ? ((travailNet - retard - departAnticipe) / heuresAttendues) * 100
+                  : travailNet > 0
+                    ? ((travailNet - retard - departAnticipe) / Math.max(travailNet, 1)) * 100  // Fallback to old method if no expected hours
+                    : 0;
+                    
+                const scorePerformance = Math.max(0, Math.min(100, Math.round(baseScore)));
                 
                 const getScoreColor = (score: number) => {
                   if (score >= 80) return '#4caf50';
@@ -2647,10 +2657,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                       color: '#7f8c8d',
                       lineHeight: '1.3'
                     }}>
-                      <div>Calcul : (Travail net - Retards - Départs anticipés) / Travail net × 100</div>
-                      <div style={{ marginTop: '4px' }}>
-                        = ({travailNet} - {retard} - {departAnticipe}) / {travailNet} × 100 = {scorePerformance}%
-                      </div>
+                      {heuresAttendues > 0 ? (
+                        <>
+                          <div>Calcul : (Travail net - Retards - Départs anticipés) / Heures attendues × 100</div>
+                          <div style={{ marginTop: '4px' }}>
+                            = ({travailNet} - {retard} - {departAnticipe}) / {Math.round(heuresAttendues)} × 100 = {scorePerformance}%
+                          </div>
+                          <div style={{ marginTop: '2px', fontSize: '9px', fontStyle: 'italic' }}>
+                            Basé sur {Math.round(heuresAttendues / 60)}h attendues (contrat: {selectedUserForKPIDetails.heures_contractuelles_semaine || 35}h/semaine)
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>Calcul : (Travail net - Retards - Départs anticipés) / Travail net × 100</div>
+                          <div style={{ marginTop: '4px' }}>
+                            = ({travailNet} - {retard} - {departAnticipe}) / {travailNet} × 100 = {scorePerformance}%
+                          </div>
+                        </>
+                      )}
                     </div>
                     
                     {/* Avertissement */}
