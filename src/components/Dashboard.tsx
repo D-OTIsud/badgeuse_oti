@@ -1918,7 +1918,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               }
 
               return (
-                <div style={{ height: '200px', overflowY: 'auto' }}>
+                <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
                   {topRetardsData.map((user, index) => (
                     <div key={index} style={{
                       display: 'flex',
