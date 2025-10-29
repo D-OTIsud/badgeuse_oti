@@ -1338,26 +1338,26 @@ DROP FUNCTION IF EXISTS public.appbadge_session_modifs_check() CASCADE;
 CREATE OR REPLACE FUNCTION public.appbadge_session_modifs_check()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER -- Execute with privileges of function owner to bypass RLS
+SET search_path = public
 AS $function$
 DECLARE
-  b record;
+  s record;
 BEGIN
-  SELECT id, utilisateur_id, type_action, date_heure
-  INTO b
-  FROM public.appbadge_badgeages
-  WHERE id = NEW.entree_id;
+  -- Check via appbadge_v_sessions view to avoid RLS issues
+  -- The view already validates that entree_id exists and is of type 'entrée'
+  SELECT utilisateur_id
+  INTO s
+  FROM public.appbadge_v_sessions
+  WHERE entree_id = NEW.entree_id;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'entree_id % does not exist in appbadge_badgeages', NEW.entree_id;
+    RAISE EXCEPTION 'entree_id % does not exist in appbadge_v_sessions', NEW.entree_id;
   END IF;
 
-  IF b.type_action <> 'entrée' THEN
-    RAISE EXCEPTION 'entree_id % does not point to a badgeage of type entrée', NEW.entree_id;
-  END IF;
-
-  IF b.utilisateur_id <> NEW.utilisateur_id THEN
-    RAISE EXCEPTION 'utilisateur_id mismatch: request is for user %, but entrée belongs to user %',
-      NEW.utilisateur_id, b.utilisateur_id;
+  IF s.utilisateur_id <> NEW.utilisateur_id THEN
+    RAISE EXCEPTION 'utilisateur_id mismatch: request is for user %, but session belongs to user %',
+      NEW.utilisateur_id, s.utilisateur_id;
   END IF;
 
   IF NEW.proposed_entree_ts IS NOT NULL
