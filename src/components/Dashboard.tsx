@@ -265,7 +265,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       
     } catch (error) {
       console.error('Erreur lors de la récupération des KPIs:', error);
-      setKpiError('Erreur générale lors de la récupération des KPIs.');
+      setKpiError(null); // Don't show error - just use dashboardJour data
       // En cas d'erreur, initialiser avec des valeurs par défaut
       setData(prev => ({
         ...prev,
@@ -421,13 +421,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         return true;
       } else {
         console.error('Fonction SQL retourne des données vides');
-        setKpiError('Les fonctions SQL retournent des données vides.');
+        setKpiError(null); // Don't show error for empty data
         return false;
       }
       
     } catch (error) {
       console.error('Erreur lors du test des fonctions SQL:', error);
-      setKpiError('Impossible de tester les fonctions SQL.');
+      setKpiError(null); // Don't show error, just silently skip KPI bundle
       return false;
     }
   };
