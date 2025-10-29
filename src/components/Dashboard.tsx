@@ -14,6 +14,10 @@ interface DashboardData {
     travailNetMoyen: number;
     pauseMoyenne: number;
     tauxPonctualite: number;
+    // Performance metrics based on contract hours
+    performancePourcentage?: number | null;
+    heuresAttendues?: number;
+    ecartMinutes?: number;
   };
   // New KPI bundle data from SQL functions
   kpiBundle?: {
@@ -38,7 +42,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       retardCumule: 0,
       travailNetMoyen: 0,
       pauseMoyenne: 0,
-      tauxPonctualite: 0
+      tauxPonctualite: 0,
+      performancePourcentage: null,
+      heuresAttendues: undefined,
+      ecartMinutes: undefined
     }
   });
   const [loading, setLoading] = useState(true);
@@ -553,7 +560,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         retardCumule: totalRetard,
         travailNetMoyen: filteredUtilisateursKPIs.length > 0 ? Math.round(totalTravailNet / filteredUtilisateursKPIs.length) : 0,
         pauseMoyenne: filteredUtilisateursKPIs.length > 0 ? Math.round(totalPause / filteredUtilisateursKPIs.length) : 0,
-        tauxPonctualite: filteredUtilisateursKPIs.length > 0 ? Math.round((countPonctuel / filteredUtilisateursKPIs.length) * 100) : 0
+        tauxPonctualite: filteredUtilisateursKPIs.length > 0 ? Math.round((countPonctuel / filteredUtilisateursKPIs.length) * 100) : 0,
+        // Performance metrics from global KPI bundle
+        performancePourcentage: globalKPIs.performance_pourcentage ?? null,
+        heuresAttendues: globalKPIs.heures_attendues_minutes ? Math.round(globalKPIs.heures_attendues_minutes) : undefined,
+        ecartMinutes: globalKPIs.ecart_minutes ? Math.round(globalKPIs.ecart_minutes) : undefined
       };
     }
     
@@ -586,7 +597,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       retardCumule,
       travailNetMoyen: Math.round(travailNetMoyen),
       pauseMoyenne: Math.round(pauseMoyenne),
-      tauxPonctualite: Math.round(tauxPonctualite)
+      tauxPonctualite: Math.round(tauxPonctualite),
+      // No performance metrics available without kpiBundle
+      performancePourcentage: null,
+      heuresAttendues: undefined,
+      ecartMinutes: undefined
     };
   }, [filteredUsers, data.dashboardJour, data.kpiBundle]);
 
@@ -1532,37 +1547,102 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
            <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
          </div>
 
-         {period !== 'jour' && (
-           <>
-             <div style={{
-               background: colors.primary,
-               color: 'white',
-               padding: 24,
-               borderRadius: 12,
-               textAlign: 'center',
-               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-               position: 'relative'
-             }}>
-               <div style={{ fontSize: 48, marginBottom: 8 }}>📅</div>
-               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{calculateJoursAvecDonnees()}</div>
-               <div style={{ fontSize: 14, opacity: 0.9 }}>Jours avec données</div>
-             </div>
+        {period !== 'jour' && (
+          <>
+            <div style={{
+              background: colors.primary,
+              color: 'white',
+              padding: 24,
+              borderRadius: 12,
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>📅</div>
+              <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{calculateJoursAvecDonnees()}</div>
+              <div style={{ fontSize: 14, opacity: 0.9 }}>Jours avec données</div>
+            </div>
 
-             <div style={{
-               background: colors.primary,
-               color: 'white',
-               padding: 24,
-               borderRadius: 12,
-               textAlign: 'center',
-               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-               position: 'relative'
-             }}>
-               <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
-               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.tauxPonctualite}</div>
-               <div style={{ fontSize: 14, opacity: 0.9 }}>Taux de ponctualité (%)</div>
-             </div>
-           </>
-         )}
+            <div style={{
+              background: colors.primary,
+              color: 'white',
+              padding: 24,
+              borderRadius: 12,
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
+              <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.tauxPonctualite}</div>
+              <div style={{ fontSize: 14, opacity: 0.9 }}>Taux de ponctualité (%)</div>
+            </div>
+          </>
+        )}
+
+        {/* Performance KPIs - Show when available from kpiBundle */}
+        {data.kpiBundle?.global && (
+          <>
+            {kpis.performancePourcentage !== null && kpis.performancePourcentage !== undefined && (
+              <div style={{
+                background: kpis.performancePourcentage >= 100 
+                  ? '#4caf50' 
+                  : kpis.performancePourcentage >= 80 
+                    ? '#ff9800' 
+                    : '#f44336',
+                color: 'white',
+                padding: 24,
+                borderRadius: 12,
+                textAlign: 'center',
+                boxShadow: `0 4px 12px rgba(${kpis.performancePourcentage >= 100 ? '76,175,80' : kpis.performancePourcentage >= 80 ? '255,152,0' : '244,67,54'},0.3)`,
+                position: 'relative'
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 8 }}>📈</div>
+                <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
+                  {kpis.performancePourcentage.toFixed(1)}%
+                </div>
+                <div style={{ fontSize: 14, opacity: 0.9 }}>Performance vs contrat</div>
+              </div>
+            )}
+
+            {kpis.heuresAttendues !== undefined && (
+              <div style={{
+                background: colors.primary,
+                color: 'white',
+                padding: 24,
+                borderRadius: 12,
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+                position: 'relative'
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 8 }}>⏳</div>
+                <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
+                  {Math.round(kpis.heuresAttendues / 60)}h {kpis.heuresAttendues % 60}min
+                </div>
+                <div style={{ fontSize: 14, opacity: 0.9 }}>Heures attendues (total)</div>
+              </div>
+            )}
+
+            {kpis.ecartMinutes !== undefined && (
+              <div style={{
+                background: kpis.ecartMinutes >= 0 ? '#4caf50' : '#f44336',
+                color: 'white',
+                padding: 24,
+                borderRadius: 12,
+                textAlign: 'center',
+                boxShadow: `0 4px 12px rgba(${kpis.ecartMinutes >= 0 ? '76,175,80' : '244,67,54'},0.3)`,
+                position: 'relative'
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 8 }}>{kpis.ecartMinutes >= 0 ? '➕' : '➖'}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
+                  {kpis.ecartMinutes >= 0 ? '+' : ''}{Math.round(kpis.ecartMinutes)} min
+                </div>
+                <div style={{ fontSize: 14, opacity: 0.9 }}>
+                  Écart vs contrat ({kpis.ecartMinutes >= 0 ? 'surplus' : 'déficit'})
+                </div>
+              </div>
+            )}
+          </>
+        )}
        </div>
 
 
