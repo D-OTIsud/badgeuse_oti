@@ -1,13 +1,26 @@
 import { supabase } from '../supabaseClient';
-import type { UserSession } from '../types';
+import type { UserSession } from '../../types';
 
-export const fetchUserSessions = async (utilisateurId: string, limit: number = 10): Promise<UserSession[]> => {
-  const { data, error } = await supabase
+export const fetchUserSessions = async (
+  utilisateurId: string, 
+  limit: number = 10,
+  beforeDate?: string // ISO date string (YYYY-MM-DD), fetch sessions before this date
+): Promise<UserSession[]> => {
+  let query = supabase
     .from('appbadge_v_sessions')
     .select('*')
-    .eq('utilisateur_id', utilisateurId)
+    .eq('utilisateur_id', utilisateurId);
+
+  if (beforeDate) {
+    // Fetch sessions before the specified date
+    query = query.lt('jour_local', beforeDate);
+  }
+
+  query = query
     .order('jour_local', { ascending: false })
     .limit(limit);
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching user sessions:', error);
