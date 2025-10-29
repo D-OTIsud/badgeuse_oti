@@ -52,16 +52,21 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
 
     try {
       // Build proposed timestamps
+      // If user didn't change the time, keep the original timestamp from the session
+      // If user changed it, convert to timestamp format
       const proposedEntreeTs = entreeTime !== initialEntreeTime 
         ? timeToTimestamp(sessionDate, entreeTime) 
-        : null;
+        : session.entree_ts; // Keep original if not modified
       
       const proposedSortieTs = sortieTime !== initialSortieTime 
         ? timeToTimestamp(sessionDate, sortieTime) 
-        : null;
+        : session.sortie_ts; // Keep original if not modified
 
-      // Validate that at least one field is changed
-      if (!proposedEntreeTs && !proposedSortieTs && pauseDelta === 0 && !motif && !commentaire) {
+      // Validate that at least one field is changed from original
+      const hasEntreeChange = proposedEntreeTs !== session.entree_ts;
+      const hasSortieChange = proposedSortieTs !== session.sortie_ts;
+      
+      if (!hasEntreeChange && !hasSortieChange && pauseDelta === 0 && !motif && !commentaire) {
         setError('Veuillez modifier au moins un champ');
         setLoading(false);
         return;
