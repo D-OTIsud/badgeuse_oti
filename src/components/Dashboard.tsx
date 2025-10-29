@@ -1423,10 +1423,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
              {/* Section des KPIs */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 16,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: 12,
         margin: '0 24px 24px',
-        maxWidth: '1200px',
+        maxWidth: '1800px',
         marginLeft: 'auto',
         marginRight: 'auto'
       }}>
@@ -1468,18 +1468,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         {period === 'jour' ? (
            // KPIs temps réel uniquement pour la période "jour"
            <>
-             <div style={{
-               background: colors.primary,
-               color: 'white',
-               padding: 24,
-               borderRadius: 12,
-               textAlign: 'center',
-               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-               position: 'relative'
-             }}>
-               <div style={{ fontSize: 48, marginBottom: 8 }}>✓</div>
-               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.presents}</div>
-               <div style={{ fontSize: 14, opacity: 0.9 }}>Présents maintenant</div>
+            <div style={{
+              background: colors.primary,
+              color: 'white',
+              padding: 16,
+              borderRadius: 12,
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 4 }}>✓</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>{kpis.presents}</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>Présents maintenant</div>
                <div style={{ 
                  position: 'absolute', 
                  top: 8, 
@@ -1493,17 +1493,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
              </div>
 
              <div style={{
-               background: colors.primary,
-               color: 'white',
-               padding: 24,
-               borderRadius: 12,
-               textAlign: 'center',
-               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-               position: 'relative'
-             }}>
-               <div style={{ fontSize: 48, marginBottom: 8 }}>⏸</div>
-               <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.enPause}</div>
-               <div style={{ fontSize: 14, opacity: 0.9 }}>En pause maintenant</div>
+              background: colors.primary,
+              color: 'white',
+              padding: 16,
+              borderRadius: 12,
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 4 }}>⏸</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>{kpis.enPause}</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>En pause maintenant</div>
                <div style={{ 
                  position: 'absolute', 
                  top: 8, 
@@ -1519,62 +1519,62 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
          ) : null}
 
          {/* KPIs communs à toutes les périodes */}
-         <div style={{
-           background: colors.primary,
-           color: 'white',
-           padding: 24,
-           borderRadius: 12,
-           textAlign: 'center',
-           boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-           position: 'relative'
-         }}>
-           <div style={{ fontSize: 48, marginBottom: 8 }}>⏰</div>
-           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.retardCumule}</div>
-           <div style={{ fontSize: 14, opacity: 0.9 }}>Retard cumulé (min)</div>
-         </div>
+            <div style={{
+              background: colors.primary,
+              color: 'white',
+              padding: 16,
+              borderRadius: 12,
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 4 }}>⏰</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>{kpis.retardCumule}</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>Retard cumulé (min)</div>
+            </div>
 
-         <div style={{
-           background: colors.primary,
-           color: 'white',
-           padding: 24,
-           borderRadius: 12,
-           textAlign: 'center',
-           boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
-           position: 'relative'
-         }}>
-           <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-           <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.travailNetMoyen}</div>
-           <div style={{ fontSize: 14, opacity: 0.9 }}>Travail net moyen (min)</div>
-         </div>
+        <div style={{
+          background: colors.primary,
+          color: 'white',
+          padding: 16,
+          borderRadius: 12,
+          textAlign: 'center',
+          boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
+          position: 'relative'
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 4 }}>📊</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>{kpis.travailNetMoyen}</div>
+          <div style={{ fontSize: 12, opacity: 0.9 }}>Travail net moyen (min)</div>
+        </div>
 
         {period !== 'jour' && (
           <>
             <div style={{
               background: colors.primary,
               color: 'white',
-              padding: 24,
+              padding: 16,
               borderRadius: 12,
               textAlign: 'center',
               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
               position: 'relative'
             }}>
-              <div style={{ fontSize: 48, marginBottom: 8 }}>📅</div>
-              <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{calculateJoursAvecDonnees()}</div>
-              <div style={{ fontSize: 14, opacity: 0.9 }}>Jours avec données</div>
+              <div style={{ fontSize: 32, marginBottom: 4 }}>📅</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>{calculateJoursAvecDonnees()}</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>Jours avec données</div>
             </div>
 
             <div style={{
               background: colors.primary,
               color: 'white',
-              padding: 24,
+              padding: 16,
               borderRadius: 12,
               textAlign: 'center',
               boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
               position: 'relative'
             }}>
-              <div style={{ fontSize: 48, marginBottom: 8 }}>🎯</div>
-              <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>{kpis.tauxPonctualite}</div>
-              <div style={{ fontSize: 14, opacity: 0.9 }}>Taux de ponctualité (%)</div>
+              <div style={{ fontSize: 32, marginBottom: 4 }}>🎯</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>{kpis.tauxPonctualite}</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>Taux de ponctualité (%)</div>
             </div>
           </>
         )}
@@ -1590,17 +1590,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                     ? '#ff9800' 
                     : '#f44336',
                 color: 'white',
-                padding: 24,
+                padding: 16,
                 borderRadius: 12,
                 textAlign: 'center',
                 boxShadow: `0 4px 12px rgba(${kpis.performancePourcentage >= 100 ? '76,175,80' : kpis.performancePourcentage >= 80 ? '255,152,0' : '244,67,54'},0.3)`,
                 position: 'relative'
               }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>📈</div>
-                <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ fontSize: 32, marginBottom: 4 }}>📈</div>
+                <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 2 }}>
                   {kpis.performancePourcentage.toFixed(1)}%
                 </div>
-                <div style={{ fontSize: 14, opacity: 0.9 }}>Performance vs contrat</div>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>Performance vs contrat</div>
               </div>
             )}
 
@@ -1608,17 +1608,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               <div style={{
                 background: colors.primary,
                 color: 'white',
-                padding: 24,
+                padding: 16,
                 borderRadius: 12,
                 textAlign: 'center',
                 boxShadow: '0 4px 12px rgba(59,162,124,0.3)',
                 position: 'relative'
               }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>⏳</div>
-                <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ fontSize: 32, marginBottom: 4 }}>⏳</div>
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2, lineHeight: 1.2 }}>
                   {Math.round(kpis.heuresAttendues / 60)}h {kpis.heuresAttendues % 60}min
                 </div>
-                <div style={{ fontSize: 14, opacity: 0.9 }}>Heures attendues (total)</div>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>Heures attendues (total)</div>
               </div>
             )}
 
@@ -1626,17 +1626,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               <div style={{
                 background: kpis.ecartMinutes >= 0 ? '#4caf50' : '#f44336',
                 color: 'white',
-                padding: 24,
+                padding: 16,
                 borderRadius: 12,
                 textAlign: 'center',
                 boxShadow: `0 4px 12px rgba(${kpis.ecartMinutes >= 0 ? '76,175,80' : '244,67,54'},0.3)`,
                 position: 'relative'
               }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>{kpis.ecartMinutes >= 0 ? '➕' : '➖'}</div>
-                <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 4 }}>
-                  {kpis.ecartMinutes >= 0 ? '+' : ''}{Math.round(kpis.ecartMinutes)} min
+                <div style={{ fontSize: 32, marginBottom: 4 }}>{kpis.ecartMinutes >= 0 ? '➕' : '➖'}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2, lineHeight: 1.2 }}>
+                  {kpis.ecartMinutes >= 0 ? '+' : ''}{Math.round(kpis.ecartMinutes).toLocaleString('fr-FR')} min
                 </div>
-                <div style={{ fontSize: 14, opacity: 0.9 }}>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>
                   Écart vs contrat ({kpis.ecartMinutes >= 0 ? 'surplus' : 'déficit'})
                 </div>
               </div>

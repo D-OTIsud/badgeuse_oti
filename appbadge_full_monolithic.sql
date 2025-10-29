@@ -1902,16 +1902,16 @@ AS $function$
       AND (p_service IS NULL OR s.service = p_service)
       AND (p_role    IS NULL OR s.role    = p_role)
   ),
+  actual_days_count AS (
+    SELECT COUNT(DISTINCT jour_local)::numeric AS days_count
+    FROM filtered
+  ),
   user_expected AS (
     SELECT
       DISTINCT f.utilisateur_id,
-      CASE lower(p_period)
-        WHEN 'day' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 / 5.0
-        WHEN 'week' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0
-        WHEN 'month' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 * 4.33
-        WHEN 'year' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 * 52.0
-        ELSE COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0
-      END AS heures_attendues_minutes
+      -- Calculate based on actual days with data, not requested period
+      COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 / 5.0 * 
+      COALESCE((SELECT days_count FROM actual_days_count), 1.0) AS heures_attendues_minutes
     FROM filtered f
     LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
     CROSS JOIN bounds b
@@ -1942,14 +1942,9 @@ AS $function$
       COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes,
       -- Contract hours per week from user
       MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) AS heures_contractuelles_semaine,
-      -- Calculate expected minutes based on period
-      CASE lower(p_period)
-        WHEN 'day' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 / 5.0  -- Daily: weekly hours / 5 working days
-        WHEN 'week' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0        -- Weekly: contract hours * 60
-        WHEN 'month' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 * 4.33  -- Monthly: weekly * 4.33 weeks
-        WHEN 'year' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 * 52.0   -- Yearly: weekly * 52 weeks
-        ELSE MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0
-      END AS heures_attendues_minutes
+      -- Calculate expected minutes based on actual days with data, not requested period
+      MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 / 5.0 * 
+      COALESCE((SELECT days_count FROM actual_days_count), 1.0) AS heures_attendues_minutes
     FROM filtered f
     LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
     CROSS JOIN bounds b
@@ -2144,18 +2139,18 @@ AS $function$
       and (p_service is null or s.service = p_service)
       and (p_role    is null or s.role    = p_role)
   ),
-  date_range_days as (
-    select (p_end_date - p_start_date) as days_count
+  actual_days_count as (
+    select count(distinct jour_local)::numeric as days_count
+    from filtered
   ),
   user_expected as (
     select
       distinct f.utilisateur_id,
-      -- Calculate expected minutes per day, then multiply by number of days in range
+      -- Calculate expected minutes per day, then multiply by actual days with data
       COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 / 5.0 * 
-      (SELECT days_count FROM date_range_days) as heures_attendues_minutes
+      COALESCE((select days_count from actual_days_count), 1.0) as heures_attendues_minutes
     from filtered f
     left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
-    cross join date_range_days
   ),
   agg_global as (
     select
@@ -2185,7 +2180,6 @@ AS $function$
     from filtered f
     left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
     left join user_expected ue on ue.utilisateur_id = f.utilisateur_id
-    cross join date_range_days
     group by f.utilisateur_id
   ),
   users_json as (
