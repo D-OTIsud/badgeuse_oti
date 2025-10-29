@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { supabaseAPI } from '../../supabase.config';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardData {
   statutCourant: any[];
@@ -991,10 +992,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
       return acc;
     }, {} as Record<string, number>);
 
-  let totalUsers = 0;
-  for (const count of Object.values(occupationData)) {
-    totalUsers += count as number;
-  }
+  // Format occupation data for chart
+  const totalOccupation = Object.values(occupationData).reduce((sum: number, c: unknown) => sum + (c as number), 0) as number;
+  const occupationChartData: Array<{lieu: string, count: number, percentage: number}> = Object.entries(occupationData)
+    .map(([lieu, count]) => {
+      const countNum = count as number;
+      return {
+        lieu,
+        count: countNum,
+        percentage: totalOccupation > 0 ? Math.round((countNum / totalOccupation) * 100) : 0
+      };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  // Get colors for each location
+  const getColorForLieu = (lieu: string) => {
+    return lieuxColors[lieu] || '#3ba27c';
+  };
 
   const arrivalData = filteredDashboardData.reduce((acc, item) => {
     const retard = item.retard_minutes || 0;
@@ -1913,16 +1927,61 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
                 Occupation par lieu
               </h3>
-              <div style={{ 
-                height: 200, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                color: '#666',
-                fontSize: 14
-              }}>
-                Graphique temporairement désactivé - travail en cours composant par composant
-              </div>
+              {occupationChartData.length === 0 ? (
+                <div style={{ 
+                  height: 200, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: '#666',
+                  fontSize: 14
+                }}>
+                  Aucune occupation à afficher
+                </div>
+              ) : (
+                <div style={{ height: 300, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={occupationChartData}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="lieu" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis 
+                        label={{ value: 'Nombre d\'utilisateurs', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip 
+                        formatter={(value: any, name: string, props: any) => [
+                          `${value} utilisateur${value > 1 ? 's' : ''} (${props.payload.percentage}%)`,
+                          'Occupation'
+                        ]}
+                        labelStyle={{ fontWeight: 600 }}
+                      />
+                      <Legend />
+                      <Bar dataKey="count" name="Occupation" radius={[8, 8, 0, 0]}>
+                        {occupationChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={getColorForLieu(entry.lieu)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div style={{ 
+                    marginTop: 16, 
+                    fontSize: 12, 
+                    color: '#666',
+                    textAlign: 'center'
+                  }}>
+                    Total: {totalOccupation} utilisateur{totalOccupation > 1 ? 's' : ''}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
