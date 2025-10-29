@@ -2652,6 +2652,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                         = ({travailNet} - {retard} - {departAnticipe}) / {travailNet} × 100 = {scorePerformance}%
                       </div>
                     </div>
+                    
+                    {/* Avertissement */}
+                    <div style={{
+                      fontSize: '10px',
+                      color: selectedUserForKPIDetails.heures_contractuelles_semaine && 
+                             selectedUserForKPIDetails.heures_contractuelles_semaine < 35 ? '#ff9800' : '#7f8c8d',
+                      marginTop: '8px',
+                      padding: selectedUserForKPIDetails.heures_contractuelles_semaine && 
+                               selectedUserForKPIDetails.heures_contractuelles_semaine < 35 ? '6px' : '0',
+                      background: selectedUserForKPIDetails.heures_contractuelles_semaine && 
+                                  selectedUserForKPIDetails.heures_contractuelles_semaine < 35 ? '#fff3e0' : 'transparent',
+                      borderRadius: '4px',
+                      border: selectedUserForKPIDetails.heures_contractuelles_semaine && 
+                              selectedUserForKPIDetails.heures_contractuelles_semaine < 35 ? '1px solid #ffb74d' : 'none',
+                      fontStyle: selectedUserForKPIDetails.heures_contractuelles_semaine && 
+                                 selectedUserForKPIDetails.heures_contractuelles_semaine < 35 ? 'normal' : 'italic'
+                    }}>
+                      {selectedUserForKPIDetails.heures_contractuelles_semaine && 
+                       selectedUserForKPIDetails.heures_contractuelles_semaine < 35 ? (
+                        <>
+                          ⚠️ Attention : Cet indicateur peut ne pas refléter précisément la performance d'un poste à temps partiel ou en cas d'absences non suivies (vacances, congés).
+                        </>
+                      ) : (
+                        <>
+                          Note : Ce score ne tient pas compte des absences prévues (vacances, congés).
+                        </>
+                      )}
+                    </div>
                   </>
                 );
               })()}
