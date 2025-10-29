@@ -531,15 +531,21 @@ WITH last_evt AS (
 SELECT u.id AS utilisateur_id,
        u.nom, u.prenom, u.email, u.role, u.service, u.actif,
        l.date_heure AS dernier_badgeage,
-       (l.date_heure AT TIME ZONE 'Indian/Reunion'::text)::date AS jour_local,
-       (l.date_heure AT TIME ZONE 'Indian/Reunion'::text)::time without time zone AS heure_local,
+       CASE 
+         WHEN l.date_heure IS NOT NULL THEN (l.date_heure AT TIME ZONE 'Indian/Reunion'::text)::date
+         ELSE NULL::date
+       END AS jour_local,
+       CASE 
+         WHEN l.date_heure IS NOT NULL THEN (l.date_heure AT TIME ZONE 'Indian/Reunion'::text)::time without time zone
+         ELSE NULL::time without time zone
+       END AS heure_local,
        l.type_action,
-       CASE l.type_action
-         WHEN 'entrée'::text THEN 'présent'::text
-         WHEN 'retour'::text THEN 'présent'::text
-         WHEN 'pause'::text THEN 'en pause'::text
-         WHEN 'sortie'::text THEN 'absent'::text
-         ELSE 'inconnu'::text
+       CASE 
+         WHEN l.type_action = 'entrée'::text THEN 'présent'::text
+         WHEN l.type_action = 'retour'::text THEN 'présent'::text
+         WHEN l.type_action = 'pause'::text THEN 'en pause'::text
+         WHEN l.type_action = 'sortie'::text THEN 'absent'::text
+         ELSE 'absent'::text
        END AS statut_presence
 FROM appbadge_utilisateurs u
 LEFT JOIN last_evt l ON l.utilisateur_id = u.id;
