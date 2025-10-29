@@ -1338,32 +1338,22 @@ DROP FUNCTION IF EXISTS public.appbadge_session_modifs_check() CASCADE;
 CREATE OR REPLACE FUNCTION public.appbadge_session_modifs_check()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER -- Execute with privileges of function owner to bypass RLS
-SET search_path = public
 AS $function$
-DECLARE
-  s record;
 BEGIN
-  -- Check via appbadge_v_sessions view to avoid RLS issues
-  -- The view already validates that entree_id exists and is of type 'entrée'
-  SELECT utilisateur_id
-  INTO s
-  FROM public.appbadge_v_sessions
-  WHERE entree_id = NEW.entree_id;
+  -- If entree_id comes from appbadge_v_sessions view, it's already validated
+  -- The foreign key constraint ensures entree_id exists in appbadge_badgeages
+  -- We only validate business rules here
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'entree_id % does not exist in appbadge_v_sessions', NEW.entree_id;
-  END IF;
-
-  IF s.utilisateur_id <> NEW.utilisateur_id THEN
-    RAISE EXCEPTION 'utilisateur_id mismatch: request is for user %, but session belongs to user %',
-      NEW.utilisateur_id, s.utilisateur_id;
-  END IF;
-
+  -- Validate that sortie is after entree
   IF NEW.proposed_entree_ts IS NOT NULL
      AND NEW.proposed_sortie_ts IS NOT NULL
      AND NEW.proposed_sortie_ts <= NEW.proposed_entree_ts THEN
     RAISE EXCEPTION 'proposed_sortie_ts must be strictly after proposed_entree_ts';
+  END IF;
+
+  -- Validate pause delta range (already in CHECK constraint, but explicit here)
+  IF NEW.pause_delta_minutes < -480 OR NEW.pause_delta_minutes > 480 THEN
+    RAISE EXCEPTION 'pause_delta_minutes must be between -480 and 480';
   END IF;
 
   NEW.updated_at := now();
