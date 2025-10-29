@@ -1906,15 +1906,19 @@ AS $function$
     SELECT COUNT(DISTINCT jour_local)::numeric AS days_count
     FROM filtered
   ),
+  users_with_data AS (
+    SELECT DISTINCT f.utilisateur_id
+    FROM filtered f
+  ),
   user_expected AS (
     SELECT
-      DISTINCT f.utilisateur_id,
+      uwd.utilisateur_id,
       -- Calculate based on actual days with data, not requested period
+      -- Only for users who actually have badge data
       COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 / 5.0 * 
       COALESCE((SELECT days_count FROM actual_days_count), 1.0) AS heures_attendues_minutes
-    FROM filtered f
-    LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
-    CROSS JOIN bounds b
+    FROM users_with_data uwd
+    INNER JOIN public.appbadge_utilisateurs u ON u.id = uwd.utilisateur_id
   ),
   agg_global AS (
     SELECT
@@ -1923,7 +1927,7 @@ AS $function$
       COALESCE(SUM(f.travail_net_minutes),0)::bigint      AS travail_net_minutes,
       COALESCE(SUM(f.retard_minutes),0)::bigint           AS retard_minutes,
       COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes,
-      -- Calculate total expected minutes based on unique users' contract hours
+      -- Calculate total expected minutes based on users who actually have badge data
       (SELECT COALESCE(SUM(heures_attendues_minutes), 0)::numeric FROM user_expected) AS heures_attendues_minutes
     FROM filtered f
   ),
