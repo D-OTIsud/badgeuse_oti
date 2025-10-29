@@ -30,6 +30,32 @@ export interface SessionModificationStatus {
 export const createSessionModificationRequest = async (
   request: SessionModificationRequest
 ): Promise<SessionModificationRequest> => {
+  // First, verify that the entree_id exists and belongs to the user
+  const { data: badgeage, error: checkError } = await supabase
+    .from('appbadge_badgeages')
+    .select('id, type_action, utilisateur_id')
+    .eq('id', request.entree_id)
+    .eq('utilisateur_id', request.utilisateur_id)
+    .single();
+
+  if (checkError || !badgeage) {
+    const errorMessage = checkError?.code === 'PGRST116' 
+      ? 'La session sélectionnée n\'existe plus ou n\'est plus accessible. Veuillez actualiser la page.'
+      : 'Erreur lors de la vérification de la session. Veuillez réessayer.';
+    const error = new Error(errorMessage);
+    (error as any).code = checkError?.code || 'SESSION_NOT_FOUND';
+    console.error('Error verifying entree_id:', checkError, 'Request:', request);
+    throw error;
+  }
+
+  if (badgeage.type_action !== 'entrée') {
+    const error = new Error('L\'ID fourni ne correspond pas à une entrée de session.');
+    (error as any).code = 'INVALID_ENTREE_TYPE';
+    console.error('Invalid entree type:', badgeage.type_action);
+    throw error;
+  }
+
+  // Now insert the modification request
   const { data, error } = await supabase
     .from('appbadge_session_modifs')
     .insert({
@@ -46,7 +72,18 @@ export const createSessionModificationRequest = async (
 
   if (error) {
     console.error('Error creating session modification request:', error);
-    throw error;
+    // Provide a more user-friendly error message
+    let userMessage = 'Une erreur est survenue lors de la soumission de la demande.';
+    if (error.code === 'P0001') {
+      userMessage = 'La session sélectionnée n\'existe plus ou n\'est plus accessible. Veuillez actualiser la page et réessayer.';
+    } else if (error.code === '23505') {
+      userMessage = 'Une demande de modification existe déjà pour cette session.';
+    } else if (error.message) {
+      userMessage = error.message;
+    }
+    const customError = new Error(userMessage);
+    (customError as any).code = error.code;
+    throw customError;
   }
 
   return data;

@@ -76,6 +76,14 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
         }
       }
 
+      // Log session details for debugging
+      console.log('Submitting modification request for session:', {
+        entree_id: session.entree_id,
+        utilisateur_id: session.utilisateur_id,
+        jour_local: session.jour_local,
+        has_entree_id: !!session.entree_id
+      });
+
       const request: SessionModificationRequest = {
         entree_id: session.entree_id,
         utilisateur_id: session.utilisateur_id,
@@ -95,7 +103,21 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
       }, 1500);
     } catch (err: any) {
       console.error('Error submitting modification request:', err);
-      setError(err.message || 'Une erreur est survenue lors de la soumission de la demande.');
+      
+      // Provide user-friendly error messages
+      let errorMessage = 'Une erreur est survenue lors de la soumission de la demande.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.code === 'P0001' || err.code === 'SESSION_NOT_FOUND') {
+        errorMessage = 'La session sélectionnée n\'existe plus ou n\'est plus accessible. Veuillez actualiser la page et réessayer.';
+      } else if (err.code === '23505') {
+        errorMessage = 'Une demande de modification existe déjà pour cette session.';
+      } else if (err.code === 'INVALID_ENTREE_TYPE') {
+        errorMessage = 'L\'ID fourni ne correspond pas à une entrée de session valide.';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
