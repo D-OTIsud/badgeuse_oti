@@ -34,12 +34,14 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Convert time string to timestamp with timezone (Indian/Reunion = UTC+4)
+  // Convert time string to timestamp
+  // The database stores local Reunion time marked as +00 (representing local time, not UTC)
+  // So we send timestamps as +00:00 to match the database storage format
   const timeToTimestamp = (dateStr: string, timeStr: string): string => {
     if (!timeStr || !dateStr) return '';
-    // Create timestamp in Reunion timezone (UTC+4)
-    // Format: "2025-10-28T09:52:00+04:00"
-    return `${dateStr}T${timeStr}:00+04:00`;
+    // Create timestamp with +00:00 (database stores local time with +00 marker)
+    // Format: "2025-10-28T09:52:00+00:00"
+    return `${dateStr}T${timeStr}:00+00:00`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
