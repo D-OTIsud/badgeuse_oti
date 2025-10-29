@@ -1361,49 +1361,6 @@ BEGIN
 END;
 $function$;
 
-/* auto_create_session_modif_validation() */
-DROP FUNCTION IF EXISTS public.auto_create_session_modif_validation() CASCADE;
-CREATE OR REPLACE FUNCTION public.auto_create_session_modif_validation()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $function$
-DECLARE
-  admin_user_id uuid;
-BEGIN
-  -- Find an admin user to assign as validator (first admin found, excluding the requester)
-  SELECT id INTO admin_user_id
-  FROM public.appbadge_utilisateurs
-  WHERE role IN ('admin', 'Manager', 'Administrateur')
-    AND actif = true
-    AND id <> NEW.utilisateur_id
-  ORDER BY date_creation ASC
-  LIMIT 1;
-
-  -- If no admin found, skip auto-validation creation
-  -- An admin will need to manually create the validation later
-  IF admin_user_id IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  -- Create a validation entry with status "en attente" (approuve = false)
-  INSERT INTO public.appbadge_session_modif_validations (
-    modif_id,
-    validateur_id,
-    approuve,
-    commentaire,
-    validated_at
-  ) VALUES (
-    NEW.id,
-    admin_user_id,
-    false, -- En attente, needs manual approval
-    'Demande créée automatiquement, en attente de validation.',
-    now()
-  );
-
-  RETURN NEW;
-END;
-$function$;
-
 /* appbadge_session_modif_validations_check() */
 DROP FUNCTION IF EXISTS public.appbadge_session_modif_validations_check() CASCADE;
 CREATE OR REPLACE FUNCTION public.appbadge_session_modif_validations_check()
