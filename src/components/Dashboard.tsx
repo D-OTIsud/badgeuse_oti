@@ -634,9 +634,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         const penaltyPercentage = (uncompensatedPenalties / heuresAttendues) * 100;
         baseScore = workCompletionPercentage - penaltyPercentage;
       } else {
-        // Standard calculation when they didn't work enough
-        const effectiveWork = travailNet - uncompensatedPenalties;
-        baseScore = (effectiveWork / heuresAttendues) * 100;
+        // When they didn't work enough: Balance penalties more fairly
+        // Base score should reflect hours worked (e.g., 96% for working 96% of expected)
+        // Penalties should reduce score, but not destroy it completely
+        const workCompletionPercentage = (travailNet / heuresAttendues) * 100;
+        // Calculate penalty impact more moderately
+        // Factor 1: Penalties relative to expected hours (normal calculation)
+        const penaltyVsExpected = (uncompensatedPenalties / heuresAttendues) * 100;
+        // Factor 2: Penalties relative to actual work done
+        const penaltyVsWorked = (uncompensatedPenalties / travailNet) * 100;
+        // Use the lower of the two (prevents excessive penalty when penalties are large relative to worked time)
+        const penaltyPercentage = Math.min(penaltyVsExpected, penaltyVsWorked * 0.8);
+        // Ensure score doesn't go below a floor based on actual work done
+        // If they worked 96%, score should reflect that, with penalties as a reduction but not elimination
+        const floorScore = workCompletionPercentage * 0.3;  // At least 30% of worked time credit
+        baseScore = Math.max(workCompletionPercentage - penaltyPercentage, floorScore);
       }
     } else if (travailNet > 0) {
       // Fallback to old method if no expected hours
