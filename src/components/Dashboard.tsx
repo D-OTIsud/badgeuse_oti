@@ -1638,7 +1638,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                display: 'flex',
                flexDirection: 'column',
                gap: 12,
-               maxHeight: 400,
+               maxHeight: 280,
                overflowY: 'auto',
                paddingRight: 8
              }}>
@@ -1755,8 +1755,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
           <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
             Anomalies
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.anomalies.slice(0, 6).map((anomalie, index) => (
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 8,
+            maxHeight: '280px',
+            overflowY: 'auto'
+          }}>
+            {data.anomalies.slice(0, 10).map((anomalie, index) => (
               <div key={index} style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1854,7 +1860,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               }
 
               return (
-                <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {topRetardsData.map((user, index) => (
                     <div key={index} style={{
                       display: 'flex',
@@ -2064,7 +2070,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
               gap: '12px',
-              maxHeight: '400px',
+              maxHeight: '300px',
               overflowY: 'auto'
             }}>
               {(() => {
