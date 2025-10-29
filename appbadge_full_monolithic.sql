@@ -142,10 +142,22 @@ CREATE TABLE IF NOT EXISTS public.appbadge_session_modif_validations (
 );
 
 -- ---------------------------------------------------------------------
+-- Performance indexes for date conversions and filtering
+-- ---------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_badgeages_jour_local 
+ON appbadge_badgeages (((date_heure AT TIME ZONE 'Indian/Reunion')::date));
+
+CREATE INDEX IF NOT EXISTS idx_badgeages_jour_user_type 
+ON appbadge_badgeages (utilisateur_id, type_action, date_heure);
+
+CREATE INDEX IF NOT EXISTS idx_badgeages_jour_local_user_type 
+ON appbadge_badgeages (((date_heure AT TIME ZONE 'Indian/Reunion')::date), utilisateur_id, type_action);
+
+-- ---------------------------------------------------------------------
 -- Core views used by many others (build in dependency order)
 -- ---------------------------------------------------------------------
 
--- Sessions (entrée -> sortie pairs)
+-- Sessions (entrée -> sortie pairs) - OPTIMIZED with efficient JOINs
 CREATE OR REPLACE VIEW public.appbadge_v_sessions(
   utilisateur_id, nom, prenom, jour_local,
   entree_id, entree_ts, sortie_id, sortie_ts, lieux, duree_minutes
@@ -155,48 +167,52 @@ WITH e AS (
          b1.utilisateur_id,
          (b1.date_heure AT TIME ZONE 'Indian/Reunion'::text)::date AS jour_local,
          b1.date_heure AS entree_ts,
-         COALESCE(b1.lieux, u.lieux) AS lieux
+         COALESCE(b1.lieux, u.lieux) AS lieux,
+         u.nom,
+         u.prenom
   FROM appbadge_badgeages b1
   JOIN appbadge_utilisateurs u ON u.id = b1.utilisateur_id
   WHERE b1.type_action = 'entrée'::text
 ),
-s AS (
-  SELECT e.entree_id,
-         e.utilisateur_id,
-         e.jour_local,
-         e.entree_ts,
-         e.lieux,
-         (
-           SELECT b2.id
-           FROM appbadge_badgeages b2
-           WHERE b2.utilisateur_id = e.utilisateur_id
-             AND b2.type_action = 'sortie'::text
-             AND (b2.date_heure AT TIME ZONE 'Indian/Reunion'::text)::date = e.jour_local
-             AND b2.date_heure > e.entree_ts
-           ORDER BY b2.date_heure
-           LIMIT 1
-         ) AS sortie_id
+sorties_with_rank AS (
+  SELECT 
+    b.id AS sortie_id,
+    b.utilisateur_id,
+    (b.date_heure AT TIME ZONE 'Indian/Reunion'::text)::date AS jour_local,
+    b.date_heure AS sortie_ts,
+    e.entree_id,
+    e.entree_ts,
+    e.lieux,
+    e.nom,
+    e.prenom,
+    ROW_NUMBER() OVER (
+      PARTITION BY e.entree_id 
+      ORDER BY b.date_heure
+    ) AS rn
   FROM e
+  JOIN appbadge_badgeages b ON 
+    b.utilisateur_id = e.utilisateur_id
+    AND b.type_action = 'sortie'::text
+    AND (b.date_heure AT TIME ZONE 'Indian/Reunion'::text)::date = e.jour_local
+    AND b.date_heure > e.entree_ts
 ),
 paired AS (
-  SELECT s.utilisateur_id,
-         u.nom,
-         u.prenom,
-         s.jour_local,
-         s.entree_id,
-         b_in.date_heure AS entree_ts,
-         s.sortie_id,
-         b_out.date_heure AS sortie_ts,
-         s.lieux,
-         round(EXTRACT(epoch FROM b_out.date_heure - b_in.date_heure) / 60.0, 2) AS duree_minutes
-  FROM s
-  JOIN appbadge_utilisateurs u ON u.id = s.utilisateur_id
-  LEFT JOIN appbadge_badgeages b_in ON b_in.id = s.entree_id
-  LEFT JOIN appbadge_badgeages b_out ON b_out.id = s.sortie_id
+  SELECT 
+    s.utilisateur_id,
+    s.nom,
+    s.prenom,
+    s.jour_local,
+    s.entree_id,
+    s.entree_ts,
+    s.sortie_id,
+    s.sortie_ts,
+    s.lieux,
+    round(EXTRACT(epoch FROM s.sortie_ts - s.entree_ts) / 60.0, 2) AS duree_minutes
+  FROM sorties_with_rank s
+  WHERE s.rn = 1  -- Take only the first (earliest) sortie for each entrée
 )
 SELECT *
-FROM paired
-WHERE paired.sortie_id IS NOT NULL;
+FROM paired;
 
 -- Pauses paired with retours
 CREATE OR REPLACE VIEW public.appbadge_v_pauses(
@@ -404,7 +420,7 @@ picked AS (
   ORDER BY a.utilisateur_id, a.entree_id, a.validated_at DESC
 ),
 s_map AS (
-  SELECT appbadge_v_sessions.entree_id, appbadge_v_sessions.sortie_id
+  SELECT entree_id, sortie_id
   FROM appbadge_v_sessions
 ),
 base AS (
