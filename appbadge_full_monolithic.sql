@@ -47,7 +47,9 @@ CREATE TABLE IF NOT EXISTS public.appbadge_utilisateurs (
   avatar text,
   status text,
   lieux text,
-  CONSTRAINT appbadge_utilisateurs_pkey PRIMARY KEY (id)
+  heures_contractuelles_semaine numeric DEFAULT 35.0, -- Heures contractuelles par semaine (défaut 35h)
+  CONSTRAINT appbadge_utilisateurs_pkey PRIMARY KEY (id),
+  CONSTRAINT appbadge_utilisateurs_heures_contractuelles_check CHECK (heures_contractuelles_semaine > 0 AND heures_contractuelles_semaine <= 60)
 );
 
 -- Badge events
@@ -1900,30 +1902,58 @@ AS $function$
       AND (p_service IS NULL OR s.service = p_service)
       AND (p_role    IS NULL OR s.role    = p_role)
   ),
+  user_expected AS (
+    SELECT
+      DISTINCT f.utilisateur_id,
+      CASE lower(p_period)
+        WHEN 'day' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 / 5.0
+        WHEN 'week' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0
+        WHEN 'month' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 * 4.33
+        WHEN 'year' THEN COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 * 52.0
+        ELSE COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0
+      END AS heures_attendues_minutes
+    FROM filtered f
+    LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
+    CROSS JOIN bounds b
+  ),
   agg_global AS (
     SELECT
-      COALESCE(SUM(travail_total_minutes),0)::bigint    AS travail_total_minutes,
-      COALESCE(SUM(pause_total_minutes),0)::bigint      AS pause_total_minutes,
-      COALESCE(SUM(travail_net_minutes),0)::bigint      AS travail_net_minutes,
-      COALESCE(SUM(retard_minutes),0)::bigint           AS retard_minutes,
-      COALESCE(SUM(depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes
-    FROM filtered
+      COALESCE(SUM(f.travail_total_minutes),0)::bigint    AS travail_total_minutes,
+      COALESCE(SUM(f.pause_total_minutes),0)::bigint      AS pause_total_minutes,
+      COALESCE(SUM(f.travail_net_minutes),0)::bigint      AS travail_net_minutes,
+      COALESCE(SUM(f.retard_minutes),0)::bigint           AS retard_minutes,
+      COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes,
+      -- Calculate total expected minutes based on unique users' contract hours
+      (SELECT COALESCE(SUM(heures_attendues_minutes), 0)::numeric FROM user_expected) AS heures_attendues_minutes
+    FROM filtered f
   ),
   agg_users AS (
     SELECT
-      utilisateur_id,
-      MAX(nom)     AS nom,
-      MAX(prenom)  AS prenom,
-      MAX(lieux)   AS lieux,
-      MAX(service) AS service,
-      MAX(role)    AS role,
-      COALESCE(SUM(travail_total_minutes),0)::bigint    AS travail_total_minutes,
-      COALESCE(SUM(pause_total_minutes),0)::bigint      AS pause_total_minutes,
-      COALESCE(SUM(travail_net_minutes),0)::bigint      AS travail_net_minutes,
-      COALESCE(SUM(retard_minutes),0)::bigint           AS retard_minutes,
-      COALESCE(SUM(depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes
-    FROM filtered
-    GROUP BY utilisateur_id
+      f.utilisateur_id,
+      MAX(f.nom)     AS nom,
+      MAX(f.prenom)  AS prenom,
+      MAX(f.lieux)   AS lieux,
+      MAX(f.service) AS service,
+      MAX(f.role)    AS role,
+      COALESCE(SUM(f.travail_total_minutes),0)::bigint    AS travail_total_minutes,
+      COALESCE(SUM(f.pause_total_minutes),0)::bigint      AS pause_total_minutes,
+      COALESCE(SUM(f.travail_net_minutes),0)::bigint      AS travail_net_minutes,
+      COALESCE(SUM(f.retard_minutes),0)::bigint           AS retard_minutes,
+      COALESCE(SUM(f.depart_anticipe_minutes),0)::bigint  AS depart_anticipe_minutes,
+      -- Contract hours per week from user
+      MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) AS heures_contractuelles_semaine,
+      -- Calculate expected minutes based on period
+      CASE lower(p_period)
+        WHEN 'day' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 / 5.0  -- Daily: weekly hours / 5 working days
+        WHEN 'week' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0        -- Weekly: contract hours * 60
+        WHEN 'month' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 * 4.33  -- Monthly: weekly * 4.33 weeks
+        WHEN 'year' THEN MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0 * 52.0   -- Yearly: weekly * 52 weeks
+        ELSE MAX(COALESCE(u.heures_contractuelles_semaine, 35.0)) * 60.0
+      END AS heures_attendues_minutes
+    FROM filtered f
+    LEFT JOIN public.appbadge_utilisateurs u ON u.id = f.utilisateur_id
+    CROSS JOIN bounds b
+    GROUP BY f.utilisateur_id
   ),
   users_json AS (
     SELECT jsonb_agg(
@@ -1938,7 +1968,16 @@ AS $function$
                'pause_total_minutes',      pause_total_minutes,
                'travail_net_minutes',      travail_net_minutes,
                'retard_minutes',           retard_minutes,
-               'depart_anticipe_minutes',  depart_anticipe_minutes
+               'depart_anticipe_minutes',  depart_anticipe_minutes,
+               'heures_contractuelles_semaine', heures_contractuelles_semaine,
+               'heures_attendues_minutes', ROUND(heures_attendues_minutes::numeric, 2),
+               'performance_pourcentage', 
+                 CASE 
+                   WHEN heures_attendues_minutes > 0 
+                   THEN ROUND((travail_net_minutes::numeric / heures_attendues_minutes::numeric * 100.0)::numeric, 2)
+                   ELSE NULL::numeric
+                 END,
+               'ecart_minutes', ROUND((travail_net_minutes::numeric - heures_attendues_minutes::numeric)::numeric, 2)
              )
              ORDER BY retard_minutes DESC, travail_net_minutes DESC
            ) AS users
@@ -2035,7 +2074,15 @@ AS $function$
       'pause_total_minutes',     g.pause_total_minutes,
       'travail_net_minutes',     g.travail_net_minutes,
       'retard_minutes',          g.retard_minutes,
-      'depart_anticipe_minutes', g.depart_anticipe_minutes
+      'depart_anticipe_minutes', g.depart_anticipe_minutes,
+      'heures_attendues_minutes', ROUND(g.heures_attendues_minutes::numeric, 2),
+      'performance_pourcentage',
+        CASE 
+          WHEN g.heures_attendues_minutes > 0 
+          THEN ROUND((g.travail_net_minutes::numeric / g.heures_attendues_minutes::numeric * 100.0)::numeric, 2)
+          ELSE NULL::numeric
+        END,
+      'ecart_minutes', ROUND((g.travail_net_minutes::numeric - g.heures_attendues_minutes::numeric)::numeric, 2)
     ) AS global
     FROM agg_global g
   ),
@@ -2097,30 +2144,49 @@ AS $function$
       and (p_service is null or s.service = p_service)
       and (p_role    is null or s.role    = p_role)
   ),
+  date_range_days as (
+    select (p_end_date - p_start_date) as days_count
+  ),
+  user_expected as (
+    select
+      distinct f.utilisateur_id,
+      -- Calculate expected minutes per day, then multiply by number of days in range
+      COALESCE(u.heures_contractuelles_semaine, 35.0) * 60.0 / 5.0 * 
+      (SELECT days_count FROM date_range_days) as heures_attendues_minutes
+    from filtered f
+    left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
+    cross join date_range_days
+  ),
   agg_global as (
     select
-      coalesce(sum(travail_total_minutes),0)::bigint    as travail_total_minutes,
-      coalesce(sum(pause_total_minutes),0)::bigint      as pause_total_minutes,
-      coalesce(sum(travail_net_minutes),0)::bigint      as travail_net_minutes,
-      coalesce(sum(retard_minutes),0)::bigint           as retard_minutes,
-      coalesce(sum(depart_anticipe_minutes),0)::bigint  as depart_anticipe_minutes
-    from filtered
+      coalesce(sum(f.travail_total_minutes),0)::bigint    as travail_total_minutes,
+      coalesce(sum(f.pause_total_minutes),0)::bigint      as pause_total_minutes,
+      coalesce(sum(f.travail_net_minutes),0)::bigint      as travail_net_minutes,
+      coalesce(sum(f.retard_minutes),0)::bigint           as retard_minutes,
+      coalesce(sum(f.depart_anticipe_minutes),0)::bigint  as depart_anticipe_minutes,
+      (select coalesce(sum(heures_attendues_minutes), 0)::numeric from user_expected) as heures_attendues_minutes
+    from filtered f
   ),
   agg_users as (
     select
-      utilisateur_id,
-      max(nom)    as nom,
-      max(prenom) as prenom,
-      max(lieux)  as lieux,
-      max(service) as service,
-      max(role)    as role,
-      coalesce(sum(travail_total_minutes),0)::bigint    as travail_total_minutes,
-      coalesce(sum(pause_total_minutes),0)::bigint      as pause_total_minutes,
-      coalesce(sum(travail_net_minutes),0)::bigint      as travail_net_minutes,
-      coalesce(sum(retard_minutes),0)::bigint           as retard_minutes,
-      coalesce(sum(depart_anticipe_minutes),0)::bigint  as depart_anticipe_minutes
-    from filtered
-    group by utilisateur_id
+      f.utilisateur_id,
+      max(f.nom)    as nom,
+      max(f.prenom) as prenom,
+      max(f.lieux)  as lieux,
+      max(f.service) as service,
+      max(f.role)    as role,
+      coalesce(sum(f.travail_total_minutes),0)::bigint    as travail_total_minutes,
+      coalesce(sum(f.pause_total_minutes),0)::bigint      as pause_total_minutes,
+      coalesce(sum(f.travail_net_minutes),0)::bigint      as travail_net_minutes,
+      coalesce(sum(f.retard_minutes),0)::bigint           as retard_minutes,
+      coalesce(sum(f.depart_anticipe_minutes),0)::bigint  as depart_anticipe_minutes,
+      max(coalesce(u.heures_contractuelles_semaine, 35.0)) as heures_contractuelles_semaine,
+      max(ue.heures_attendues_minutes) as heures_attendues_minutes
+    from filtered f
+    left join public.appbadge_utilisateurs u on u.id = f.utilisateur_id
+    left join user_expected ue on ue.utilisateur_id = f.utilisateur_id
+    cross join date_range_days
+    group by f.utilisateur_id
   ),
   users_json as (
     select jsonb_agg(
@@ -2135,7 +2201,16 @@ AS $function$
                'pause_total_minutes',      pause_total_minutes,
                'travail_net_minutes',      travail_net_minutes,
                'retard_minutes',           retard_minutes,
-               'depart_anticipe_minutes',  depart_anticipe_minutes
+               'depart_anticipe_minutes',  depart_anticipe_minutes,
+               'heures_contractuelles_semaine', heures_contractuelles_semaine,
+               'heures_attendues_minutes', round(heures_attendues_minutes::numeric, 2),
+               'performance_pourcentage',
+                 case 
+                   when heures_attendues_minutes > 0 
+                   then round((travail_net_minutes::numeric / heures_attendues_minutes::numeric * 100.0)::numeric, 2)
+                   else null::numeric
+                 end,
+               'ecart_minutes', round((travail_net_minutes::numeric - heures_attendues_minutes::numeric)::numeric, 2)
              )
              order by retard_minutes desc, travail_net_minutes desc
            ) as users
@@ -2220,7 +2295,15 @@ AS $function$
       'pause_total_minutes',     g.pause_total_minutes,
       'travail_net_minutes',     g.travail_net_minutes,
       'retard_minutes',          g.retard_minutes,
-      'depart_anticipe_minutes', g.depart_anticipe_minutes
+      'depart_anticipe_minutes', g.depart_anticipe_minutes,
+      'heures_attendues_minutes', round(g.heures_attendues_minutes::numeric, 2),
+      'performance_pourcentage',
+        case 
+          when g.heures_attendues_minutes > 0 
+          then round((g.travail_net_minutes::numeric / g.heures_attendues_minutes::numeric * 100.0)::numeric, 2)
+          else null::numeric
+        end,
+      'ecart_minutes', round((g.travail_net_minutes::numeric - g.heures_attendues_minutes::numeric)::numeric, 2)
     ) as global
     from agg_global g
   ),
@@ -2749,6 +2832,20 @@ SELECT CASE
        END;
 SELECT cron.schedule('reset_lieux_midnight', '0 0 * * *', 'SELECT public.reset_lieux_utilisateurs();');
 
+-- ---------------------------------------------------------------------
+-- Migration: Add contract hours per week column to users table
+-- ---------------------------------------------------------------------
+ALTER TABLE public.appbadge_utilisateurs 
+ADD COLUMN IF NOT EXISTS heures_contractuelles_semaine numeric DEFAULT 35.0;
+
+ALTER TABLE public.appbadge_utilisateurs
+ADD CONSTRAINT IF NOT EXISTS appbadge_utilisateurs_heures_contractuelles_check 
+CHECK (heures_contractuelles_semaine > 0 AND heures_contractuelles_semaine <= 60);
+
+-- Update existing users without contract hours to default 35h
+UPDATE public.appbadge_utilisateurs 
+SET heures_contractuelles_semaine = 35.0 
+WHERE heures_contractuelles_semaine IS NULL;
 
 -- End of file
 COMMIT;
