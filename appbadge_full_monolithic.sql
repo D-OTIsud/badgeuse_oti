@@ -2477,15 +2477,20 @@ begin
 
   if last_badge is null then
     new.type_action := 'entrée';
-  elsif heure_local >= closing_time then
-    new.type_action := 'sortie';
   else
     last_action := last_badge.type_action;
     if last_action = 'pause' then
+      -- Si on est en pause, le prochain badge est toujours un retour
       new.type_action := 'retour';
     elsif last_action in ('entrée','retour') then
-      new.type_action := 'pause';
+      -- Si on est présent, le prochain badge peut être une pause ou une sortie
+      if heure_local >= closing_time then
+        new.type_action := 'sortie';
+      else
+        new.type_action := 'pause';
+      end if;
     else
+      -- Si dernière action était 'sortie', on commence une nouvelle journée
       new.type_action := 'entrée';
     end if;
   end if;
