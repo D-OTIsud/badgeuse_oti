@@ -1,5 +1,5 @@
 import React from 'react';
-import type { UserSession } from '../types';
+import type { UserSession } from '../../types';
 import { formatDuration, formatTime, formatDate } from '../services/sessionService';
 import type { SessionModificationStatus } from '../services/sessionModificationService';
 
@@ -10,8 +10,13 @@ interface SessionCardProps {
 }
 
 const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, onEdit }) => {
+  const status = modificationStatus?.status || 'none';
+  const isEditDisabled = status === 'pending' || status === 'approved';
+  
   const handleEdit = () => {
-    onEdit(session);
+    if (!isEditDisabled) {
+      onEdit(session);
+    }
   };
 
   // Determine which times to show based on status
@@ -31,13 +36,13 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
       return {
         entree: {
           original: session.entree_ts,
-          proposed: modificationStatus.proposed_entree_ts || session.entree_ts,
+          proposed: modificationStatus?.proposed_entree_ts || session.entree_ts,
           showOriginal: true,
           showProposed: true
         },
         sortie: {
           original: session.sortie_ts,
-          proposed: modificationStatus.proposed_sortie_ts || session.sortie_ts,
+          proposed: modificationStatus?.proposed_sortie_ts || session.sortie_ts,
           showOriginal: true,
           showProposed: true
         }
@@ -49,14 +54,14 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
       return {
         entree: {
           original: session.entree_ts,
-          proposed: modificationStatus.proposed_entree_ts || session.entree_ts,
+          proposed: modificationStatus?.proposed_entree_ts || session.entree_ts,
           showOriginal: true,
           showProposed: true,
           rejected: true
         },
         sortie: {
           original: session.sortie_ts,
-          proposed: modificationStatus.proposed_sortie_ts || session.sortie_ts,
+          proposed: modificationStatus?.proposed_sortie_ts || session.sortie_ts,
           showOriginal: true,
           showProposed: true,
           rejected: true
@@ -71,7 +76,6 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
   };
 
   const displayTimes = getDisplayTimes();
-  const status = modificationStatus?.status || 'none';
 
   const getStatusBadge = () => {
     if (status === 'none') return null;
@@ -138,19 +142,25 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
         </div>
         <button
           onClick={handleEdit}
-          disabled={status === 'approved'}
+          disabled={isEditDisabled}
           style={{
-            background: status === 'approved' ? '#e0e0e0' : '#f5f5f5',
+            background: isEditDisabled ? '#e0e0e0' : '#f5f5f5',
             border: '1px solid #ddd',
             borderRadius: 6,
             padding: '6px 12px',
-            cursor: status === 'approved' ? 'not-allowed' : 'pointer',
+            cursor: isEditDisabled ? 'not-allowed' : 'pointer',
             fontSize: 12,
-            color: status === 'approved' ? '#999' : '#666',
+            color: isEditDisabled ? '#999' : '#666',
             fontWeight: 500,
-            opacity: status === 'approved' ? 0.6 : 1
+            opacity: isEditDisabled ? 0.6 : 1
           }}
-          title={status === 'approved' ? 'Cette session a déjà été modifiée et approuvée' : 'Modifier cette session'}
+          title={
+            status === 'pending'
+              ? 'Une demande de modification est déjà en attente'
+              : status === 'approved'
+              ? 'Cette session a déjà été modifiée et approuvée'
+              : 'Modifier cette session'
+          }
         >
           ✏️ Modifier
         </button>
@@ -182,9 +192,9 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
                 textDecoration: displayTimes.entree.rejected ? 'none' : 'line-through',
                 marginBottom: 4
               }}>
-                {formatTime(displayTimes.entree.original)}
+                {formatTime('original' in displayTimes.entree ? displayTimes.entree.original : session.entree_ts)}
               </div>
-              {displayTimes.entree.proposed && displayTimes.entree.proposed !== displayTimes.entree.original && (
+              {('original' in displayTimes.entree && displayTimes.entree.proposed) && displayTimes.entree.proposed !== displayTimes.entree.original && (
                 <div style={{
                   fontSize: 16,
                   fontWeight: 600,
@@ -225,9 +235,9 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
                 textDecoration: displayTimes.sortie.rejected ? 'none' : 'line-through',
                 marginBottom: 4
               }}>
-                {formatTime(displayTimes.sortie.original)}
+                {formatTime('original' in displayTimes.sortie ? displayTimes.sortie.original : session.sortie_ts)}
               </div>
-              {displayTimes.sortie.proposed && displayTimes.sortie.proposed !== displayTimes.sortie.original && (
+              {('original' in displayTimes.sortie && displayTimes.sortie.proposed) && displayTimes.sortie.proposed !== displayTimes.sortie.original && (
                 <div style={{
                   fontSize: 16,
                   fontWeight: 600,
