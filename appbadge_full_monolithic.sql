@@ -1393,6 +1393,7 @@ BEGIN
 END;
 $function$;
 
+
 /* appbadge_kpi_global_month(p_year integer, p_month integer) */
 DROP FUNCTION IF EXISTS public.appbadge_kpi_global_month(p_year integer, p_month integer) CASCADE;
 CREATE OR REPLACE FUNCTION public.appbadge_kpi_global_month(p_year integer, p_month integer)
