@@ -18,6 +18,7 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [editingSession, setEditingSession] = useState<UserSession | null>(null);
+  const [showOubliForm, setShowOubliForm] = useState(false);
   
   // Pagination state
   const [startDate, setStartDate] = useState<string | null>(null); // ISO date string (YYYY-MM-DD) or null for latest
@@ -172,34 +173,7 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
           </div>
           <div>
             <button 
-              onClick={async () => {
-                try {
-                  const response = await fetch('https://n8n.otisud.re/webhook/c76763d6-d579-4d20-975f-b70939b82c59', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      utilisateur_id: utilisateur.id,
-                      email: utilisateur.email,
-                      nom: utilisateur.nom,
-                      prenom: utilisateur.prenom,
-                      service: utilisateur.service,
-                      lieux: utilisateur.lieux,
-                      timestamp: new Date().toISOString()
-                    })
-                  });
-                  
-                  if (response.ok) {
-                    alert('Demande d\'oubli de badgeage envoyée avec succès.');
-                  } else {
-                    alert('Erreur lors de l\'envoi de la demande. Veuillez réessayer.');
-                  }
-                } catch (error) {
-                  console.error('Error sending oubli de badgeage request:', error);
-                  alert('Erreur lors de l\'envoi de la demande. Veuillez réessayer.');
-                }
-              }}
+              onClick={() => setShowOubliForm(true)}
               style={{ 
                 background: '#1976d2', 
                 color: '#fff', 
@@ -355,6 +329,18 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
           session={editingSession}
           onClose={handleCloseEditForm}
           onSave={handleSaveSession}
+        />
+      )}
+
+      {/* Oubli de Badgeage Form Modal */}
+      {showOubliForm && (
+        <SessionEditForm
+          utilisateur={utilisateur}
+          mode="oubli"
+          onClose={() => setShowOubliForm(false)}
+          onSave={() => {
+            setShowOubliForm(false);
+          }}
         />
       )}
     </div>
