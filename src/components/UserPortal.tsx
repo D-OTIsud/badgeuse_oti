@@ -3,6 +3,7 @@ import type { Utilisateur } from '../App';
 import type { UserSession } from '../../types';
 import { fetchUserSessions, fetchSessionsWithModifications } from '../services/sessionService';
 import { getSessionModificationStatuses, type SessionModificationStatus } from '../services/sessionModificationService';
+import { fetchUserPendingOubliRequests, type OubliBadgeageRequestWithDetails } from '../services/oubliBadgeageService';
 import SessionCard from './SessionCard';
 import SessionEditForm from './SessionEditForm';
 
@@ -15,6 +16,7 @@ type Props = {
 const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [modificationStatuses, setModificationStatuses] = useState<Map<string, SessionModificationStatus>>(new Map());
+  const [pendingOubliRequests, setPendingOubliRequests] = useState<OubliBadgeageRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [editingSession, setEditingSession] = useState<UserSession | null>(null);
@@ -78,6 +80,10 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
       } else {
         setModificationStatuses(new Map());
       }
+
+      // Fetch pending oubli badgeage requests for the user
+      const oubliRequests = await fetchUserPendingOubliRequests(utilisateur.id);
+      setPendingOubliRequests(oubliRequests);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
@@ -111,13 +117,17 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         const entreeIds = sessions.map(s => s.entree_id);
         const statuses = await getSessionModificationStatuses(entreeIds);
         setModificationStatuses(statuses);
+        
+        // Also refresh oubli badgeage requests
+        const oubliRequests = await fetchUserPendingOubliRequests(utilisateur.id);
+        setPendingOubliRequests(oubliRequests);
       } catch (error) {
         console.error('Error refreshing modification statuses:', error);
       }
     }, 30000); // Refresh every 30 seconds
     
     return () => clearInterval(refreshInterval);
-  }, [sessions]);
+  }, [sessions, utilisateur.id]);
 
   // Handle date selection for pagination
   const handleDateSelect = (date: string) => {
@@ -218,13 +228,24 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         </div>
 
         {/* Pending Requests Block */}
-        {!sessionsLoading && sessions.length > 0 && (() => {
+        {!sessionsLoading && (() => {
           const pendingSessions = sessions.filter(session => {
             const status = modificationStatuses.get(session.entree_id);
             return status?.status === 'pending';
           });
 
-          if (pendingSessions.length === 0) return null;
+          const totalPending = pendingSessions.length + pendingOubliRequests.length;
+          if (totalPending === 0) return null;
+
+          const formatTime = (timestamp: string): string => {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          };
+
+          const formatDate = (timestamp: string): string => {
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          };
 
           return (
             <div style={{ 
@@ -243,22 +264,133 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
               }}>
                 <span style={{ fontSize: 20 }}>⏳</span>
                 <div style={{ fontWeight: 700, color: '#e65100', fontSize: 16 }}>
-                  Demandes en attente ({pendingSessions.length})
+                  Demandes en attente ({totalPending})
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
-                Les sessions suivantes ont des modifications en attente de validation :
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {pendingSessions.map((session) => (
-                  <SessionCard
-                    key={`pending-${session.jour_local}-${session.entree_id}`}
-                    session={session}
-                    modificationStatus={modificationStatuses.get(session.entree_id)}
-                    onEdit={handleEditSession}
-                  />
-                ))}
-              </div>
+              
+              {/* Session Modifications */}
+              {pendingSessions.length > 0 && (
+                <>
+                  <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 600 }}>
+                    Modifications de session :
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: pendingOubliRequests.length > 0 ? 16 : 0 }}>
+                    {pendingSessions.map((session) => (
+                      <SessionCard
+                        key={`pending-${session.jour_local}-${session.entree_id}`}
+                        session={session}
+                        modificationStatus={modificationStatuses.get(session.entree_id)}
+                        onEdit={handleEditSession}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Oubli de Badgeage Requests */}
+              {pendingOubliRequests.length > 0 && (
+                <>
+                  <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 600 }}>
+                    Oubli de badgeage :
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {pendingOubliRequests.map((request) => {
+                      const dateStr = request.date_heure_entree.split('T')[0];
+                      const date = new Date(dateStr);
+                      const jourLocal = date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                      
+                      return (
+                        <div
+                          key={`oubli-${request.id}`}
+                          style={{
+                            background: '#fff',
+                            borderRadius: 8,
+                            padding: 12,
+                            border: '1px solid #ffcc80',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <div style={{ fontWeight: 700, color: '#1976d2', fontSize: 14 }}>
+                              {jourLocal}
+                            </div>
+                            <div style={{
+                              background: '#ff9800',
+                              color: '#fff',
+                              padding: '4px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              <span>⏳</span>
+                              <span>En attente</span>
+                            </div>
+                          </div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Entrée</div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#1976d2' }}>
+                                {formatTime(request.date_heure_entree)}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Sortie</div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#1976d2' }}>
+                                {formatTime(request.date_heure_sortie)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {request.date_heure_pause_debut && request.date_heure_pause_fin && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+                              <div>
+                                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Début pause</div>
+                                <div style={{ fontSize: 13, color: '#666' }}>
+                                  {formatTime(request.date_heure_pause_debut)}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Fin pause</div>
+                                <div style={{ fontSize: 13, color: '#666' }}>
+                                  {formatTime(request.date_heure_pause_fin)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {request.lieux && (
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Lieu</div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#1976d2' }}>
+                                {request.lieux}
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
+                            <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Raison</div>
+                            <div style={{ fontSize: 12, color: '#333' }}>
+                              {request.raison}
+                            </div>
+                            {request.commentaire && (
+                              <>
+                                <div style={{ fontSize: 11, color: '#666', marginTop: 6, marginBottom: 4 }}>Commentaire</div>
+                                <div style={{ fontSize: 12, color: '#666' }}>
+                                  {request.commentaire}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           );
         })()}

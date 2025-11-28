@@ -142,6 +142,79 @@ export const fetchPendingOubliRequests = async (): Promise<OubliBadgeageRequestW
 };
 
 /**
+ * Fetch pending oubli badgeage requests for a specific user
+ */
+export const fetchUserPendingOubliRequests = async (utilisateurId: string): Promise<OubliBadgeageRequestWithDetails[]> => {
+  const { data: requests, error } = await supabase
+    .from('appbadge_oubli_badgeages')
+    .select(`
+      id,
+      utilisateur_id,
+      date_heure_saisie,
+      date_heure_entree,
+      date_heure_sortie,
+      date_heure_pause_debut,
+      date_heure_pause_fin,
+      raison,
+      commentaire,
+      perte_badge,
+      etat_validation,
+      date_validation,
+      validateur_id,
+      lieux,
+      appbadge_utilisateurs:utilisateur_id (
+        nom,
+        prenom,
+        email,
+        lieux
+      )
+    `)
+    .eq('utilisateur_id', utilisateurId)
+    .eq('etat_validation', 'en attente')
+    .order('date_heure_saisie', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching user pending oubli badgeage requests:', error);
+    return [];
+  }
+
+  if (!requests || requests.length === 0) {
+    return [];
+  }
+
+  // Convert to result format
+  const result: OubliBadgeageRequestWithDetails[] = [];
+  
+  requests.forEach((req: any) => {
+    const user = req.appbadge_utilisateurs;
+    
+    if (req.date_heure_entree && req.date_heure_sortie) {
+      result.push({
+        id: req.id,
+        utilisateur_id: req.utilisateur_id,
+        date_heure_saisie: req.date_heure_saisie,
+        date_heure_entree: req.date_heure_entree,
+        date_heure_sortie: req.date_heure_sortie,
+        date_heure_pause_debut: req.date_heure_pause_debut || null,
+        date_heure_pause_fin: req.date_heure_pause_fin || null,
+        raison: req.raison,
+        commentaire: req.commentaire,
+        perte_badge: req.perte_badge,
+        etat_validation: req.etat_validation,
+        date_validation: req.date_validation,
+        validateur_id: req.validateur_id,
+        lieux: req.lieux || user?.lieux || null,
+        utilisateur_nom: user?.nom || null,
+        utilisateur_prenom: user?.prenom || null,
+        utilisateur_email: user?.email || null,
+      });
+    }
+  });
+
+  return result;
+};
+
+/**
  * Fetch all oubli badgeage requests for a specific user (all statuses)
  * Returns a set of dates (YYYY-MM-DD) that already have requests
  */
