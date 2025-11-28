@@ -100,7 +100,7 @@ export const getSessionModificationStatus = async (
   // Check if there's a validation
   const { data: validation, error: validationError } = await supabase
     .from('appbadge_session_modif_validations')
-    .select('approuve, commentaire as validator_comment, validated_at')
+    .select('approuve, commentaire, validated_at')
     .eq('modif_id', modif.id)
     .single();
 
@@ -143,7 +143,7 @@ export const getSessionModificationStatus = async (
     motif: modif.motif,
     commentaire: modif.commentaire,
     validated_at: validation.validated_at,
-    validator_comment: validation.validator_comment,
+    validator_comment: validation.commentaire, // Map commentaire to validator_comment
   };
 };
 
@@ -182,9 +182,10 @@ export const getSessionModificationStatuses = async (
   const modifIds = modifs.map(m => m.id);
 
   // Fetch validations - ensure we get all validations even if there are errors
+  // Note: Supabase doesn't support SQL aliases in select, so we'll fetch commentaire and map it
   const { data: validations, error: validationError } = await supabase
     .from('appbadge_session_modif_validations')
-    .select('modif_id, approuve, commentaire as validator_comment, validated_at')
+    .select('modif_id, approuve, commentaire, validated_at')
     .in('modif_id', modifIds);
 
   if (validationError) {
@@ -223,14 +224,18 @@ export const getSessionModificationStatuses = async (
   });
 
   // Create validation lookup map - ensure we handle the case where validations might be null/undefined
-  type ValidationType = { modif_id: string; approuve: boolean; validator_comment: string | null; validated_at: string };
-  const validationsByModif = new Map<string, ValidationType>();
+  type ValidationType = { modif_id: string; approuve: boolean; commentaire: string | null; validated_at: string };
+  const validationsByModif = new Map<string, ValidationType & { validator_comment: string | null }>();
   if (validations && Array.isArray(validations)) {
     validations.forEach((validation: ValidationType) => {
       if (validation && validation.modif_id) {
         // Ensure modif_id is a string and trim any whitespace
         const modifId = String(validation.modif_id).trim();
-        validationsByModif.set(modifId, validation);
+        // Map commentaire to validator_comment for consistency with the interface
+        validationsByModif.set(modifId, {
+          ...validation,
+          validator_comment: validation.commentaire
+        });
         console.log(`[getSessionModificationStatuses] Added validation to map: modif_id=${modifId}, approuve=${validation.approuve}`);
       }
     });
@@ -285,7 +290,7 @@ export const getSessionModificationStatuses = async (
       motif: modif.motif,
       commentaire: modif.commentaire,
       validated_at: validation.validated_at,
-      validator_comment: validation.validator_comment,
+      validator_comment: validation.commentaire, // Map commentaire to validator_comment
     });
   });
 

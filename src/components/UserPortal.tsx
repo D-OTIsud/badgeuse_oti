@@ -28,10 +28,8 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
   const fetchSessions = useCallback(async (beforeDate?: string, isNavigatingBack = false) => {
     setSessionsLoading(true);
     try {
-      // Always fetch sessions with modifications first
+      // Fetch all sessions (both modified and regular)
       const modifiedSessions = await fetchSessionsWithModifications(utilisateur.id);
-      
-      // Fetch regular sessions (excluding those already in modified list)
       const modifiedEntreeIds = new Set(modifiedSessions.map(s => s.entree_id));
       const regularSessionsData = await fetchUserSessions(utilisateur.id, 10, beforeDate);
       
@@ -40,14 +38,27 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         s => !modifiedEntreeIds.has(s.entree_id)
       );
       
-      // Combine: modified sessions first, then regular sessions
+      // Combine all sessions
       const allSessions = [...modifiedSessions, ...filteredRegularSessions];
       
-      // Limit total to 10 if we're not showing modified sessions at top
-      // But if we have modified sessions, we want to show them all + regular up to 10
+      // Sort all sessions chronologically (most recent first)
+      // Sort by jour_local (date) descending, then by entree_ts descending
+      const sortedSessions = allSessions.sort((a, b) => {
+        const dateA = new Date(a.jour_local).getTime();
+        const dateB = new Date(b.jour_local).getTime();
+        if (dateB !== dateA) {
+          return dateB - dateA; // Most recent first
+        }
+        // If same date, sort by entree_ts (most recent first)
+        const timeA = new Date(a.entree_ts).getTime();
+        const timeB = new Date(b.entree_ts).getTime();
+        return timeB - timeA;
+      });
+      
+      // Limit total to 10 when paginating
       const limitedSessions = beforeDate 
-        ? allSessions.slice(0, 10) // When paginating, limit to 10
-        : allSessions; // On first load, show all modified + up to 10 regular
+        ? sortedSessions.slice(0, 10)
+        : sortedSessions; // On first load, show all
       
       setSessions(limitedSessions);
       
@@ -205,6 +216,53 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
             </button>
           </div>
         </div>
+
+        {/* Pending Requests Block */}
+        {!sessionsLoading && sessions.length > 0 && (() => {
+          const pendingSessions = sessions.filter(session => {
+            const status = modificationStatuses.get(session.entree_id);
+            return status?.status === 'pending';
+          });
+
+          if (pendingSessions.length === 0) return null;
+
+          return (
+            <div style={{ 
+              background: '#fff3e0', 
+              borderRadius: 12, 
+              padding: 16, 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)', 
+              marginBottom: 16,
+              border: '1px solid #ffb74d'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8, 
+                marginBottom: 12 
+              }}>
+                <span style={{ fontSize: 20 }}>⏳</span>
+                <div style={{ fontWeight: 700, color: '#e65100', fontSize: 16 }}>
+                  Demandes en attente ({pendingSessions.length})
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+                Les sessions suivantes ont des modifications en attente de validation :
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {pendingSessions.map((session) => (
+                  <SessionCard
+                    key={`pending-${session.jour_local}-${session.entree_id}`}
+                    session={session}
+                    modificationStatus={modificationStatuses.get(session.entree_id)}
+                    onEdit={handleEditSession}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
           <div style={{ 
             display: 'flex', 
