@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Dashboard from './Dashboard';
+import { fetchPendingModificationRequests, validateModificationRequest, type ModificationRequestWithDetails } from '../services/sessionModificationService';
+import { formatTime, formatDate, formatDuration } from '../services/sessionService';
 
 // Composant popup de succès
 const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ message, onClose }) => (
@@ -25,6 +27,260 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
     <button onClick={onClose} style={{ marginLeft: 24, background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>×</button>
   </div>
 );
+
+// Component for validating session modification requests
+const ModificationValidationSection: React.FC<{ 
+  adminUser: any; 
+  onBack: () => void;
+  onSuccess: (message: string) => void;
+}> = ({ adminUser, onBack, onSuccess }) => {
+  const [requests, setRequests] = useState<ModificationRequestWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [validatingId, setValidatingId] = useState<string | null>(null);
+  const [validatorComment, setValidatorComment] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchPendingModificationRequests();
+      setRequests(data);
+    } catch (err: any) {
+      console.error('Error fetching modification requests:', err);
+      setError('Erreur lors du chargement des demandes.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const handleValidate = async (modifId: string, approuve: boolean) => {
+    if (!adminUser?.id) {
+      setError('Administrateur non identifié.');
+      return;
+    }
+
+    setValidatingId(modifId);
+    setError(null);
+
+    try {
+      const comment = validatorComment[modifId] || null;
+      await validateModificationRequest(modifId, adminUser.id, approuve, comment);
+      onSuccess(approuve ? 'Demande approuvée avec succès !' : 'Demande refusée.');
+      // Remove the validated request from the list
+      setRequests(prev => prev.filter(r => r.id !== modifId));
+      setValidatorComment(prev => {
+        const next = { ...prev };
+        delete next[modifId];
+        return next;
+      });
+    } catch (err: any) {
+      console.error('Error validating request:', err);
+      setError('Erreur lors de la validation de la demande.');
+    } finally {
+      setValidatingId(null);
+    }
+  };
+
+  const getTimeFromTimestamp = (ts: string | null): string => {
+    if (!ts) return 'N/A';
+    const timeMatch = ts.match(/(\d{2}):(\d{2})/);
+    return timeMatch ? timeMatch[0] : formatTime(ts);
+  };
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 20, maxWidth: 1000, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h2 style={{ margin: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Valider les modifications de temps</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={fetchRequests} disabled={loading} style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: 8, padding: '8px 16px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14 }}>🔄 Actualiser</button>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ background: '#f8d7da', color: '#721c24', padding: 12, borderRadius: 8, marginBottom: 20, border: '1px solid #f5c6cb' }}>
+          ⚠ {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>Chargement des demandes...</div>
+      ) : requests.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#666', background: '#f8f9fa', borderRadius: 12 }}>
+          ✓ Aucune demande de modification en attente
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {requests.map((request) => (
+            <div key={request.id} style={{ 
+              border: '2px solid #e0e0e0', 
+              borderRadius: 12, 
+              padding: 20, 
+              background: '#fafafa',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            }}>
+              {/* User and date header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #e0e0e0' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: '#1976d2', marginBottom: 4 }}>
+                    {request.utilisateur_prenom} {request.utilisateur_nom}
+                  </div>
+                  <div style={{ fontSize: 14, color: '#666' }}>
+                    {request.utilisateur_email}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>
+                    Session du {formatDate(request.session_jour_local)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#999' }}>
+                    Demande du {new Date(request.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Current vs Proposed changes */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
+                {/* Current values */}
+                <div style={{ background: '#fff', padding: 16, borderRadius: 8, border: '1px solid #e0e0e0' }}>
+                  <div style={{ fontWeight: 600, color: '#666', marginBottom: 12, fontSize: 14 }}>Valeurs actuelles</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Entrée: </span>
+                    <strong>{getTimeFromTimestamp(request.session_entree_ts)}</strong>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Sortie: </span>
+                    <strong>{getTimeFromTimestamp(request.session_sortie_ts)}</strong>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Durée: </span>
+                    <strong>{formatDuration(request.session_duree_minutes)}</strong>
+                  </div>
+                  {request.session_lieux && (
+                    <div>
+                      <span style={{ color: '#666', fontSize: 13 }}>Lieu: </span>
+                      <strong>{request.session_lieux}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Proposed values */}
+                <div style={{ background: '#fff3e0', padding: 16, borderRadius: 8, border: '1px solid #ffcc80' }}>
+                  <div style={{ fontWeight: 600, color: '#ff9800', marginBottom: 12, fontSize: 14 }}>Valeurs proposées</div>
+                  {request.proposed_entree_ts && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: '#666', fontSize: 13 }}>Entrée: </span>
+                      <strong style={{ color: request.proposed_entree_ts !== request.session_entree_ts ? '#ff9800' : '#333' }}>
+                        {getTimeFromTimestamp(request.proposed_entree_ts)}
+                      </strong>
+                    </div>
+                  )}
+                  {request.proposed_sortie_ts && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: '#666', fontSize: 13 }}>Sortie: </span>
+                      <strong style={{ color: request.proposed_sortie_ts !== request.session_sortie_ts ? '#ff9800' : '#333' }}>
+                        {getTimeFromTimestamp(request.proposed_sortie_ts)}
+                      </strong>
+                    </div>
+                  )}
+                  {request.pause_delta_minutes !== 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: '#666', fontSize: 13 }}>Ajustement pause: </span>
+                      <strong style={{ color: request.pause_delta_minutes > 0 ? '#4caf50' : '#f44336' }}>
+                        {request.pause_delta_minutes > 0 ? '+' : ''}{request.pause_delta_minutes} min
+                      </strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Motif and commentaire */}
+              <div style={{ marginBottom: 16 }}>
+                {request.motif && (
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ fontWeight: 600, color: '#666', fontSize: 13 }}>Motif: </span>
+                    <span>{request.motif}</span>
+                  </div>
+                )}
+                {request.commentaire && (
+                  <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 6, fontSize: 14, color: '#333' }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 13, color: '#666' }}>Commentaire de l'utilisateur:</div>
+                    {request.commentaire}
+                  </div>
+                )}
+              </div>
+
+              {/* Validator comment input */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 13, marginBottom: 8 }}>
+                  Commentaire (optionnel)
+                </label>
+                <textarea
+                  value={validatorComment[request.id] || ''}
+                  onChange={(e) => setValidatorComment(prev => ({ ...prev, [request.id]: e.target.value }))}
+                  placeholder="Ajouter un commentaire pour cette validation..."
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    padding: 10,
+                    borderRadius: 6,
+                    border: '1px solid #ddd',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => handleValidate(request.id, false)}
+                  disabled={validatingId === request.id}
+                  style={{
+                    background: '#f44336',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    cursor: validatingId === request.id ? 'not-allowed' : 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    opacity: validatingId === request.id ? 0.6 : 1
+                  }}
+                >
+                  {validatingId === request.id ? 'Traitement...' : '✗ Refuser'}
+                </button>
+                <button
+                  onClick={() => handleValidate(request.id, true)}
+                  disabled={validatingId === request.id}
+                  style={{
+                    background: '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    cursor: validatingId === request.id ? 'not-allowed' : 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    opacity: validatingId === request.id ? 0.6 : 1
+                  }}
+                >
+                  {validatingId === request.id ? 'Traitement...' : '✓ Approuver'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Liste des utilisateurs actifs
@@ -490,6 +746,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <h2 style={{ marginTop: 0 }}>Administration</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
           <button onClick={() => setAdminSection('dashboard')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #3ba27c', background: '#f0f8f4', color: '#3ba27c', fontWeight: 600, cursor: 'pointer' }}>📊 Tableau de bord</button>
+          <button onClick={() => setAdminSection('valider-modifications')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #ff9800', background: '#fff3e0', color: '#ff9800', fontWeight: 600, cursor: 'pointer' }}>✅ Valider les modifications de temps</button>
           <button onClick={() => setAdminSection('associer-tag')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Associer un nouveau tag</button>
           <button onClick={() => setAdminSection('ajouter-lieu')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un nouveau lieu</button>
         </div>
@@ -601,6 +858,15 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Afficher le tableau de bord
   if (adminSection === 'dashboard') {
     return <Dashboard onBack={() => setAdminSection(null)} />;
+  }
+
+  // Section de validation des modifications de temps
+  if (adminSection === 'valider-modifications') {
+    return <ModificationValidationSection 
+      adminUser={adminUser} 
+      onBack={() => setAdminSection(null)} 
+      onSuccess={(msg) => showSuccessAndReturn(msg)}
+    />;
   }
 
   // Supprimer le formulaire d'ajout d'horaires standards séparé

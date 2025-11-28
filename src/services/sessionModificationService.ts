@@ -239,3 +239,156 @@ export const getSessionModificationStatuses = async (
   return statusMap;
 };
 
+/**
+ * Interface for a modification request with user and session details
+ */
+export interface ModificationRequestWithDetails {
+  id: string;
+  entree_id: string;
+  utilisateur_id: string;
+  proposed_entree_ts: string | null;
+  proposed_sortie_ts: string | null;
+  pause_delta_minutes: number;
+  motif: string | null;
+  commentaire: string | null;
+  created_at: string;
+  // User details
+  utilisateur_nom: string;
+  utilisateur_prenom: string;
+  utilisateur_email: string | null;
+  // Session details
+  session_jour_local: string;
+  session_entree_ts: string;
+  session_sortie_ts: string;
+  session_duree_minutes: number;
+  session_lieux: string | null;
+}
+
+/**
+ * Fetch all pending modification requests (not yet validated)
+ */
+export const fetchPendingModificationRequests = async (): Promise<ModificationRequestWithDetails[]> => {
+  // First, get all modification requests
+  const { data: modifs, error: modifError } = await supabase
+    .from('appbadge_session_modifs')
+    .select('id, entree_id, utilisateur_id, proposed_entree_ts, proposed_sortie_ts, pause_delta_minutes, motif, commentaire, created_at')
+    .order('created_at', { ascending: false });
+
+  if (modifError) {
+    console.error('Error fetching modification requests:', modifError);
+    return [];
+  }
+
+  if (!modifs || modifs.length === 0) {
+    return [];
+  }
+
+  // Get all validation IDs to filter out already validated requests
+  const modifIds = modifs.map(m => m.id);
+  const { data: validations } = await supabase
+    .from('appbadge_session_modif_validations')
+    .select('modif_id')
+    .in('modif_id', modifIds);
+
+  const validatedModifIds = new Set(validations?.map(v => v.modif_id) || []);
+
+  // Filter to only pending requests
+  const pendingModifs = modifs.filter(m => !validatedModifIds.has(m.id));
+
+  if (pendingModifs.length === 0) {
+    return [];
+  }
+
+  // Get user details
+  const userIds = [...new Set(pendingModifs.map(m => m.utilisateur_id))];
+  const { data: users, error: usersError } = await supabase
+    .from('appbadge_utilisateurs')
+    .select('id, nom, prenom, email')
+    .in('id', userIds);
+
+  if (usersError) {
+    console.error('Error fetching user details:', usersError);
+    return [];
+  }
+
+  // Create a map of users by id
+  const usersById = new Map(
+    (users || []).map(u => [u.id, u])
+  );
+
+  // Get session details for each entree_id
+  const entreeIds = pendingModifs.map(m => m.entree_id);
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('appbadge_v_sessions')
+    .select('entree_id, jour_local, entree_ts, sortie_ts, duree_minutes, lieux')
+    .in('entree_id', entreeIds);
+
+  if (sessionsError) {
+    console.error('Error fetching session details:', sessionsError);
+    return [];
+  }
+
+  // Create a map of sessions by entree_id
+  const sessionsByEntree = new Map(
+    (sessions || []).map(s => [s.entree_id, s])
+  );
+
+  // Combine modification requests with user and session details
+  const result: ModificationRequestWithDetails[] = pendingModifs
+    .map(modif => {
+      const user = usersById.get(modif.utilisateur_id);
+      const session = sessionsByEntree.get(modif.entree_id);
+
+      if (!session || !user) {
+        return null; // Skip if session or user not found
+      }
+
+      return {
+        id: modif.id,
+        entree_id: modif.entree_id,
+        utilisateur_id: modif.utilisateur_id,
+        proposed_entree_ts: modif.proposed_entree_ts,
+        proposed_sortie_ts: modif.proposed_sortie_ts,
+        pause_delta_minutes: modif.pause_delta_minutes,
+        motif: modif.motif,
+        commentaire: modif.commentaire,
+        created_at: modif.created_at,
+        utilisateur_nom: user.nom || '',
+        utilisateur_prenom: user.prenom || '',
+        utilisateur_email: user.email || null,
+        session_jour_local: session.jour_local,
+        session_entree_ts: session.entree_ts,
+        session_sortie_ts: session.sortie_ts,
+        session_duree_minutes: session.duree_minutes,
+        session_lieux: session.lieux,
+      };
+    })
+    .filter((item): item is ModificationRequestWithDetails => item !== null);
+
+  return result;
+};
+
+/**
+ * Validate a modification request (approve or reject)
+ */
+export const validateModificationRequest = async (
+  modifId: string,
+  validateurId: string,
+  approuve: boolean,
+  commentaire?: string | null
+): Promise<void> => {
+  const { error } = await supabase
+    .from('appbadge_session_modif_validations')
+    .insert({
+      modif_id: modifId,
+      validateur_id: validateurId,
+      approuve,
+      commentaire: commentaire || null,
+    });
+
+  if (error) {
+    console.error('Error validating modification request:', error);
+    throw error;
+  }
+};
+
