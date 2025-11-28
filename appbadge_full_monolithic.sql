@@ -1369,6 +1369,7 @@ LANGUAGE plpgsql
 AS $function$
 DECLARE
   req_user uuid;
+  validateur_role text;
 BEGIN
   SELECT utilisateur_id INTO req_user
   FROM public.appbadge_session_modifs
@@ -1378,7 +1379,13 @@ BEGIN
     RAISE EXCEPTION 'modif_id % not found in appbadge_session_modifs', NEW.modif_id;
   END IF;
 
-  IF req_user = NEW.validateur_id THEN
+  -- Check if the validateur is an Admin or Manager
+  SELECT role INTO validateur_role
+  FROM public.appbadge_utilisateurs
+  WHERE id = NEW.validateur_id AND actif = true;
+
+  -- Only prevent self-validation if the validateur is NOT an Admin or Manager
+  IF req_user = NEW.validateur_id AND validateur_role NOT IN ('Admin', 'Manager') THEN
     RAISE EXCEPTION 'A user cannot validate their own modification request';
   END IF;
 
