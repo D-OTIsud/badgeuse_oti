@@ -377,18 +377,65 @@ export const validateModificationRequest = async (
   approuve: boolean,
   commentaire?: string | null
 ): Promise<void> => {
-  const { error } = await supabase
+  // Ensure proper data types and format
+  const insertData: any = {
+    modif_id: modifId,
+    validateur_id: validateurId,
+    approuve: Boolean(approuve), // Ensure it's a boolean
+  };
+  
+  // Only include commentaire if it's not empty
+  if (commentaire && commentaire.trim() !== '') {
+    insertData.commentaire = commentaire.trim();
+  } else {
+    insertData.commentaire = null;
+  }
+
+  console.log('Inserting validation:', insertData);
+
+  const { data, error } = await supabase
     .from('appbadge_session_modif_validations')
-    .insert({
-      modif_id: modifId,
-      validateur_id: validateurId,
-      approuve,
-      commentaire: commentaire || null,
-    });
+    .insert(insertData)
+    .select()
+    .single();
 
   if (error) {
     console.error('Error validating modification request:', error);
-    throw error;
+    console.error('Full error object:', JSON.stringify(error, null, 2));
+    
+    // Provide user-friendly error messages
+    let userMessage = 'Une erreur est survenue lors de la validation de la demande.';
+    
+    if (error.message) {
+      // Check for specific database trigger errors
+      if (error.message.includes('cannot validate their own') || error.message.includes('ne peut pas valider')) {
+        userMessage = 'Un utilisateur ne peut pas valider sa propre demande de modification.';
+      } else if (error.message.includes('not found') || error.message.includes('n\'existe pas')) {
+        userMessage = 'La demande de modification n\'existe plus.';
+      } else if (error.message.includes('UNIQUE constraint') || error.message.includes('déjà été validée')) {
+        userMessage = 'Cette demande a déjà été validée.';
+      } else if (error.message.includes('foreign key') || error.message.includes('clé étrangère')) {
+        userMessage = 'Erreur de référence: l\'administrateur ou la demande n\'existe pas.';
+      } else {
+        userMessage = error.message;
+      }
+    }
+    
+    // Include details and hint if available
+    if (error.details) {
+      userMessage += ` (${error.details})`;
+    }
+    if (error.hint) {
+      userMessage += ` - ${error.hint}`;
+    }
+    
+    const customError = new Error(userMessage);
+    (customError as any).code = error.code;
+    (customError as any).details = error.details;
+    (customError as any).hint = error.hint;
+    throw customError;
   }
+
+  return data;
 };
 

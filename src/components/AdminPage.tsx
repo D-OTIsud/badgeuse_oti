@@ -69,6 +69,7 @@ const ModificationValidationSection: React.FC<{
 
     try {
       const comment = validatorComment[modifId] || null;
+      console.log('Validating request:', { modifId, validateurId: adminUser.id, approuve, comment });
       await validateModificationRequest(modifId, adminUser.id, approuve, comment);
       onSuccess(approuve ? 'Demande approuvée avec succès !' : 'Demande refusée.');
       // Remove the validated request from the list
@@ -80,7 +81,16 @@ const ModificationValidationSection: React.FC<{
       });
     } catch (err: any) {
       console.error('Error validating request:', err);
-      setError('Erreur lors de la validation de la demande.');
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint,
+        stack: err.stack
+      });
+      console.error('Full error object:', JSON.stringify(err, null, 2));
+      // Show the actual error message from the service
+      setError(err.message || 'Erreur lors de la validation de la demande.');
     } finally {
       setValidatingId(null);
     }
