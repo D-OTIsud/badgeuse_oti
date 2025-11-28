@@ -130,9 +130,13 @@ export const getSessionModificationStatus = async (
     };
   }
 
+  // Ensure approuve is treated as a boolean
+  const approuveValue = validation.approuve;
+  const isApproved = approuveValue === true || approuveValue === 'true' || approuveValue === 1;
+
   return {
     modif_id: modif.id,
-    status: validation.approuve ? 'approved' : 'rejected',
+    status: isApproved ? 'approved' : 'rejected',
     proposed_entree_ts: modif.proposed_entree_ts,
     proposed_sortie_ts: modif.proposed_sortie_ts,
     pause_delta_minutes: modif.pause_delta_minutes,
@@ -177,7 +181,7 @@ export const getSessionModificationStatuses = async (
   // Get modif_ids for validation lookup
   const modifIds = modifs.map(m => m.id);
 
-  // Fetch validations
+  // Fetch validations - ensure we get all validations even if there are errors
   const { data: validations, error: validationError } = await supabase
     .from('appbadge_session_modif_validations')
     .select('modif_id, approuve, commentaire as validator_comment, validated_at')
@@ -185,9 +189,11 @@ export const getSessionModificationStatuses = async (
 
   if (validationError) {
     console.error('Error fetching validations:', validationError);
+    // Don't return early - we'll treat all as pending if we can't fetch validations
   }
 
-  // Group modifs by entree_id (take the latest one per entree_id)
+  // Group modifs by entree_id (take the latest one per entree_id based on created_at)
+  // Since we ordered by created_at DESC, the first one we encounter is the latest
   const modifsByEntree = new Map<string, typeof modifs[0]>();
   modifs.forEach(modif => {
     if (!modifsByEntree.has(modif.entree_id)) {
@@ -195,11 +201,15 @@ export const getSessionModificationStatuses = async (
     }
   });
 
-  // Create validation lookup map
-  const validationsByModif = new Map<string, typeof validations[0]>();
-  validations?.forEach(validation => {
-    validationsByModif.set(validation.modif_id, validation);
-  });
+  // Create validation lookup map - ensure we handle the case where validations might be null/undefined
+  const validationsByModif = new Map<string, typeof validations?.[0]>();
+  if (validations && Array.isArray(validations)) {
+    validations.forEach(validation => {
+      if (validation && validation.modif_id) {
+        validationsByModif.set(validation.modif_id, validation);
+      }
+    });
+  }
 
   // Build status map for all entree_ids
   entree_ids.forEach(entree_id => {
@@ -211,6 +221,8 @@ export const getSessionModificationStatuses = async (
 
     const validation = validationsByModif.get(modif.id);
     if (!validation) {
+      // No validation found - check if this is because of an error or truly pending
+      // If we had an error fetching validations, we can't be sure, so mark as pending
       statusMap.set(entree_id, {
         modif_id: modif.id,
         status: 'pending',
@@ -223,9 +235,14 @@ export const getSessionModificationStatuses = async (
       return;
     }
 
+    // Validation exists - determine status based on approuve field
+    // Ensure approuve is treated as a boolean (handle string "true"/"false" or boolean)
+    const approuveValue = validation.approuve;
+    const isApproved = approuveValue === true || approuveValue === 'true' || approuveValue === 1;
+    
     statusMap.set(entree_id, {
       modif_id: modif.id,
-      status: validation.approuve ? 'approved' : 'rejected',
+      status: isApproved ? 'approved' : 'rejected',
       proposed_entree_ts: modif.proposed_entree_ts,
       proposed_sortie_ts: modif.proposed_sortie_ts,
       pause_delta_minutes: modif.pause_delta_minutes,
