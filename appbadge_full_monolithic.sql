@@ -96,13 +96,15 @@ CREATE TABLE IF NOT EXISTS public.appbadge_horaires_standards (
 ALTER SEQUENCE public.appbadge_horaires_standards_id_seq OWNED BY public.appbadge_horaires_standards.id;
 
 -- Manual declarations of missed badge events
--- Updated structure: single record per request with both entrée and sortie times
+-- Updated structure: single record per request with both entrée and sortie times, plus optional pause times
 CREATE TABLE IF NOT EXISTS public.appbadge_oubli_badgeages (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   utilisateur_id uuid NOT NULL,
   date_heure_saisie timestamp with time zone NOT NULL DEFAULT now(),
   date_heure_entree timestamp with time zone NOT NULL,
   date_heure_sortie timestamp with time zone NOT NULL,
+  date_heure_pause_debut timestamp with time zone NULL,
+  date_heure_pause_fin timestamp with time zone NULL,
   raison text NOT NULL,
   commentaire text,
   perte_badge boolean NOT NULL DEFAULT false,
@@ -110,15 +112,12 @@ CREATE TABLE IF NOT EXISTS public.appbadge_oubli_badgeages (
   etat_validation text NOT NULL DEFAULT 'en attente'::text CHECK (etat_validation = ANY (ARRAY['en attente'::text, 'validée'::text, 'refusée'::text])),
   date_validation timestamp with time zone,
   validateur_id uuid,
-  -- Legacy columns for backward compatibility during migration
-  date_heure_badge timestamp with time zone,
-  type_action text CHECK (type_action = ANY (ARRAY['entrée'::text, 'sortie'::text, 'pause'::text, 'retour'::text])),
   CONSTRAINT appbadge_oubli_badgeages_pkey PRIMARY KEY (id),
   CONSTRAINT appbadge_oubli_badgeages_utilisateur_id_fkey FOREIGN KEY (utilisateur_id) REFERENCES public.appbadge_utilisateurs(id),
   CONSTRAINT appbadge_oubli_badgeages_validateur_id_fkey FOREIGN KEY (validateur_id) REFERENCES public.appbadge_utilisateurs(id),
-  CONSTRAINT appbadge_oubli_badgeages_times_check CHECK (
-    (date_heure_entree IS NOT NULL AND date_heure_sortie IS NOT NULL) OR
-    (date_heure_badge IS NOT NULL)  -- Allow old format during migration
+  CONSTRAINT appbadge_oubli_badgeages_pause_check CHECK (
+    (date_heure_pause_debut IS NULL AND date_heure_pause_fin IS NULL) OR
+    (date_heure_pause_debut IS NOT NULL AND date_heure_pause_fin IS NOT NULL AND date_heure_pause_fin > date_heure_pause_debut)
   )
 );
 

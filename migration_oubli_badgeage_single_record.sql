@@ -1,10 +1,12 @@
 -- Migration: Update appbadge_oubli_badgeages to store entrée and sortie in single record
 -- This replaces the old structure where each request created two records (one for entrée, one for sortie)
 
--- Step 1: Add new columns for entrée and sortie times
+-- Step 1: Add new columns for entrée, sortie times, and pause times
 ALTER TABLE public.appbadge_oubli_badgeages
   ADD COLUMN IF NOT EXISTS date_heure_entree timestamp with time zone,
   ADD COLUMN IF NOT EXISTS date_heure_sortie timestamp with time zone,
+  ADD COLUMN IF NOT EXISTS date_heure_pause_debut timestamp with time zone,
+  ADD COLUMN IF NOT EXISTS date_heure_pause_fin timestamp with time zone,
   ADD COLUMN IF NOT EXISTS lieux text;
 
 -- Step 2: Migrate existing data (if any)
@@ -23,13 +25,15 @@ WHERE type_action = 'sortie' AND date_heure_sortie IS NULL;
 -- Step 3: Remove the type_action constraint and column (we'll keep it for now for backward compatibility)
 -- ALTER TABLE public.appbadge_oubli_badgeages DROP COLUMN IF EXISTS type_action;
 
--- Step 4: Make date_heure_entree and date_heure_sortie required for new records
--- We'll add a check constraint to ensure at least one time is provided
+-- Step 4: Add constraint for pause times (both or neither, and fin > debut)
 ALTER TABLE public.appbadge_oubli_badgeages
-  ADD CONSTRAINT appbadge_oubli_badgeages_times_check 
+  DROP CONSTRAINT IF EXISTS appbadge_oubli_badgeages_pause_check;
+  
+ALTER TABLE public.appbadge_oubli_badgeages
+  ADD CONSTRAINT appbadge_oubli_badgeages_pause_check 
   CHECK (
-    (date_heure_entree IS NOT NULL AND date_heure_sortie IS NOT NULL) OR
-    (date_heure_badge IS NOT NULL)  -- Allow old format during migration
+    (date_heure_pause_debut IS NULL AND date_heure_pause_fin IS NULL) OR
+    (date_heure_pause_debut IS NOT NULL AND date_heure_pause_fin IS NOT NULL AND date_heure_pause_fin > date_heure_pause_debut)
   );
 
 -- Note: After migration is complete and all old records are migrated,

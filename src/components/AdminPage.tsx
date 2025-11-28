@@ -381,6 +381,15 @@ const UnifiedValidationSection: React.FC<{
                     <span style={{ color: '#666', fontSize: 13 }}>Sortie: </span>
                     <strong>{formatTime(request.date_heure_sortie)}</strong>
                   </div>
+                  {request.date_heure_pause_debut && request.date_heure_pause_fin && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: '#666', fontSize: 13 }}>Pause: </span>
+                      <strong>{formatTime(request.date_heure_pause_debut)} - {formatTime(request.date_heure_pause_fin)}</strong>
+                      <span style={{ color: '#666', fontSize: 12, marginLeft: 8 }}>
+                        ({Math.round((new Date(request.date_heure_pause_fin).getTime() - new Date(request.date_heure_pause_debut).getTime()) / 60000)} min)
+                      </span>
+                    </div>
+                  )}
                   {request.lieux && (
                     <div>
                       <span style={{ color: '#666', fontSize: 13 }}>Lieu: </span>

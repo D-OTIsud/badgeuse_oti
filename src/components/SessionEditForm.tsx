@@ -4,6 +4,7 @@ import type { Utilisateur } from '../App';
 import { supabase } from '../supabaseClient';
 import { formatTime, formatDate, formatDuration, fetchSessionPauseMinutes } from '../services/sessionService';
 import { createSessionModificationRequest, type SessionModificationRequest } from '../services/sessionModificationService';
+import { fetchUserOubliRequestDates } from '../services/oubliBadgeageService';
 
 interface SessionEditFormProps {
   session?: UserSession; // Optional for oubli de badgeage mode
@@ -47,6 +48,8 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
   const [date, setDate] = useState(sessionDate);
   const [entreeTime, setEntreeTime] = useState(initialEntreeTime);
   const [sortieTime, setSortieTime] = useState(initialSortieTime);
+  const [pauseDebutTime, setPauseDebutTime] = useState('');
+  const [pauseFinTime, setPauseFinTime] = useState('');
   const [pauseDelta, setPauseDelta] = useState(0);
   const [basePauseMinutes, setBasePauseMinutes] = useState<number>(0);
   const [lieux, setLieux] = useState(isOubliMode ? (utilisateur?.lieux || '') : '');
@@ -55,6 +58,7 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [declaredDates, setDeclaredDates] = useState<Set<string>>(new Set());
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -71,6 +75,22 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
     })();
     return () => { isMountedRef.current = false; };
   }, [session?.entree_id, isOubliMode]);
+
+  // Fetch declared dates for oubli mode
+  useEffect(() => {
+    if (!isOubliMode || !utilisateur?.id) return;
+    
+    isMountedRef.current = true;
+    (async () => {
+      try {
+        const dates = await fetchUserOubliRequestDates(utilisateur.id);
+        if (isMountedRef.current) setDeclaredDates(dates);
+      } catch (e) {
+        console.error('Error fetching declared dates:', e);
+      }
+    })();
+    return () => { isMountedRef.current = false; };
+  }, [isOubliMode, utilisateur?.id]);
 
   const clampPauseDelta = (value: number) => Math.max(-480, Math.min(480, value));
   const adjustPauseDelta = (amount: number) => setPauseDelta(prev => clampPauseDelta((prev || 0) + amount));
@@ -118,6 +138,13 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
           return;
         }
 
+        // Check if date is already declared
+        if (declaredDates.has(date)) {
+          setError('Une déclaration d\'oubli de badgeage existe déjà pour cette date. Veuillez sélectionner une autre date.');
+          setLoading(false);
+          return;
+        }
+
         // Validate that sortie is after entree
         const entreeTs = timeToTimestamp(date, entreeTime);
         const sortieTs = timeToTimestamp(date, sortieTime);
@@ -129,6 +156,37 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
             setError('L\'heure de sortie doit être après l\'heure d\'entrée');
             setLoading(false);
             return;
+          }
+        }
+
+        // Validate pause times if provided
+        if (pauseDebutTime || pauseFinTime) {
+          if (!pauseDebutTime || !pauseFinTime) {
+            setError('Veuillez renseigner à la fois le début et la fin de pause');
+            setLoading(false);
+            return;
+          }
+
+          const pauseDebutTs = timeToTimestamp(date, pauseDebutTime);
+          const pauseFinTs = timeToTimestamp(date, pauseFinTime);
+          
+          if (pauseDebutTs && pauseFinTs) {
+            const pauseDebutDate = new Date(pauseDebutTs);
+            const pauseFinDate = new Date(pauseFinTs);
+            const entreeDate = new Date(entreeTs);
+            const sortieDate = new Date(sortieTs);
+
+            if (pauseFinDate <= pauseDebutDate) {
+              setError('L\'heure de fin de pause doit être après l\'heure de début de pause');
+              setLoading(false);
+              return;
+            }
+
+            if (pauseDebutDate < entreeDate || pauseFinDate > sortieDate) {
+              setError('La pause doit être comprise entre l\'heure d\'entrée et l\'heure de sortie');
+              setLoading(false);
+              return;
+            }
           }
         }
 
@@ -165,14 +223,18 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
         // Write to database: create single record with both entrée and sortie times
         const perteBadge = motif === 'badge_perdu' || motif === 'badge_casse';
         
+        // Calculate pause times if provided
+        const pauseDebutTs = pauseDebutTime ? timeToTimestamp(date, pauseDebutTime) : null;
+        const pauseFinTs = pauseFinTime ? timeToTimestamp(date, pauseFinTime) : null;
+        
         const { error: dbError } = await supabase
           .from('appbadge_oubli_badgeages')
           .insert({
             utilisateur_id: utilisateur!.id,
             date_heure_entree: entreeTs,
             date_heure_sortie: sortieTs,
-            date_heure_badge: entreeTs, // Keep for backward compatibility during migration
-            type_action: 'entrée', // Keep for backward compatibility
+            date_heure_pause_debut: pauseDebutTs,
+            date_heure_pause_fin: pauseFinTs,
             raison: motif,
             commentaire: commentaire || null,
             perte_badge: perteBadge,
@@ -186,6 +248,10 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
         }
 
         setSuccess(true);
+        // Add the date to declared dates to prevent immediate re-submission
+        if (isMountedRef.current) {
+          setDeclaredDates(prev => new Set([...prev, date]));
+        }
         setTimeout(() => {
           onSave();
           onClose();
@@ -419,7 +485,15 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  const selectedDate = e.target.value;
+                  if (declaredDates.has(selectedDate)) {
+                    setError('Une déclaration d\'oubli de badgeage existe déjà pour cette date. Veuillez sélectionner une autre date.');
+                    return;
+                  }
+                  setDate(selectedDate);
+                  setError(null);
+                }}
                 max={new Date().toISOString().split('T')[0]}
                 disabled={loading}
                 required
@@ -427,11 +501,32 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
                   width: '100%',
                   padding: 10,
                   borderRadius: 6,
-                  border: '1px solid #ddd',
+                  border: declaredDates.has(date) ? '2px solid #f44336' : '1px solid #ddd',
                   fontSize: 16,
-                  opacity: loading ? 0.6 : 1
+                  opacity: loading ? 0.6 : 1,
+                  backgroundColor: declaredDates.has(date) ? '#ffebee' : '#fff'
                 }}
               />
+              {declaredDates.has(date) && (
+                <div style={{ 
+                  fontSize: 12, 
+                  color: '#f44336', 
+                  marginTop: 4,
+                  fontWeight: 600
+                }}>
+                  ⚠ Une déclaration existe déjà pour cette date
+                </div>
+              )}
+              {declaredDates.size > 0 && (
+                <div style={{ 
+                  fontSize: 11, 
+                  color: '#666', 
+                  marginTop: 4
+                }}>
+                  Dates déjà déclarées: {Array.from(declaredDates).sort().reverse().slice(0, 5).join(', ')}
+                  {declaredDates.size > 5 && ` (+${declaredDates.size - 5} autres)`}
+                </div>
+              )}
             </div>
           )}
 
@@ -500,6 +595,72 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
               </div>
             )}
           </div>
+
+          {/* Pause - only show in oubli mode */}
+          {isOubliMode && (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#333',
+                  marginBottom: 8
+                }}>
+                  Début de pause (optionnel)
+                </label>
+                <input
+                  type="time"
+                  value={pauseDebutTime}
+                  onChange={(e) => setPauseDebutTime(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: 10,
+                    borderRadius: 6,
+                    border: '1px solid #ddd',
+                    fontSize: 16,
+                    opacity: loading ? 0.6 : 1
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#333',
+                  marginBottom: 8
+                }}>
+                  Fin de pause (optionnel)
+                </label>
+                <input
+                  type="time"
+                  value={pauseFinTime}
+                  onChange={(e) => setPauseFinTime(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: 10,
+                    borderRadius: 6,
+                    border: '1px solid #ddd',
+                    fontSize: 16,
+                    opacity: loading ? 0.6 : 1
+                  }}
+                />
+                {(pauseDebutTime || pauseFinTime) && (
+                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                    {pauseDebutTime && pauseFinTime ? (
+                      <>Durée de pause: {Math.round((new Date(`${date}T${pauseFinTime}`).getTime() - new Date(`${date}T${pauseDebutTime}`).getTime()) / 60000)} min</>
+                    ) : (
+                      <>Veuillez renseigner le début et la fin de pause</>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Lieu - only show in oubli mode */}
           {isOubliMode && (
