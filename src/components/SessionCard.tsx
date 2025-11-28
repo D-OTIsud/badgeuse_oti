@@ -158,7 +158,9 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
             status === 'pending'
               ? 'Une demande de modification est déjà en attente'
               : status === 'approved'
-              ? 'Cette session a déjà été modifiée et approuvée'
+              ? modificationStatus?.modif_id 
+                ? 'Cette session a déjà été modifiée et approuvée'
+                : 'Cette session a été créée via un oubli de badgeage validé et ne peut pas être modifiée'
               : 'Modifier cette session'
           }
         >

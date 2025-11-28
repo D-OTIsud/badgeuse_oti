@@ -78,7 +78,13 @@ export const createSessionModificationRequest = async (
 export const getSessionModificationStatus = async (
   entree_id: string
 ): Promise<SessionModificationStatus | null> => {
-  // First, check if there's a modification request
+  // First, check if session comes from approved oubli badgeage
+  const isFromOubli = await checkIfSessionFromOubliBadgeage(entree_id);
+  if (isFromOubli) {
+    return { status: 'approved' };
+  }
+
+  // Then, check if there's a modification request
   const { data: modif, error: modifError } = await supabase
     .from('appbadge_session_modifs')
     .select('id, proposed_entree_ts, proposed_sortie_ts, pause_delta_minutes, motif, commentaire, created_at')
@@ -145,6 +151,27 @@ export const getSessionModificationStatus = async (
     validated_at: validation.validated_at,
     validator_comment: validation.commentaire, // Map commentaire to validator_comment
   };
+};
+
+/**
+ * Check if a session was created from an approved "Oubli de badgeage"
+ * by checking if the entry badge has a comment starting with "Oubli de badgeage validé"
+ */
+export const checkIfSessionFromOubliBadgeage = async (
+  entree_id: string
+): Promise<boolean> => {
+  const { data: badge, error } = await supabase
+    .from('appbadge_badgeages')
+    .select('commentaire')
+    .eq('id', entree_id)
+    .eq('type_action', 'entrée')
+    .single();
+
+  if (error || !badge) {
+    return false;
+  }
+
+  return badge.commentaire?.startsWith('Oubli de badgeage validé') === true;
 };
 
 /**
@@ -245,8 +272,30 @@ export const getSessionModificationStatuses = async (
   console.log(`[getSessionModificationStatuses] Validation map contains ${validationsByModif.size} entries`);
   console.log(`[getSessionModificationStatuses] Validation modif_ids:`, Array.from(validationsByModif.keys()));
 
+  // Check which sessions come from approved oubli badgeage
+  // Batch fetch all entry badges to check comments
+  const { data: entryBadges, error: badgeError } = await supabase
+    .from('appbadge_badgeages')
+    .select('id, commentaire')
+    .eq('type_action', 'entrée')
+    .in('id', entree_ids);
+
+  const oubliBadgeageMap = new Map<string, boolean>();
+  if (entryBadges) {
+    entryBadges.forEach(badge => {
+      const isFromOubli = badge.commentaire?.startsWith('Oubli de badgeage validé') === true;
+      oubliBadgeageMap.set(badge.id, isFromOubli);
+    });
+  }
+
   // Build status map for all entree_ids
   entree_ids.forEach(entree_id => {
+    // First check if session comes from approved oubli badgeage
+    if (oubliBadgeageMap.get(entree_id)) {
+      statusMap.set(entree_id, { status: 'approved' });
+      return;
+    }
+
     const modif = modifsByEntree.get(entree_id);
     if (!modif) {
       statusMap.set(entree_id, { status: 'none' });
