@@ -81,7 +81,6 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
       try {
         // Fetch initial sessions (latest 10)
         await fetchSessions();
-        
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -91,6 +90,23 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
     
     fetchData();
   }, [utilisateur.id, fetchSessions]);
+
+  // Set up periodic refresh every 30 seconds to catch validation updates
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    
+    const refreshInterval = setInterval(async () => {
+      try {
+        const entreeIds = sessions.map(s => s.entree_id);
+        const statuses = await getSessionModificationStatuses(entreeIds);
+        setModificationStatuses(statuses);
+      } catch (error) {
+        console.error('Error refreshing modification statuses:', error);
+      }
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [sessions]);
 
   // Handle date selection for pagination
   const handleDateSelect = (date: string) => {

@@ -192,13 +192,34 @@ export const getSessionModificationStatuses = async (
     // Don't return early - we'll treat all as pending if we can't fetch validations
   }
 
+  // Debug logging
+  if (modifIds.length > 0) {
+    console.log(`[getSessionModificationStatuses] Checking ${modifIds.length} modifs for ${entree_ids.length} sessions`);
+    console.log(`[getSessionModificationStatuses] Found ${validations?.length || 0} validations`);
+    if (validations && validations.length > 0) {
+      console.log('[getSessionModificationStatuses] Validation details:', validations.map(v => ({
+        modif_id: v.modif_id,
+        approuve: v.approuve,
+        approuve_type: typeof v.approuve
+      })));
+    }
+  }
+
   // Group modifs by entree_id (take the latest one per entree_id based on created_at)
   // Since we ordered by created_at DESC, the first one we encounter is the latest
   const modifsByEntree = new Map<string, typeof modifs[0]>();
   modifs.forEach(modif => {
-    if (!modifsByEntree.has(modif.entree_id)) {
+    const existing = modifsByEntree.get(modif.entree_id);
+    // Only keep the latest modif per entree_id (already sorted by created_at DESC)
+    if (!existing) {
       modifsByEntree.set(modif.entree_id, modif);
     }
+  });
+  
+  // Debug: log which modifs we're checking
+  console.log(`[getSessionModificationStatuses] Checking ${modifsByEntree.size} unique entree_ids with modifs`);
+  modifsByEntree.forEach((modif, entree_id) => {
+    console.log(`[getSessionModificationStatuses] entree_id: ${entree_id}, modif_id: ${modif.id}`);
   });
 
   // Create validation lookup map - ensure we handle the case where validations might be null/undefined
@@ -207,10 +228,17 @@ export const getSessionModificationStatuses = async (
   if (validations && Array.isArray(validations)) {
     validations.forEach((validation: ValidationType) => {
       if (validation && validation.modif_id) {
-        validationsByModif.set(validation.modif_id, validation);
+        // Ensure modif_id is a string and trim any whitespace
+        const modifId = String(validation.modif_id).trim();
+        validationsByModif.set(modifId, validation);
+        console.log(`[getSessionModificationStatuses] Added validation to map: modif_id=${modifId}, approuve=${validation.approuve}`);
       }
     });
   }
+  
+  // Debug: show all validation modif_ids
+  console.log(`[getSessionModificationStatuses] Validation map contains ${validationsByModif.size} entries`);
+  console.log(`[getSessionModificationStatuses] Validation modif_ids:`, Array.from(validationsByModif.keys()));
 
   // Build status map for all entree_ids
   entree_ids.forEach(entree_id => {
@@ -220,10 +248,15 @@ export const getSessionModificationStatuses = async (
       return;
     }
 
-    const validation = validationsByModif.get(modif.id);
+    // Ensure modif.id is a string for lookup
+    const modifIdStr = String(modif.id).trim();
+    const validation = validationsByModif.get(modifIdStr);
     if (!validation) {
       // No validation found - check if this is because of an error or truly pending
       // If we had an error fetching validations, we can't be sure, so mark as pending
+      console.log(`[getSessionModificationStatuses] No validation found for modif ${modifIdStr} (entree_id: ${entree_id})`);
+      console.log(`[getSessionModificationStatuses] Available validation modif_ids:`, Array.from(validationsByModif.keys()));
+      console.log(`[getSessionModificationStatuses] Looking for modif_id: "${modifIdStr}"`);
       statusMap.set(entree_id, {
         modif_id: modif.id,
         status: 'pending',
@@ -240,6 +273,8 @@ export const getSessionModificationStatuses = async (
     // Ensure approuve is treated as a boolean (handle string "true"/"false" or boolean)
     const approuveValue = validation.approuve;
     const isApproved = approuveValue === true || approuveValue === 'true' || approuveValue === 1;
+    
+    console.log(`[getSessionModificationStatuses] Session ${entree_id}, modif ${modif.id}: validation found, approuve=${approuveValue} (${typeof approuveValue}), isApproved=${isApproved}, status=${isApproved ? 'approved' : 'rejected'}`);
     
     statusMap.set(entree_id, {
       modif_id: modif.id,

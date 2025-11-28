@@ -175,6 +175,7 @@ export const fetchUserOubliRequestDates = async (utilisateurId: string): Promise
 /**
  * Validate oubli badgeage request (approve or reject)
  * Now validates a single record
+ * When approved, automatically creates badge records in appbadge_badgeages
  */
 export const validateOubliRequest = async (
   requestId: string,
@@ -185,8 +186,20 @@ export const validateOubliRequest = async (
   const now = new Date().toISOString();
   const etat = approuve ? 'validée' : 'refusée';
 
-  // Update the single record
-  const { error } = await supabase
+  // First, fetch the request to get all details
+  const { data: request, error: fetchError } = await supabase
+    .from('appbadge_oubli_badgeages')
+    .select('*')
+    .eq('id', requestId)
+    .single();
+
+  if (fetchError || !request) {
+    console.error('Error fetching oubli badgeage request:', fetchError);
+    throw new Error('Erreur lors de la récupération de la demande');
+  }
+
+  // Update the validation status
+  const { error: updateError } = await supabase
     .from('appbadge_oubli_badgeages')
     .update({
       etat_validation: etat,
@@ -196,9 +209,100 @@ export const validateOubliRequest = async (
     })
     .eq('id', requestId);
 
-  if (error) {
-    console.error('Error validating oubli badgeage request:', error);
+  if (updateError) {
+    console.error('Error validating oubli badgeage request:', updateError);
     throw new Error('Erreur lors de la validation de la demande');
+  }
+
+  // If approved, create badge records in appbadge_badgeages
+  if (approuve) {
+    // Get user's active badge code (required by trigger check_code_in_history)
+    // The trigger checks if code is in numero_badge_history array
+    const { data: badges, error: badgeError } = await supabase
+      .from('appbadge_badges')
+      .select('numero_badge, numero_badge_history')
+      .eq('utilisateur_id', request.utilisateur_id)
+      .eq('actif', true)
+      .order('date_attribution', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (badgeError || !badges) {
+      console.error('Error fetching user badge code:', badgeError);
+      throw new Error('Impossible de récupérer le code de badge de l\'utilisateur. Veuillez vérifier qu\'un badge actif est associé à cet utilisateur.');
+    }
+
+    // Use numero_badge - it should be in the history array
+    // If not, the trigger will raise an error with a clear message
+    const badgeCode = badges.numero_badge;
+    const lieuxValue = request.lieux || null;
+    const commentaireBadge = `Oubli de badgeage validé - ${request.raison}`;
+
+    // Prepare badge records to insert
+    const badgeRecords: any[] = [];
+
+    // 1. Entrée record
+    badgeRecords.push({
+      utilisateur_id: request.utilisateur_id,
+      date_heure: request.date_heure_entree,
+      type_action: 'entrée',
+      lieux: lieuxValue,
+      commentaire: commentaireBadge,
+      code: badgeCode,
+      latitude: null,
+      longitude: null
+    });
+
+    // 2. Pause records (if pause times are provided)
+    if (request.date_heure_pause_debut && request.date_heure_pause_fin) {
+      // Pause start
+      badgeRecords.push({
+        utilisateur_id: request.utilisateur_id,
+        date_heure: request.date_heure_pause_debut,
+        type_action: 'pause',
+        lieux: lieuxValue,
+        commentaire: commentaireBadge,
+        code: badgeCode,
+        latitude: null,
+        longitude: null
+      });
+
+      // Pause end (retour)
+      badgeRecords.push({
+        utilisateur_id: request.utilisateur_id,
+        date_heure: request.date_heure_pause_fin,
+        type_action: 'retour',
+        lieux: lieuxValue,
+        commentaire: commentaireBadge,
+        code: badgeCode,
+        latitude: null,
+        longitude: null
+      });
+    }
+
+    // 3. Sortie record
+    badgeRecords.push({
+      utilisateur_id: request.utilisateur_id,
+      date_heure: request.date_heure_sortie,
+      type_action: 'sortie',
+      lieux: lieuxValue,
+      commentaire: commentaireBadge,
+      code: badgeCode,
+      latitude: null,
+      longitude: null
+    });
+
+    // Insert all badge records
+    const { error: insertError } = await supabase
+      .from('appbadge_badgeages')
+      .insert(badgeRecords);
+
+    if (insertError) {
+      console.error('Error creating badge records:', insertError);
+      // Don't fail the validation, but log the error
+      // The validation is already done, so we just log this issue
+      throw new Error(`La demande a été validée mais une erreur est survenue lors de la création des enregistrements de badgeage: ${insertError.message}`);
+    }
   }
 };
 
