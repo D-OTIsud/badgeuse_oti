@@ -202,9 +202,10 @@ export const getSessionModificationStatuses = async (
   });
 
   // Create validation lookup map - ensure we handle the case where validations might be null/undefined
-  const validationsByModif = new Map<string, typeof validations?.[0]>();
+  type ValidationType = { modif_id: string; approuve: boolean; validator_comment: string | null; validated_at: string };
+  const validationsByModif = new Map<string, ValidationType>();
   if (validations && Array.isArray(validations)) {
-    validations.forEach(validation => {
+    validations.forEach((validation: ValidationType) => {
       if (validation && validation.modif_id) {
         validationsByModif.set(validation.modif_id, validation);
       }
