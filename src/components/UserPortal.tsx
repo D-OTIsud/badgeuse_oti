@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { Utilisateur } from '../App';
-import type { UserSession } from '../types';
-import { fetchUserSessions } from '../services/sessionService';
+import type { UserSession } from '../../types';
+import { fetchUserSessions, fetchSessionsWithModifications } from '../services/sessionService';
 import { getSessionModificationStatuses, type SessionModificationStatus } from '../services/sessionModificationService';
 import SessionCard from './SessionCard';
 import SessionEditForm from './SessionEditForm';
@@ -14,7 +13,6 @@ type Props = {
 };
 
 const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
-  const [badgeages, setBadgeages] = useState<any[]>([]);
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [modificationStatuses, setModificationStatuses] = useState<Map<string, SessionModificationStatus>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -24,23 +22,45 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
   // Pagination state
   const [startDate, setStartDate] = useState<string | null>(null); // ISO date string (YYYY-MM-DD) or null for latest
   const [currentPageStartDate, setCurrentPageStartDate] = useState<string | null>(null); // Date of first session in current page
+  const [paginationHistory, setPaginationHistory] = useState<(string | null)[]>([]); // Stack of dates for navigation
 
-  const fetchSessions = async (beforeDate?: string) => {
+  const fetchSessions = useCallback(async (beforeDate?: string, isNavigatingBack = false) => {
     setSessionsLoading(true);
     try {
-      const sessionsData = await fetchUserSessions(utilisateur.id, 10, beforeDate);
-      setSessions(sessionsData);
+      // Always fetch sessions with modifications first
+      const modifiedSessions = await fetchSessionsWithModifications(utilisateur.id);
+      
+      // Fetch regular sessions (excluding those already in modified list)
+      const modifiedEntreeIds = new Set(modifiedSessions.map(s => s.entree_id));
+      const regularSessionsData = await fetchUserSessions(utilisateur.id, 10, beforeDate);
+      
+      // Filter out sessions that are already in modified list
+      const filteredRegularSessions = regularSessionsData.filter(
+        s => !modifiedEntreeIds.has(s.entree_id)
+      );
+      
+      // Combine: modified sessions first, then regular sessions
+      const allSessions = [...modifiedSessions, ...filteredRegularSessions];
+      
+      // Limit total to 10 if we're not showing modified sessions at top
+      // But if we have modified sessions, we want to show them all + regular up to 10
+      const limitedSessions = beforeDate 
+        ? allSessions.slice(0, 10) // When paginating, limit to 10
+        : allSessions; // On first load, show all modified + up to 10 regular
+      
+      setSessions(limitedSessions);
       
       // Update current page start date (date of first session)
-      if (sessionsData.length > 0) {
-        setCurrentPageStartDate(sessionsData[0].jour_local);
+      if (limitedSessions.length > 0) {
+        const firstDate = limitedSessions[0].jour_local;
+        setCurrentPageStartDate(firstDate);
       } else {
         setCurrentPageStartDate(null);
       }
 
-      // Fetch modification statuses for these sessions
-      if (sessionsData.length > 0) {
-        const entreeIds = sessionsData.map(s => s.entree_id);
+      // Fetch modification statuses for all sessions
+      if (limitedSessions.length > 0) {
+        const entreeIds = limitedSessions.map(s => s.entree_id);
         const statuses = await getSessionModificationStatuses(entreeIds);
         setModificationStatuses(statuses);
       } else {
@@ -51,25 +71,13 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
     } finally {
       setSessionsLoading(false);
     }
-  };
+  }, [utilisateur.id]);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       
       try {
-        // Fetch badgeages
-        const { data: badgeagesData, error: badgeagesError } = await supabase
-          .from('appbadge_badgeages')
-          .select('id, code, created_at, latitude, longitude, type_action, lieux')
-          .eq('utilisateur_id', utilisateur.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        
-        if (!badgeagesError && badgeagesData) {
-          setBadgeages(badgeagesData);
-        }
-        
         // Fetch initial sessions (latest 10)
         await fetchSessions();
         
@@ -81,10 +89,13 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
     };
     
     fetchData();
-  }, [utilisateur.id]);
+  }, [utilisateur.id, fetchSessions]);
 
   // Handle date selection for pagination
   const handleDateSelect = (date: string) => {
+    // Clear pagination history when user manually selects a date
+    // since they're jumping to a new starting point
+    setPaginationHistory([]);
     setStartDate(date);
     fetchSessions(date);
   };
@@ -92,22 +103,36 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
   // Navigate to next 10 sessions (earlier dates)
   const handleNextPage = () => {
     if (sessions.length === 0) return;
+    // Store current page's startDate in history before navigating forward
+    // This allows us to go back to this page later
+    setPaginationHistory(prev => [...prev, startDate || null]);
     // Get the date of the last session in current page
     const lastSessionDate = sessions[sessions.length - 1].jour_local;
-    fetchSessions(lastSessionDate);
+    setStartDate(lastSessionDate);
+    fetchSessions(lastSessionDate, false);
   };
 
   // Navigate to previous 10 sessions (later dates)
-  // For simplicity, this resets to latest sessions
-  // User can use date picker to navigate to specific dates
   const handlePreviousPage = () => {
-    setStartDate(null);
-    fetchSessions();
+    if (paginationHistory.length > 0) {
+      // Pop from history to go back
+      const newHistory = [...paginationHistory];
+      const previousDate = newHistory.pop() || null;
+      setPaginationHistory(newHistory);
+      setStartDate(previousDate);
+      fetchSessions(previousDate || undefined, true);
+    } else {
+      // No history, go to latest (first page)
+      setStartDate(null);
+      setPaginationHistory([]);
+      fetchSessions(undefined, true);
+    }
   };
 
   // Reset to latest sessions
   const handleResetToLatest = () => {
     setStartDate(null);
+    setPaginationHistory([]);
     fetchSessions();
   };
 
@@ -121,7 +146,7 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
 
   const handleSaveSession = async () => {
     // Refresh sessions after modification request is submitted
-    await fetchSessions(startDate || undefined);
+    await fetchSessions(startDate || undefined, false);
     setEditingSession(null);
   };
 
@@ -189,16 +214,16 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
               {/* Navigation buttons */}
               <button
                 onClick={handlePreviousPage}
-                disabled={!currentPageStartDate || sessionsLoading}
+                disabled={(paginationHistory.length === 0 && !startDate) || sessionsLoading}
                 style={{
                   background: '#f5f5f5',
                   border: '1px solid #ddd',
                   borderRadius: 6,
                   padding: '6px 12px',
-                  cursor: (!currentPageStartDate || sessionsLoading) ? 'not-allowed' : 'pointer',
+                  cursor: ((paginationHistory.length === 0 && !startDate) || sessionsLoading) ? 'not-allowed' : 'pointer',
                   fontSize: 12,
                   color: '#666',
-                  opacity: (!currentPageStartDate || sessionsLoading) ? 0.5 : 1
+                  opacity: ((paginationHistory.length === 0 && !startDate) || sessionsLoading) ? 0.5 : 1
                 }}
                 title="Sessions plus récentes"
               >

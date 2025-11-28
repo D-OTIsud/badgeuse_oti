@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import type { UserSession } from '../types';
-import { formatTime, formatDate, formatDuration } from '../services/sessionService';
+import React, { useEffect, useState, useRef } from 'react';
+import type { UserSession } from '../../types';
+import { formatTime, formatDate, formatDuration, fetchSessionPauseMinutes } from '../services/sessionService';
 import { createSessionModificationRequest, type SessionModificationRequest } from '../services/sessionModificationService';
 
 interface SessionEditFormProps {
@@ -28,11 +28,29 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
   const [entreeTime, setEntreeTime] = useState(initialEntreeTime);
   const [sortieTime, setSortieTime] = useState(initialSortieTime);
   const [pauseDelta, setPauseDelta] = useState(0);
+  const [basePauseMinutes, setBasePauseMinutes] = useState<number>(0);
   const [motif, setMotif] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    (async () => {
+      try {
+        const minutes = await fetchSessionPauseMinutes(session.entree_id);
+        if (isMountedRef.current) setBasePauseMinutes(minutes || 0);
+      } catch (e) {
+        // Ignore, already logged in service
+      }
+    })();
+    return () => { isMountedRef.current = false; };
+  }, [session.entree_id]);
+
+  const clampPauseDelta = (value: number) => Math.max(-480, Math.min(480, value));
+  const adjustPauseDelta = (amount: number) => setPauseDelta(prev => clampPauseDelta((prev || 0) + amount));
 
   // Convert time string to timestamp
   // The database stores local Reunion time marked as +00 (representing local time, not UTC)
@@ -246,6 +264,9 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
             <div>
               <strong>Lieu:</strong> {session.lieux || 'Non spécifié'}
             </div>
+            <div>
+              <strong>Pause enregistrée:</strong> {basePauseMinutes} min
+            </div>
           </div>
         </div>
 
@@ -326,23 +347,33 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, onClose, onS
             }}>
               Ajustement de pause (en minutes)
             </label>
-            <input
-              type="number"
-              min="-480"
-              max="480"
-              value={pauseDelta}
-              onChange={(e) => setPauseDelta(parseInt(e.target.value) || 0)}
-              disabled={loading}
-              placeholder="0"
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 16,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto auto 1fr auto auto', gap: 8, alignItems: 'center' }}>
+              <button type="button" onClick={() => adjustPauseDelta(-10)} disabled={loading} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: loading ? 'not-allowed' : 'pointer' }}>-10</button>
+              <button type="button" onClick={() => adjustPauseDelta(-1)} disabled={loading} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: loading ? 'not-allowed' : 'pointer' }}>-1</button>
+              <input
+                type="number"
+                min="-480"
+                max="480"
+                value={pauseDelta}
+                onChange={(e) => setPauseDelta(clampPauseDelta(parseInt(e.target.value) || 0))}
+                disabled={loading}
+                placeholder="0"
+                style={{
+                  width: '100%',
+                  padding: 10,
+                  borderRadius: 6,
+                  border: '1px solid #ddd',
+                  fontSize: 16,
+                  opacity: loading ? 0.6 : 1,
+                  textAlign: 'center'
+                }}
+              />
+              <button type="button" onClick={() => adjustPauseDelta(1)} disabled={loading} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: loading ? 'not-allowed' : 'pointer' }}>+1</button>
+              <button type="button" onClick={() => adjustPauseDelta(10)} disabled={loading} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: loading ? 'not-allowed' : 'pointer' }}>+10</button>
+            </div>
+            <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>
+              Nouveau total de pause: <strong>{Math.max(0, basePauseMinutes + (pauseDelta || 0))} min</strong>
+            </div>
             <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
               Valeur négative = pause supprimée, positive = pause ajoutée (entre -480 et +480 min)
             </div>
