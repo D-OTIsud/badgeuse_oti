@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { UserSession } from '../../types';
 import type { Utilisateur } from '../App';
+import { supabase } from '../supabaseClient';
 import { formatTime, formatDate, formatDuration, fetchSessionPauseMinutes } from '../services/sessionService';
 import { createSessionModificationRequest, type SessionModificationRequest } from '../services/sessionModificationService';
 
@@ -149,17 +150,47 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
           timestamp: new Date().toISOString()
         };
 
-        // Send POST request to n8n webhook
-        const response = await fetch('https://n8n.otisud.re/webhook/c76763d6-d579-4d20-975f-b70939b82c59', {
+        // Send POST request to n8n webhook (fire and forget)
+        fetch('https://n8n.otisud.re/webhook/c76763d6-d579-4d20-975f-b70939b82c59', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(requestData)
+        }).catch(err => {
+          console.error('Error sending to n8n webhook:', err);
+          // Don't fail the request if n8n fails
         });
 
-        if (!response.ok) {
-          throw new Error('Erreur lors de l\'envoi de la demande');
+        // Write to database: create two records (entrée and sortie)
+        const perteBadge = motif === 'badge_perdu' || motif === 'badge_casse';
+        
+        const { error: dbError } = await supabase
+          .from('appbadge_oubli_badgeages')
+          .insert([
+            {
+              utilisateur_id: utilisateur!.id,
+              date_heure_badge: entreeTs,
+              type_action: 'entrée',
+              raison: motif,
+              commentaire: commentaire || null,
+              perte_badge: perteBadge,
+              etat_validation: 'en attente'
+            },
+            {
+              utilisateur_id: utilisateur!.id,
+              date_heure_badge: sortieTs,
+              type_action: 'sortie',
+              raison: motif,
+              commentaire: commentaire || null,
+              perte_badge: perteBadge,
+              etat_validation: 'en attente'
+            }
+          ]);
+
+        if (dbError) {
+          console.error('Error saving oubli badgeage to database:', dbError);
+          throw new Error('Erreur lors de l\'enregistrement de la demande en base de données');
         }
 
         setSuccess(true);

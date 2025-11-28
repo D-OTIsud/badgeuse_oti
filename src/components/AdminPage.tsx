@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Dashboard from './Dashboard';
 import { fetchPendingModificationRequests, validateModificationRequest, type ModificationRequestWithDetails } from '../services/sessionModificationService';
+import { fetchPendingOubliRequests, validateOubliRequest, type OubliBadgeageRequestWithDetails } from '../services/oubliBadgeageService';
 import { formatTime, formatDate, formatDuration } from '../services/sessionService';
 
 // Composant popup de succès
@@ -28,13 +29,14 @@ const SuccessPopup: React.FC<{ message: string; onClose: () => void }> = ({ mess
   </div>
 );
 
-// Component for validating session modification requests
-const ModificationValidationSection: React.FC<{ 
+// Unified component for validating both session modifications and oubli badgeage requests
+const UnifiedValidationSection: React.FC<{ 
   adminUser: any; 
   onBack: () => void;
   onSuccess: (message: string) => void;
 }> = ({ adminUser, onBack, onSuccess }) => {
-  const [requests, setRequests] = useState<ModificationRequestWithDetails[]>([]);
+  const [modificationRequests, setModificationRequests] = useState<ModificationRequestWithDetails[]>([]);
+  const [oubliRequests, setOubliRequests] = useState<OubliBadgeageRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [validatingId, setValidatingId] = useState<string | null>(null);
   const [validatorComment, setValidatorComment] = useState<Record<string, string>>({});
@@ -44,10 +46,14 @@ const ModificationValidationSection: React.FC<{
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchPendingModificationRequests();
-      setRequests(data);
+      const [modifs, oublis] = await Promise.all([
+        fetchPendingModificationRequests(),
+        fetchPendingOubliRequests()
+      ]);
+      setModificationRequests(modifs);
+      setOubliRequests(oublis);
     } catch (err: any) {
-      console.error('Error fetching modification requests:', err);
+      console.error('Error fetching requests:', err);
       setError('Erreur lors du chargement des demandes.');
     } finally {
       setLoading(false);
@@ -58,7 +64,7 @@ const ModificationValidationSection: React.FC<{
     fetchRequests();
   }, []);
 
-  const handleValidate = async (modifId: string, approuve: boolean) => {
+  const handleValidateModification = async (modifId: string, approuve: boolean) => {
     if (!adminUser?.id) {
       setError('Administrateur non identifié.');
       return;
@@ -69,27 +75,43 @@ const ModificationValidationSection: React.FC<{
 
     try {
       const comment = validatorComment[modifId] || null;
-      console.log('Validating request:', { modifId, validateurId: adminUser.id, approuve, comment });
       await validateModificationRequest(modifId, adminUser.id, approuve, comment);
-      onSuccess(approuve ? 'Demande approuvée avec succès !' : 'Demande refusée.');
-      // Remove the validated request from the list
-      setRequests(prev => prev.filter(r => r.id !== modifId));
+      onSuccess(approuve ? 'Demande de modification approuvée avec succès !' : 'Demande de modification refusée.');
+      setModificationRequests(prev => prev.filter(r => r.id !== modifId));
       setValidatorComment(prev => {
         const next = { ...prev };
         delete next[modifId];
         return next;
       });
     } catch (err: any) {
-      console.error('Error validating request:', err);
-      console.error('Error details:', {
-        message: err.message,
-        code: err.code,
-        details: err.details,
-        hint: err.hint,
-        stack: err.stack
+      console.error('Error validating modification request:', err);
+      setError(err.message || 'Erreur lors de la validation de la demande.');
+    } finally {
+      setValidatingId(null);
+    }
+  };
+
+  const handleValidateOubli = async (entreeId: string, sortieId: string, requestId: string, approuve: boolean) => {
+    if (!adminUser?.id) {
+      setError('Administrateur non identifié.');
+      return;
+    }
+
+    setValidatingId(requestId);
+    setError(null);
+
+    try {
+      const comment = validatorComment[requestId] || null;
+      await validateOubliRequest(entreeId, sortieId, adminUser.id, approuve, comment);
+      onSuccess(approuve ? 'Demande d\'oubli de badgeage approuvée avec succès !' : 'Demande d\'oubli de badgeage refusée.');
+      setOubliRequests(prev => prev.filter(r => r.id !== requestId));
+      setValidatorComment(prev => {
+        const next = { ...prev };
+        delete next[requestId];
+        return next;
       });
-      console.error('Full error object:', JSON.stringify(err, null, 2));
-      // Show the actual error message from the service
+    } catch (err: any) {
+      console.error('Error validating oubli request:', err);
       setError(err.message || 'Erreur lors de la validation de la demande.');
     } finally {
       setValidatingId(null);
@@ -102,10 +124,12 @@ const ModificationValidationSection: React.FC<{
     return timeMatch ? timeMatch[0] : formatTime(ts);
   };
 
+  const totalRequests = modificationRequests.length + oubliRequests.length;
+
   return (
     <div style={{ background: '#fff', borderRadius: 20, maxWidth: 1000, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ margin: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Valider les modifications de temps</h2>
+        <h2 style={{ margin: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Valider les demandes</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetchRequests} disabled={loading} style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: 8, padding: '8px 16px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14 }}>🔄 Actualiser</button>
           <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
@@ -120,13 +144,14 @@ const ModificationValidationSection: React.FC<{
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>Chargement des demandes...</div>
-      ) : requests.length === 0 ? (
+      ) : totalRequests === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#666', background: '#f8f9fa', borderRadius: 12 }}>
-          ✓ Aucune demande de modification en attente
+          ✓ Aucune demande en attente
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {requests.map((request) => (
+          {/* Session Modification Requests */}
+          {modificationRequests.map((request) => (
             <div key={request.id} style={{ 
               border: '2px solid #e0e0e0', 
               borderRadius: 12, 
@@ -134,6 +159,20 @@ const ModificationValidationSection: React.FC<{
               background: '#fafafa',
               boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
             }}>
+              {/* Type badge */}
+              <div style={{ 
+                display: 'inline-block', 
+                background: '#1976d2', 
+                color: '#fff', 
+                padding: '4px 12px', 
+                borderRadius: 6, 
+                fontSize: 12, 
+                fontWeight: 600, 
+                marginBottom: 16 
+              }}>
+                MODIFICATION DE SESSION
+              </div>
+
               {/* User and date header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #e0e0e0' }}>
                 <div>
@@ -250,7 +289,7 @@ const ModificationValidationSection: React.FC<{
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button
-                  onClick={() => handleValidate(request.id, false)}
+                  onClick={() => handleValidateModification(request.id, false)}
                   disabled={validatingId === request.id}
                   style={{
                     background: '#f44336',
@@ -267,7 +306,7 @@ const ModificationValidationSection: React.FC<{
                   {validatingId === request.id ? 'Traitement...' : '✗ Refuser'}
                 </button>
                 <button
-                  onClick={() => handleValidate(request.id, true)}
+                  onClick={() => handleValidateModification(request.id, true)}
                   disabled={validatingId === request.id}
                   style={{
                     background: '#4caf50',
@@ -872,7 +911,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   // Section de validation des modifications de temps
   if (adminSection === 'valider-modifications') {
-    return <ModificationValidationSection 
+    return <UnifiedValidationSection 
       adminUser={adminUser} 
       onBack={() => setAdminSection(null)} 
       onSuccess={(msg) => showSuccessAndReturn(msg)}
