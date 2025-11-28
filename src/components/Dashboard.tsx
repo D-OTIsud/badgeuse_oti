@@ -734,23 +734,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         console.log('Données dashboard jour:', dashboardData);
       }
 
-      // Récupérer les anomalies (vue appbadge_v_anomalies)
-      const { data: anomaliesData, error: anomaliesError } = await supabase
-        .from('appbadge_v_anomalies')
-        .select('*')
-        .order('date_heure', { ascending: false })
-        .limit(10);
-
-      if (anomaliesError) {
-        console.error('Erreur anomalies:', anomaliesError);
-      } else {
-        console.log('Données anomalies:', anomaliesData);
-      }
-
       setData(prev => ({
         ...prev,
         dashboardJour: dashboardData || [],
-        anomalies: anomaliesData || []
+        anomalies: [] // Anomalies removed - no longer needed
       }));
 
       // Le statut des utilisateurs est maintenant géré directement via l'abonnement temps réel sur appbadge_utilisateurs
@@ -1829,54 +1816,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
            </div>
          )}
 
-        {/* Anomalies */}
-        <div style={{
-          background: 'white',
-          borderRadius: 12,
-          padding: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: colors.text, fontSize: 18, fontWeight: 600 }}>
-            Anomalies
-          </h3>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 8,
-            maxHeight: '280px',
-            overflowY: 'auto'
-          }}>
-            {data.anomalies.slice(0, 10).map((anomalie, index) => (
-              <div key={index} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: 8,
-                borderRadius: 6,
-                background: '#fff3cd',
-                border: '1px solid #ffeaa7'
-              }}>
-                <span style={{ fontSize: 16, color: '#856404' }}>⚠️</span>
-                <div style={{ flex: 1, fontSize: 14, color: '#856404' }}>
-                  {anomalie.anomalie || 'Anomalie détectée'}
-                </div>
-                <div style={{ fontSize: 12, color: '#856404' }}>
-                  {new Date(anomalie.date_heure).toLocaleDateString('fr-FR')}
-                </div>
-              </div>
-            ))}
-            {data.anomalies.length === 0 && (
-              <div style={{ 
-                textAlign: 'center', 
-                color: colors.textLight, 
-                padding: '20px',
-                fontSize: 14 
-              }}>
-                Aucune anomalie détectée
-              </div>
-            )}
-          </div>
-        </div>
 
 
 
@@ -2122,8 +2061,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
         )}
         */}
 
-        {/* UserKPIDeck - KPI par utilisateur pour toutes les périodes (cartes compactes) */}
-        {data.kpiBundle?.utilisateurs && data.kpiBundle.utilisateurs.length > 0 && (
+        {/* UserKPIDeck - KPI par utilisateur pour toutes les périodes (cartes compactes) - Hidden for 'jour' period */}
+        {data.kpiBundle?.utilisateurs && data.kpiBundle.utilisateurs.length > 0 && period !== 'jour' && (
           <div style={{
             background: 'white',
             borderRadius: 12,
@@ -2138,10 +2077,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onBack }) => {
                 </span>
               )}
               <div style={{ fontSize: 12, color: '#888', fontWeight: 400, marginTop: 4 }}>
-                Données KPI de la période : {period === 'jour' ? 'Jour' : period === 'semaine' ? 'Semaine' : period === 'mois' ? 'Mois' : 'Année'}
+                Données KPI de la période : {period === 'semaine' ? 'Semaine' : period === 'mois' ? 'Mois' : 'Année'}
                 {period === 'semaine' && selectedWeek > 0 && ` ${selectedWeek}`}
                 {period === 'mois' && selectedMonth > 0 && ` ${selectedMonth}`}
-                {period === 'annee' && ` ${selectedYear}`}
+                {(period === 'annee' || period === 'année') && ` ${selectedYear}`}
                 {kpiLoading && (
                   <span style={{ color: '#1976d2', marginLeft: 8 }}>
                     🔄 Chargement...

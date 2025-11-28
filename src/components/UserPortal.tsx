@@ -165,10 +165,31 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
           ) : (
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f4f6fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#bbb', border: '2px solid #1976d2' }}>👤</div>
           )}
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 20 }}>{utilisateur.prenom} {utilisateur.nom}</div>
             <div style={{ color: '#666' }}>{utilisateur.email}</div>
             <div style={{ color: '#888', fontSize: 12 }}>{utilisateur.service || ''}{utilisateur.lieux ? ` • ${utilisateur.lieux}` : ''}</div>
+          </div>
+          <div>
+            <a 
+              href="https://n8n.otisud.re/webhook/c76763d6-d579-4d20-975f-b70939b82c59" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                display: 'inline-block',
+                background: '#1976d2', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: 8, 
+                padding: '10px 16px', 
+                cursor: 'pointer', 
+                fontWeight: 700,
+                textDecoration: 'none',
+                fontSize: 14
+              }}
+            >
+              Oubli de badgeage
+            </a>
           </div>
         </div>
         <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 16 }}>
@@ -302,12 +323,6 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
               {startDate && ` avant le ${new Date(startDate).toLocaleDateString('fr-FR')}`}
             </div>
           )}
-        </div>
-        <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: '#1976d2' }}>Oubli de badgeage</div>
-          <button style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 12px', cursor: 'pointer', fontWeight: 700 }}
-            onClick={() => alert('Formulaire à implémenter (placeholder).')}
-          >Remplir le formulaire</button>
         </div>
       </div>
       
