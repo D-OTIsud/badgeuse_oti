@@ -162,31 +162,23 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
           // Don't fail the request if n8n fails
         });
 
-        // Write to database: create two records (entrée and sortie)
+        // Write to database: create single record with both entrée and sortie times
         const perteBadge = motif === 'badge_perdu' || motif === 'badge_casse';
         
         const { error: dbError } = await supabase
           .from('appbadge_oubli_badgeages')
-          .insert([
-            {
-              utilisateur_id: utilisateur!.id,
-              date_heure_badge: entreeTs,
-              type_action: 'entrée',
-              raison: motif,
-              commentaire: commentaire || null,
-              perte_badge: perteBadge,
-              etat_validation: 'en attente'
-            },
-            {
-              utilisateur_id: utilisateur!.id,
-              date_heure_badge: sortieTs,
-              type_action: 'sortie',
-              raison: motif,
-              commentaire: commentaire || null,
-              perte_badge: perteBadge,
-              etat_validation: 'en attente'
-            }
-          ]);
+          .insert({
+            utilisateur_id: utilisateur!.id,
+            date_heure_entree: entreeTs,
+            date_heure_sortie: sortieTs,
+            date_heure_badge: entreeTs, // Keep for backward compatibility during migration
+            type_action: 'entrée', // Keep for backward compatibility
+            raison: motif,
+            commentaire: commentaire || null,
+            perte_badge: perteBadge,
+            lieux: lieux || null,
+            etat_validation: 'en attente'
+          });
 
         if (dbError) {
           console.error('Error saving oubli badgeage to database:', dbError);

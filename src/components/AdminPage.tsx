@@ -91,7 +91,7 @@ const UnifiedValidationSection: React.FC<{
     }
   };
 
-  const handleValidateOubli = async (entreeId: string, sortieId: string, requestId: string, approuve: boolean) => {
+  const handleValidateOubli = async (requestId: string, approuve: boolean) => {
     if (!adminUser?.id) {
       setError('Administrateur non identifié.');
       return;
@@ -102,7 +102,7 @@ const UnifiedValidationSection: React.FC<{
 
     try {
       const comment = validatorComment[requestId] || null;
-      await validateOubliRequest(entreeId, sortieId, adminUser.id, approuve, comment);
+      await validateOubliRequest(requestId, adminUser.id, approuve, comment);
       onSuccess(approuve ? 'Demande d\'oubli de badgeage approuvée avec succès !' : 'Demande d\'oubli de badgeage refusée.');
       setOubliRequests(prev => prev.filter(r => r.id !== requestId));
       setValidatorComment(prev => {
@@ -307,6 +307,155 @@ const UnifiedValidationSection: React.FC<{
                 </button>
                 <button
                   onClick={() => handleValidateModification(request.id, true)}
+                  disabled={validatingId === request.id}
+                  style={{
+                    background: '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    cursor: validatingId === request.id ? 'not-allowed' : 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    opacity: validatingId === request.id ? 0.6 : 1
+                  }}
+                >
+                  {validatingId === request.id ? 'Traitement...' : '✓ Approuver'}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {/* Oubli Badgeage Requests */}
+          {oubliRequests.map((request) => (
+            <div key={request.id} style={{ 
+              border: '2px solid #e0e0e0', 
+              borderRadius: 12, 
+              padding: 20, 
+              background: '#fafafa',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            }}>
+              {/* Type badge */}
+              <div style={{ 
+                display: 'inline-block', 
+                background: '#ff9800', 
+                color: '#fff', 
+                padding: '4px 12px', 
+                borderRadius: 6, 
+                fontSize: 12, 
+                fontWeight: 600, 
+                marginBottom: 16 
+              }}>
+                OUBLI DE BADGEAGE
+              </div>
+
+              {/* User and date header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #e0e0e0' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 18, color: '#1976d2', marginBottom: 4 }}>
+                    {request.utilisateur_prenom} {request.utilisateur_nom}
+                  </div>
+                  <div style={{ fontSize: 14, color: '#666' }}>
+                    {request.utilisateur_email}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, color: '#666', marginBottom: 4 }}>
+                    Date: {formatDate(request.date_heure_entree)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#999' }}>
+                    Demande du {new Date(request.date_heure_saisie).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Times */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
+                <div style={{ background: '#fff', padding: 16, borderRadius: 8, border: '1px solid #e0e0e0' }}>
+                  <div style={{ fontWeight: 600, color: '#666', marginBottom: 12, fontSize: 14 }}>Heures déclarées</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Entrée: </span>
+                    <strong>{formatTime(request.date_heure_entree)}</strong>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Sortie: </span>
+                    <strong>{formatTime(request.date_heure_sortie)}</strong>
+                  </div>
+                  {request.lieux && (
+                    <div>
+                      <span style={{ color: '#666', fontSize: 13 }}>Lieu: </span>
+                      <strong>{request.lieux}</strong>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background: '#fff3e0', padding: 16, borderRadius: 8, border: '1px solid #ffcc80' }}>
+                  <div style={{ fontWeight: 600, color: '#ff9800', marginBottom: 12, fontSize: 14 }}>Informations</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Raison: </span>
+                    <strong>{request.raison}</strong>
+                  </div>
+                  {request.perte_badge && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ color: '#f44336', fontSize: 13, fontWeight: 600 }}>⚠ Badge perdu/cassé</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Commentaire */}
+              {request.commentaire && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ background: '#f5f5f5', padding: 12, borderRadius: 6, fontSize: 14, color: '#333' }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 13, color: '#666' }}>Commentaire de l'utilisateur:</div>
+                    {request.commentaire}
+                  </div>
+                </div>
+              )}
+
+              {/* Validator comment input */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 13, marginBottom: 8 }}>
+                  Commentaire (optionnel)
+                </label>
+                <textarea
+                  value={validatorComment[request.id] || ''}
+                  onChange={(e) => setValidatorComment(prev => ({ ...prev, [request.id]: e.target.value }))}
+                  placeholder="Ajouter un commentaire pour cette validation..."
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    padding: 10,
+                    borderRadius: 6,
+                    border: '1px solid #ddd',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => handleValidateOubli(request.id, false)}
+                  disabled={validatingId === request.id}
+                  style={{
+                    background: '#f44336',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '10px 20px',
+                    cursor: validatingId === request.id ? 'not-allowed' : 'pointer',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    opacity: validatingId === request.id ? 0.6 : 1
+                  }}
+                >
+                  {validatingId === request.id ? 'Traitement...' : '✗ Refuser'}
+                </button>
+                <button
+                  onClick={() => handleValidateOubli(request.id, true)}
                   disabled={validatingId === request.id}
                   style={{
                     background: '#4caf50',
