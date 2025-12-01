@@ -7,7 +7,7 @@
 
 BEGIN;
 
--- Function to get monthly team statistics
+-- Function to get monthly team statistics (single month - kept for backward compatibility)
 DROP FUNCTION IF EXISTS public.get_monthly_team_stats(integer, integer, text) CASCADE;
 CREATE OR REPLACE FUNCTION public.get_monthly_team_stats(
   p_year integer,
@@ -39,6 +39,38 @@ BEGIN
   -- If p_service is provided, use it; otherwise return all services (admin access)
   v_service_filter := p_service;
   
+  -- Call the range-based function
+  RETURN QUERY
+  SELECT * FROM public.get_monthly_team_stats_range(v_start_date, v_end_date, v_service_filter);
+END;
+$$;
+
+-- Function to get team statistics for a date range (supports multiple months)
+DROP FUNCTION IF EXISTS public.get_monthly_team_stats_range(date, date, text) CASCADE;
+CREATE OR REPLACE FUNCTION public.get_monthly_team_stats_range(
+  p_start_date date,
+  p_end_date date,
+  p_service text DEFAULT NULL
+)
+RETURNS TABLE (
+  service text,
+  total_hours numeric,
+  avg_hours_per_user numeric,
+  total_delays_minutes bigint,
+  absences_count bigint,
+  users jsonb
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_service_filter text;
+BEGIN
+  -- If p_service is provided, use it; otherwise return all services (admin access)
+  v_service_filter := p_service;
+  
   -- Return aggregated statistics
   RETURN QUERY
   WITH month_data AS (
@@ -58,8 +90,8 @@ BEGIN
     FROM public.appbadge_utilisateurs u
     LEFT JOIN public.appbadge_v_synthese_journaliere s 
       ON s.utilisateur_id = u.id
-      AND s.jour_local >= v_start_date
-      AND s.jour_local < v_end_date
+      AND s.jour_local >= p_start_date
+      AND s.jour_local < p_end_date
     WHERE u.actif = true
       AND (v_service_filter IS NULL OR u.service = v_service_filter)
     GROUP BY u.id, u.service, u.nom, u.prenom, u.email

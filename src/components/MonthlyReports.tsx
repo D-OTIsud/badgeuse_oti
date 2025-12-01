@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchMonthlyTeamStats, getAvailableServices, type MonthlyTeamStats } from '../services/monthlyReportsService';
+import { fetchMonthlyTeamStats, fetchMonthlyTeamStatsRange, exportToCSV, getAvailableServices, type MonthlyTeamStats } from '../services/monthlyReportsService';
 import { checkIsManager, getUserService, checkCanAccessAllServices } from '../services/authService';
 
 interface MonthlyReportsProps {
@@ -12,6 +12,18 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [useDateRange, setUseDateRange] = useState(false);
+  const [startDate, setStartDate] = useState<string>(() => {
+    const date = new Date();
+    date.setDate(1); // First day of current month
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    date.setDate(0); // Last day of current month
+    return date.toISOString().split('T')[0];
+  });
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [availableServices, setAvailableServices] = useState<string[]>([]);
   const [isManager, setIsManager] = useState(false);
@@ -50,7 +62,18 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchMonthlyTeamStats(selectedYear, selectedMonth, selectedService);
+        let data: MonthlyTeamStats[];
+        if (useDateRange) {
+          // Use date range
+          data = await fetchMonthlyTeamStatsRange(
+            new Date(startDate),
+            new Date(endDate),
+            selectedService
+          );
+        } else {
+          // Use single month
+          data = await fetchMonthlyTeamStats(selectedYear, selectedMonth, selectedService);
+        }
         setStats(data);
       } catch (err: any) {
         console.error('Error loading monthly stats:', err);
@@ -61,7 +84,7 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
     };
 
     loadStats();
-  }, [selectedYear, selectedMonth, selectedService]);
+  }, [selectedYear, selectedMonth, selectedService, useDateRange, startDate, endDate]);
 
   const formatDuration = (hours: number): string => {
     const h = Math.floor(hours);
@@ -89,56 +112,145 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
     return years;
   };
 
+  const handleExport = () => {
+    const start = useDateRange ? new Date(startDate) : new Date(selectedYear, selectedMonth - 1, 1);
+    const end = useDateRange ? new Date(endDate) : new Date(selectedYear, selectedMonth, 0);
+    exportToCSV(stats, start, end, selectedService || undefined);
+  };
+
   return (
     <div style={{ background: '#fff', borderRadius: 20, maxWidth: 1400, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <h2 style={{ margin: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>Rapports Mensuels</h2>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {!loading && !error && stats.length > 0 && (
+            <button
+              onClick={handleExport}
+              style={{
+                background: '#4caf50',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '10px 20px',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              📥 Exporter en CSV
+            </button>
+          )}
+          <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 18, color: '#888', cursor: 'pointer' }}>Retour</button>
+        </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Mois:</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: '1px solid #ddd',
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
-          >
-            {monthNames.map((name, index) => (
-              <option key={index + 1} value={index + 1}>
-                {name}
-              </option>
-            ))}
-          </select>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
+        {/* Toggle between single month and date range */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 8 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="radio"
+              checked={!useDateRange}
+              onChange={() => setUseDateRange(false)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Un mois</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="radio"
+              checked={useDateRange}
+              onChange={() => setUseDateRange(true)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Plage de dates (plusieurs mois)</span>
+          </label>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Année:</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: '1px solid #ddd',
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
-          >
-            {generateYearOptions().map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        {!useDateRange ? (
+          <>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Mois:</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #ddd',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                {monthNames.map((name, index) => (
+                  <option key={index + 1} value={index + 1}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Année:</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #ddd',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                {generateYearOptions().map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Date de début:</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #ddd',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Date de fin:</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #ddd',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
+          </>
+        )}
 
         {canAccessAllServices && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
