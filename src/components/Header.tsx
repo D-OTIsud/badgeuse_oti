@@ -6,10 +6,9 @@ const LOGO_URL = 'https://supabertel.otisud.re/storage/v1/object/public/logo//lo
 interface HeaderProps {
   welcomeMessage?: string;
   onAdminClick?: () => void;
-  onRGPDClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ welcomeMessage, onAdminClick, onRGPDClick }) => (
+const Header: React.FC<HeaderProps> = ({ welcomeMessage, onAdminClick }) => (
   <header
     style={{
       width: '100%',
@@ -41,47 +40,30 @@ const Header: React.FC<HeaderProps> = ({ welcomeMessage, onAdminClick, onRGPDCli
       }}
     />
     {/* Icône paramètre en haut à droite */}
-    <div style={{ position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 16, alignItems: 'center' }}>
-      {onRGPDClick && (
-        <button
-          onClick={onRGPDClick}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12,
-            color: '#fff',
-            opacity: 0.9,
-            padding: '4px 8px',
-            textDecoration: 'underline',
-            fontWeight: 500,
-          }}
-          title="Mentions RGPD"
-        >
-          RGPD
-        </button>
-      )}
-      {onAdminClick && (
-        <button
-          onClick={onAdminClick}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 28,
-            color: '#fff',
-            opacity: 0.85,
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          title="Administration"
-        >
-          <img src={usersGearIcon} alt="admin" style={{ width: 28, height: 28, display: 'block' }} />
-        </button>
-      )}
-    </div>
+    {onAdminClick && (
+      <button
+        onClick={onAdminClick}
+        style={{
+          position: 'absolute',
+          right: 24,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 28,
+          color: '#fff',
+          opacity: 0.85,
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        title="Administration"
+      >
+        <img src={usersGearIcon} alt="admin" style={{ width: 28, height: 28, display: 'block' }} />
+      </button>
+    )}
     <div style={{ textAlign: 'center' }}>
       <h1
         style={{

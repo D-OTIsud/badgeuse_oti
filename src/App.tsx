@@ -347,7 +347,6 @@ function App() {
       <Header 
         welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName, ipCheck.isAuthorized) : undefined}
         onAdminClick={() => setShowAdminPage(true)}
-        onRGPDClick={() => setShowRGPD(true)}
       />
       {showAdminPage ? (
         <AdminPage onClose={() => setShowAdminPage(false)} />
@@ -378,6 +377,31 @@ function App() {
           </div>
         </>
       )}
+      <footer
+        style={{
+          marginTop: 32,
+          padding: '24px 16px',
+          background: '#f5f5f5',
+          borderTop: '1px solid #e0e0e0',
+          textAlign: 'center',
+          color: '#555',
+        }}
+      >
+        <button
+          onClick={() => setShowRGPD(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#1976d2',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          Mentions RGPD & documents
+        </button>
+      </footer>
     </div>
   );
 }
