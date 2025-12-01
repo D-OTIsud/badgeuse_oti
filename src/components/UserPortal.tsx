@@ -30,12 +30,15 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
   const fetchSessions = useCallback(async (beforeDate?: string, isNavigatingBack = false) => {
     setSessionsLoading(true);
     try {
-      // Fetch all sessions (both modified and regular)
-      const modifiedSessions = await fetchSessionsWithModifications(utilisateur.id);
-      const modifiedEntreeIds = new Set(modifiedSessions.map(s => s.entree_id));
-      const regularSessionsData = await fetchUserSessions(utilisateur.id, 10, beforeDate);
+      // Fetch sessions and oubli requests in parallel (they don't depend on each other)
+      const [modifiedSessions, regularSessionsData, oubliRequests] = await Promise.all([
+        fetchSessionsWithModifications(utilisateur.id),
+        fetchUserSessions(utilisateur.id, 10, beforeDate),
+        fetchUserPendingOubliRequests(utilisateur.id)
+      ]);
       
       // Filter out sessions that are already in modified list
+      const modifiedEntreeIds = new Set(modifiedSessions.map(s => s.entree_id));
       const filteredRegularSessions = regularSessionsData.filter(
         s => !modifiedEntreeIds.has(s.entree_id)
       );
@@ -63,6 +66,7 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         : sortedSessions; // On first load, show all
       
       setSessions(limitedSessions);
+      setPendingOubliRequests(oubliRequests);
       
       // Update current page start date (date of first session)
       if (limitedSessions.length > 0) {
@@ -72,7 +76,7 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         setCurrentPageStartDate(null);
       }
 
-      // Fetch modification statuses for all sessions
+      // Fetch modification statuses for all sessions (can be done in parallel with session fetching)
       if (limitedSessions.length > 0) {
         const entreeIds = limitedSessions.map(s => s.entree_id);
         const statuses = await getSessionModificationStatuses(entreeIds);
@@ -80,10 +84,6 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
       } else {
         setModificationStatuses(new Map());
       }
-
-      // Fetch pending oubli badgeage requests for the user
-      const oubliRequests = await fetchUserPendingOubliRequests(utilisateur.id);
-      setPendingOubliRequests(oubliRequests);
     } catch (error) {
       console.error('Error fetching sessions:', error);
     } finally {
