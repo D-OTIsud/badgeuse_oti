@@ -128,7 +128,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
       background: '#fff', 
       borderRadius: 16, 
       padding: '32px', 
-      maxWidth: 900, 
+      maxWidth: 1000, 
       margin: '0 auto',
       boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
     }}>
@@ -156,7 +156,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           <div style={{ 
             background: '#f8f9fa', 
             borderRadius: 12, 
-            padding: '24px', 
+            padding: '28px', 
             marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
@@ -171,7 +171,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>👤</span> Informations de base
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
               {/* Email */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -195,7 +195,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff'
                   }}
                   onFocus={(e) => {
-                    if (!emailError) e.currentTarget.style.borderColor = '#667eea';
+                    if (!emailError) e.currentTarget.style.borderColor = '#1976d2';
                   }}
                   onBlur={(e) => {
                     if (!emailError) e.currentTarget.style.borderColor = '#ced4da';
@@ -229,7 +229,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 >
                   <option value="">Sélectionner un rôle</option>
@@ -253,7 +253,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                       background: '#fff',
                       transition: 'all 0.2s'
                     }}
-                    onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                     onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                   />
                 )}
@@ -265,7 +265,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           <div style={{ 
             background: '#f8f9fa', 
             borderRadius: 12, 
-            padding: '24px', 
+            padding: '28px', 
             marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
@@ -280,7 +280,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>📝</span> Identité
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
               {/* Nom */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -303,7 +303,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
               </div>
@@ -330,7 +330,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
               </div>
@@ -341,7 +341,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           <div style={{ 
             background: '#f8f9fa', 
             borderRadius: 12, 
-            padding: '24px', 
+            padding: '28px', 
             marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
@@ -356,7 +356,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>🏢</span> Organisation
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
               {/* Service */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -378,7 +378,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
               </div>
@@ -404,7 +404,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
               </div>
@@ -415,7 +415,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           <div style={{ 
             background: '#f8f9fa', 
             borderRadius: 12, 
-            padding: '24px', 
+            padding: '28px', 
             marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
@@ -430,7 +430,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>⚙️</span> Paramètres
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
               {/* Heures contractuelles */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -454,7 +454,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
                 <div style={{ fontSize: 12, color: '#6c757d', marginTop: 6 }}>💡 Valeur entre 0 et 60 heures</div>
@@ -482,7 +482,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
               </div>
@@ -493,7 +493,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           <div style={{ 
             background: '#f8f9fa', 
             borderRadius: 12, 
-            padding: '24px', 
+            padding: '28px', 
             marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
@@ -508,7 +508,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>🖼️</span> Profil
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
               {/* Avatar */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -530,7 +530,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                     background: '#fff',
                     transition: 'all 0.2s'
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#1976d2'}
                   onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
                 />
                 {formData.avatar && (
@@ -543,7 +543,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                         height: 64,
                         borderRadius: '50%',
                         objectFit: 'cover',
-                        border: '3px solid #667eea',
+                        border: '3px solid #1976d2',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                       }}
                       onError={(e) => {
@@ -654,7 +654,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
               style={{
                 background: loading || emailError || validatingEmail 
                   ? '#adb5bd' 
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  : '#4caf50',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 10,
@@ -665,19 +665,19 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                 opacity: loading || emailError || validatingEmail ? 0.6 : 1,
                 boxShadow: loading || emailError || validatingEmail 
                   ? 'none' 
-                  : '0 4px 12px rgba(102, 126, 234, 0.4)',
+                  : '0 2px 8px rgba(76, 175, 80, 0.3)',
                 transition: 'all 0.2s'
               }}
               onMouseEnter={(e) => {
                 if (!loading && !emailError && !validatingEmail) {
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.background = '#45a049';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading && !emailError && !validatingEmail) {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.background = '#4caf50';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)';
                 }
               }}
             >
