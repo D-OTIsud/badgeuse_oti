@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Dashboard from './Dashboard';
-import { fetchPendingModificationRequests, validateModificationRequest, type ModificationRequestWithDetails } from '../services/sessionModificationService';
-import { fetchPendingOubliRequests, validateOubliRequest, type OubliBadgeageRequestWithDetails } from '../services/oubliBadgeageService';
+import { validateModificationRequest, type ModificationRequestWithDetails } from '../services/sessionModificationService';
+import { validateOubliRequest, type OubliBadgeageRequestWithDetails } from '../services/oubliBadgeageService';
+import { fetchAdminValidationRequests } from '../services/adminValidationService';
 import { formatTime, formatDate, formatDuration } from '../services/sessionService';
 
 // Composant popup de succès
@@ -47,12 +48,10 @@ const UnifiedValidationSection: React.FC<{
     setLoading(true);
     setError(null);
     try {
-      const [modifs, oublis] = await Promise.all([
-        fetchPendingModificationRequests(),
-        fetchPendingOubliRequests()
-      ]);
-      setModificationRequests(modifs);
-      setOubliRequests(oublis);
+      // Use optimized RPC function that fetches everything in a single query
+      const { modification_requests, oubli_requests } = await fetchAdminValidationRequests();
+      setModificationRequests(modification_requests);
+      setOubliRequests(oubli_requests);
     } catch (err: any) {
       console.error('Error fetching requests:', err);
       setError('Erreur lors du chargement des demandes.');
