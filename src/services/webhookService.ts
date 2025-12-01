@@ -195,13 +195,38 @@ export const callWebhookViaFunction = async (
 /**
  * Appelle un webhook de manière sécurisée avec rate limiting
  * 
- * @deprecated Utiliser callWebhookViaRPC() à la place pour une meilleure sécurité
+ * ⚠️ Cette méthode est dépréciée. Utilisez callWebhookViaRPC() à la place.
+ * 
+ * Cette fonction accepte soit :
+ * - Une URL complète (legacy) : 'https://n8n.otisud.re/webhook/...'
+ * - Un nom de webhook : 'badge_code', 'gps', 'oubli_badgeage' (récupère l'URL depuis les variables d'environnement)
+ * 
+ * @param urlOrName URL complète ou nom du webhook ('badge_code', 'gps', 'oubli_badgeage')
+ * @param data Données à envoyer
+ * @param options Options de requête fetch (optionnel)
+ * @returns Promise avec la réponse ou null en cas d'erreur
  */
 export const callWebhook = async (
-  url: string,
+  urlOrName: string,
   data: any,
   options: RequestInit = {}
 ): Promise<Response | null> => {
+  // Si l'URL commence par 'https://', c'est une URL directe (legacy)
+  // Sinon, c'est un nom de webhook - utiliser la variable d'environnement
+  let url: string | null;
+  
+  if (urlOrName.startsWith('https://')) {
+    // URL directe (legacy - à éviter)
+    url = urlOrName;
+  } else {
+    // Nom de webhook - récupérer depuis les variables d'environnement
+    url = getWebhookUrl(urlOrName);
+    if (!url) {
+      console.error(`Webhook URL not configured for: ${urlOrName}. Configurez VITE_WEBHOOK_${urlOrName.toUpperCase()}_URL dans .env`);
+      return null;
+    }
+  }
+  
   // Validation de l'URL
   if (!url || !url.startsWith('https://')) {
     console.error('URL webhook invalide:', url);
