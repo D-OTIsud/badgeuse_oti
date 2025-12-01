@@ -106,8 +106,8 @@ export const getUserService = async (): Promise<string | null> => {
  */
 export const checkCanAccessAllServices = async (): Promise<boolean> => {
   try {
-    const isAdmin = await checkIsAdmin();
-    return isAdmin; // Admins can access all services regardless of their own service
+    const role = await checkUserRole();
+    return role === 'Admin';
   } catch (error) {
     console.error('Erreur lors de la vérification de l\'accès aux services:', error);
     return false;
