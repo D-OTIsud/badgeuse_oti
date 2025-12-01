@@ -127,27 +127,12 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
     <div style={{ 
       background: '#fff', 
       borderRadius: 16, 
-      padding: 0, 
+      padding: '32px', 
       maxWidth: 900, 
       margin: '0 auto',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-      overflow: 'hidden'
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
     }}>
-      {/* Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '24px 32px',
-        color: '#fff'
-      }}>
-        <h2 style={{ margin: 0, fontWeight: 700, fontSize: 24, letterSpacing: 0.5 }}>
-          {isEditMode ? '✏️ Modifier l\'utilisateur' : '➕ Ajouter un nouvel utilisateur'}
-        </h2>
-        <p style={{ margin: '8px 0 0 0', opacity: 0.9, fontSize: 14 }}>
-          {isEditMode ? 'Modifiez les informations de l\'utilisateur' : 'Remplissez les informations pour créer un nouvel utilisateur'}
-        </p>
-      </div>
-
-      <div style={{ padding: '32px' }}>
+      <div style={{ marginBottom: 32 }}>
         {error && (
           <div style={{ 
             background: '#fff3cd', 
@@ -172,11 +157,11 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             background: '#f8f9fa', 
             borderRadius: 12, 
             padding: '24px', 
-            marginBottom: 24,
+            marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
             <h3 style={{ 
-              margin: '0 0 20px 0', 
+              margin: '0 0 24px 0', 
               color: '#495057', 
               fontSize: 16, 
               fontWeight: 600,
@@ -186,10 +171,10 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>👤</span> Informations de base
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {/* Email */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Email <span style={{ color: '#dc3545' }}>*</span>
                 </label>
                 <input
@@ -226,7 +211,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
 
               {/* Role */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Rôle
                 </label>
                 <select
@@ -281,11 +266,11 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             background: '#f8f9fa', 
             borderRadius: 12, 
             padding: '24px', 
-            marginBottom: 24,
+            marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
             <h3 style={{ 
-              margin: '0 0 20px 0', 
+              margin: '0 0 24px 0', 
               color: '#495057', 
               fontSize: 16, 
               fontWeight: 600,
@@ -295,10 +280,10 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>📝</span> Identité
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {/* Nom */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Nom <span style={{ color: '#dc3545' }}>*</span>
                 </label>
                 <input
@@ -325,7 +310,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
 
               {/* Prénom */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Prénom <span style={{ color: '#dc3545' }}>*</span>
                 </label>
                 <input
@@ -357,11 +342,11 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             background: '#f8f9fa', 
             borderRadius: 12, 
             padding: '24px', 
-            marginBottom: 24,
+            marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
             <h3 style={{ 
-              margin: '0 0 20px 0', 
+              margin: '0 0 24px 0', 
               color: '#495057', 
               fontSize: 16, 
               fontWeight: 600,
@@ -371,10 +356,10 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>🏢</span> Organisation
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {/* Service */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Service
                 </label>
                 <input
@@ -400,7 +385,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
 
               {/* Lieux */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Lieu
                 </label>
                 <input
@@ -431,11 +416,11 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             background: '#f8f9fa', 
             borderRadius: 12, 
             padding: '24px', 
-            marginBottom: 24,
+            marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
             <h3 style={{ 
-              margin: '0 0 20px 0', 
+              margin: '0 0 24px 0', 
               color: '#495057', 
               fontSize: 16, 
               fontWeight: 600,
@@ -445,10 +430,10 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>⚙️</span> Paramètres
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {/* Heures contractuelles */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Heures contractuelles par semaine
                 </label>
                 <input
@@ -477,7 +462,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
 
               {/* Telegram ID */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Telegram ID
                 </label>
                 <input
@@ -509,11 +494,11 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             background: '#f8f9fa', 
             borderRadius: 12, 
             padding: '24px', 
-            marginBottom: 24,
+            marginBottom: 32,
             border: '1px solid #e9ecef'
           }}>
             <h3 style={{ 
-              margin: '0 0 20px 0', 
+              margin: '0 0 24px 0', 
               color: '#495057', 
               fontSize: 16, 
               fontWeight: 600,
@@ -523,10 +508,10 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>🖼️</span> Profil
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               {/* Avatar */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Lien de l'avatar
                 </label>
                 <input
@@ -572,7 +557,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
 
               {/* Actif */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
                   Statut
                 </label>
                 <div style={{
