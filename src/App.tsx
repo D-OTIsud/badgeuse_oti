@@ -5,6 +5,7 @@ import BadgeForm from './components/BadgeForm';
 import Header from './components/Header';
 import { supabase } from './supabaseClient';
 import { checkIPAuthorization, getWelcomeMessage } from './services/ipService';
+import { checkIsAdmin } from './services/authService';
 import AdminPage from './components/AdminPage';
 import LottieLoader from './components/LottieLoader';
 import UserPortal from './components/UserPortal';
@@ -62,6 +63,7 @@ function App() {
     userIP: string;
     latitude?: string;
     longitude?: string;
+    error?: string;
   } | null>(null);
   const [ipCheckLoading, setIpCheckLoading] = useState(true);
   const [deckKey, setDeckKey] = useState(Date.now());
@@ -191,8 +193,17 @@ function App() {
       } catch {}
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+      
+      // Vérifier le rôle admin quand la session change
+      if (session) {
+        const adminStatus = await checkIsAdmin();
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
+      
       // If session established after OAuth (popup or redirect), restore portal user and close popup
       try {
         if (session && !showPortalFor) {
