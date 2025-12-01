@@ -153,13 +153,17 @@ function App() {
 
   // Check Supabase session on mount and listen for auth changes
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       
-      // Vérifier le rôle admin si une session existe
+      // Vérifier le rôle admin si une session existe (de manière asynchrone pour ne pas bloquer)
       if (session) {
-        const adminStatus = await checkIsAdmin();
-        setIsAdmin(adminStatus);
+        checkIsAdmin().then(adminStatus => {
+          setIsAdmin(adminStatus);
+        }).catch(err => {
+          console.error('Error checking admin status:', err);
+          setIsAdmin(false);
+        });
       } else {
         setIsAdmin(false);
       }
@@ -193,13 +197,17 @@ function App() {
       } catch {}
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       
-      // Vérifier le rôle admin quand la session change
+      // Vérifier le rôle admin quand la session change (de manière asynchrone pour ne pas bloquer)
       if (session) {
-        const adminStatus = await checkIsAdmin();
-        setIsAdmin(adminStatus);
+        checkIsAdmin().then(adminStatus => {
+          setIsAdmin(adminStatus);
+        }).catch(err => {
+          console.error('Error checking admin status:', err);
+          setIsAdmin(false);
+        });
       } else {
         setIsAdmin(false);
       }
@@ -335,7 +343,7 @@ function App() {
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
       <Header 
         welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName, ipCheck.isAuthorized) : undefined}
-        onAdminClick={isAdmin ? () => setShowAdminPage(true) : undefined}
+        onAdminClick={() => setShowAdminPage(true)}
       />
       {showAdminPage ? (
         <AdminPage onClose={() => setShowAdminPage(false)} />
