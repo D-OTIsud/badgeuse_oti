@@ -9,6 +9,7 @@ import { checkIsAdmin } from './services/authService';
 import AdminPage from './components/AdminPage';
 import LottieLoader from './components/LottieLoader';
 import UserPortal from './components/UserPortal';
+import RGPDMentions from './components/RGPDMentions';
 
 export type Utilisateur = {
   id: string;
@@ -71,6 +72,7 @@ function App() {
   const [showPortalFor, setShowPortalFor] = useState<Utilisateur | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showRGPD, setShowRGPD] = useState(false);
 
   const handleSelectUser = useCallback(async (user: Utilisateur) => {
     setLoading(true);
@@ -341,9 +343,11 @@ function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#fcf9f3' }}>
+      {showRGPD && <RGPDMentions onClose={() => setShowRGPD(false)} />}
       <Header 
         welcomeMessage={ipCheck ? getWelcomeMessage(ipCheck.locationName, ipCheck.isAuthorized) : undefined}
         onAdminClick={() => setShowAdminPage(true)}
+        onRGPDClick={() => setShowRGPD(true)}
       />
       {showAdminPage ? (
         <AdminPage onClose={() => setShowAdminPage(false)} />

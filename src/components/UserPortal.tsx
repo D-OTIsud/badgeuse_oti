@@ -6,6 +6,7 @@ import { getSessionModificationStatuses, type SessionModificationStatus } from '
 import { fetchUserPendingOubliRequests, type OubliBadgeageRequestWithDetails } from '../services/oubliBadgeageService';
 import SessionCard from './SessionCard';
 import SessionEditForm from './SessionEditForm';
+import manuelUtilisateur from '../assets/Manuel Utilisateur Badgeuse OTI.pdf?url';
 
 type Props = {
   utilisateur: Utilisateur;
@@ -199,7 +200,38 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0, color: '#1976d2' }}>Mon espace</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <a
+              href={manuelUtilisateur}
+              download="Manuel_Utilisateur_Badgeuse_OTI.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                background: '#f5f5f5',
+                border: '1px solid #ddd',
+                borderRadius: 8,
+                textDecoration: 'none',
+                color: '#333',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e0e0e0';
+                e.currentTarget.style.borderColor = '#1976d2';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f5f5f5';
+                e.currentTarget.style.borderColor = '#ddd';
+              }}
+            >
+              <span>📖</span>
+              <span>Manuel utilisateur</span>
+            </a>
             <button onClick={onLogout} style={{ background: 'none', border: '1px solid #1976d2', color: '#1976d2', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}>Fermer</button>
           </div>
         </div>

@@ -289,11 +289,6 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
             Service: {userService}
           </div>
         )}
-        
-        {/* Ensure managers cannot change service - hide dropdown completely */}
-        {isManager && !canAccessAllServices && (
-          <input type="hidden" value={userService || ''} />
-        )}
       </div>
 
       {/* Loading state */}
