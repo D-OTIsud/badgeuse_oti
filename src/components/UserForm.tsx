@@ -171,7 +171,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>👤</span> Informations de base
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 32
+              }}
+            >
               {/* Email */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -280,7 +286,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>📝</span> Identité
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 32
+              }}
+            >
               {/* Nom */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -356,7 +368,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>🏢</span> Organisation
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 32
+              }}
+            >
               {/* Service */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -430,7 +448,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>⚙️</span> Paramètres
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 32
+              }}
+            >
               {/* Heures contractuelles */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
@@ -508,7 +532,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             }}>
               <span>🖼️</span> Profil
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 32
+              }}
+            >
               {/* Avatar */}
               <div>
                 <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 10 }}>
