@@ -11,7 +11,7 @@ export interface UserData {
   avatar?: string | null;
   lieux?: string | null;
   heures_contractuelles_semaine?: number;
-  telegram_id?: string | null;
+  telegramID?: string | null;
   status?: string | null;
 }
 
@@ -27,7 +27,7 @@ export interface User extends UserData {
 export const fetchAllUsers = async (includeInactive: boolean = false): Promise<User[]> => {
   let query = supabase
     .from('appbadge_utilisateurs')
-    .select('id, email, nom, prenom, role, service, actif, avatar, lieux, heures_contractuelles_semaine, telegram_id, status, date_creation')
+      .select('id, email, nom, prenom, role, service, actif, avatar, lieux, heures_contractuelles_semaine, telegramID, status, date_creation')
     .order('nom', { ascending: true });
 
   if (!includeInactive) {
@@ -60,7 +60,7 @@ export const createUser = async (userData: Omit<UserData, 'id'>): Promise<User> 
       avatar: userData.avatar || null,
       lieux: userData.lieux || null,
       heures_contractuelles_semaine: userData.heures_contractuelles_semaine || 35.0,
-      telegram_id: userData.telegram_id || null,
+      telegramID: userData.telegramID || null,
       status: userData.status || null,
     }])
     .select()
@@ -89,7 +89,7 @@ export const updateUser = async (userId: string, userData: Partial<UserData>): P
   if (userData.avatar !== undefined) updateData.avatar = userData.avatar;
   if (userData.lieux !== undefined) updateData.lieux = userData.lieux;
   if (userData.heures_contractuelles_semaine !== undefined) updateData.heures_contractuelles_semaine = userData.heures_contractuelles_semaine;
-  if (userData.telegram_id !== undefined) updateData.telegram_id = userData.telegram_id;
+  if (userData.telegramID !== undefined) updateData.telegramID = userData.telegramID;
   if (userData.status !== undefined) updateData.status = userData.status;
 
   const { data, error } = await supabase

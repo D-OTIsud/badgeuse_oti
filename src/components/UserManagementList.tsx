@@ -223,7 +223,7 @@ const UserManagementList: React.FC<UserManagementListProps> = ({ onSelectUser, o
                       {formatContractualHours(user.heures_contractuelles_semaine)}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 14, color: '#666', fontFamily: 'monospace' }}>
-                      {user.telegram_id || '-'}
+                      {user.telegramID || '-'}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 14 }}>
                       {user.actif ? (

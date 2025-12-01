@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS public.appbadge_utilisateurs (
   status text,
   lieux text,
   heures_contractuelles_semaine numeric DEFAULT 35.0, -- Heures contractuelles par semaine (défaut 35h)
+  "telegramID" text NULL,
   CONSTRAINT appbadge_utilisateurs_pkey PRIMARY KEY (id),
   CONSTRAINT appbadge_utilisateurs_heures_contractuelles_check CHECK (heures_contractuelles_semaine > 0 AND heures_contractuelles_semaine <= 60)
 );
@@ -2916,6 +2917,10 @@ CHECK (heures_contractuelles_semaine > 0 AND heures_contractuelles_semaine <= 60
 UPDATE public.appbadge_utilisateurs 
 SET heures_contractuelles_semaine = 35.0 
 WHERE heures_contractuelles_semaine IS NULL;
+
+-- Add telegramID column if it doesn't exist
+ALTER TABLE public.appbadge_utilisateurs 
+ADD COLUMN IF NOT EXISTS "telegramID" text NULL;
 
 -- End of file
 COMMIT;

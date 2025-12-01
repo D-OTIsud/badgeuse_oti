@@ -20,7 +20,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
     avatar: user?.avatar || null,
     lieux: user?.lieux || null,
     heures_contractuelles_semaine: user?.heures_contractuelles_semaine || 35,
-    telegram_id: user?.telegram_id || null,
+    telegramID: user?.telegramID || null,
     status: user?.status || null,
   });
 
@@ -326,8 +326,8 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
             </label>
             <input
               type="text"
-              value={formData.telegram_id || ''}
-              onChange={(e) => handleChange('telegram_id', e.target.value || null)}
+              value={formData.telegramID || ''}
+              onChange={(e) => handleChange('telegramID', e.target.value || null)}
               disabled={loading}
               placeholder="ID Telegram (ex: @username ou 123456789)"
               style={{

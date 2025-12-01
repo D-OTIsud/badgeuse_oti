@@ -644,7 +644,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
            const fetchUsers = async () => {
         const { data, error } = await supabase
           .from('appbadge_utilisateurs')
-          .select('id, nom, prenom, role, actif, avatar, email, service, lieux, heures_contractuelles_semaine, telegram_id')
+          .select('id, nom, prenom, role, actif, avatar, email, service, lieux, heures_contractuelles_semaine, telegramID')
           .eq('actif', true)
           .order('nom', { ascending: true });
         if (!error && data) setUsers(data);
