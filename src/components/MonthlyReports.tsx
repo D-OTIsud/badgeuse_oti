@@ -289,6 +289,7 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
             Service: {userService}
           </div>
         )}
+        </div>
       </div>
 
       {/* Loading state */}
