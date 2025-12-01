@@ -210,6 +210,10 @@ const UnifiedValidationSection: React.FC<{
                     <span style={{ color: '#666', fontSize: 13 }}>Durée: </span>
                     <strong>{formatDuration(request.session_duree_minutes)}</strong>
                   </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#666', fontSize: 13 }}>Pause: </span>
+                    <strong>{formatDuration(request.session_pause_minutes || 0)}</strong>
+                  </div>
                   {request.session_lieux && (
                     <div>
                       <span style={{ color: '#666', fontSize: 13 }}>Lieu: </span>
@@ -237,6 +241,27 @@ const UnifiedValidationSection: React.FC<{
                       </strong>
                     </div>
                   )}
+                  {request.proposed_entree_ts && request.proposed_sortie_ts && (() => {
+                    const proposedPauseMinutes = Math.max(0, (request.session_pause_minutes || 0) + request.pause_delta_minutes);
+                    const totalMinutes = Math.round((new Date(request.proposed_sortie_ts).getTime() - new Date(request.proposed_entree_ts).getTime()) / 60000);
+                    const proposedDurationMinutes = Math.max(0, totalMinutes - proposedPauseMinutes);
+                    return (
+                      <>
+                        <div style={{ marginBottom: 8 }}>
+                          <span style={{ color: '#666', fontSize: 13 }}>Durée: </span>
+                          <strong style={{ color: proposedDurationMinutes !== request.session_duree_minutes ? '#ff9800' : '#333' }}>
+                            {formatDuration(proposedDurationMinutes)}
+                          </strong>
+                        </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <span style={{ color: '#666', fontSize: 13 }}>Pause: </span>
+                          <strong style={{ color: proposedPauseMinutes !== (request.session_pause_minutes || 0) ? '#ff9800' : '#333' }}>
+                            {formatDuration(proposedPauseMinutes)}
+                          </strong>
+                        </div>
+                      </>
+                    );
+                  })()}
                   {request.pause_delta_minutes !== 0 && (
                     <div style={{ marginBottom: 8 }}>
                       <span style={{ color: '#666', fontSize: 13 }}>Ajustement pause: </span>

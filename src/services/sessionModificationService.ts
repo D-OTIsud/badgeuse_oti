@@ -342,6 +342,7 @@ export interface ModificationRequestWithDetails {
   session_entree_ts: string;
   session_sortie_ts: string;
   session_duree_minutes: number;
+  session_pause_minutes: number;
   session_lieux: string | null;
 }
 
@@ -404,6 +405,16 @@ export const fetchPendingModificationRequests = async (): Promise<ModificationRe
     .select('entree_id, jour_local, entree_ts, sortie_ts, duree_minutes, lieux')
     .in('entree_id', entreeIds);
 
+  // Get pause minutes for each session
+  const { data: pauseTotals, error: pauseError } = await supabase
+    .from('appbadge_v_session_pause_totals')
+    .select('entree_id, total_pause_minutes')
+    .in('entree_id', entreeIds);
+
+  if (pauseError) {
+    console.error('Error fetching pause totals:', pauseError);
+  }
+
   if (sessionsError) {
     console.error('Error fetching session details:', sessionsError);
     return [];
@@ -412,6 +423,11 @@ export const fetchPendingModificationRequests = async (): Promise<ModificationRe
   // Create a map of sessions by entree_id
   const sessionsByEntree = new Map(
     (sessions || []).map(s => [s.entree_id, s])
+  );
+
+  // Create a map of pause totals by entree_id
+  const pauseByEntree = new Map(
+    (pauseTotals || []).map(p => [p.entree_id, Number(p.total_pause_minutes) || 0])
   );
 
   // Combine modification requests with user and session details
@@ -441,6 +457,7 @@ export const fetchPendingModificationRequests = async (): Promise<ModificationRe
         session_entree_ts: session.entree_ts,
         session_sortie_ts: session.sortie_ts,
         session_duree_minutes: session.duree_minutes,
+        session_pause_minutes: pauseByEntree.get(modif.entree_id) || 0,
         session_lieux: session.lieux,
       };
     })
