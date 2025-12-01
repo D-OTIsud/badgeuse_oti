@@ -220,18 +220,6 @@ export const getSessionModificationStatuses = async (
     // Don't return early - we'll treat all as pending if we can't fetch validations
   }
 
-  // Debug logging
-  if (modifIds.length > 0) {
-    console.log(`[getSessionModificationStatuses] Checking ${modifIds.length} modifs for ${entree_ids.length} sessions`);
-    console.log(`[getSessionModificationStatuses] Found ${validations?.length || 0} validations`);
-    if (validations && validations.length > 0) {
-      console.log('[getSessionModificationStatuses] Validation details:', validations.map(v => ({
-        modif_id: v.modif_id,
-        approuve: v.approuve,
-        approuve_type: typeof v.approuve
-      })));
-    }
-  }
 
   // Group modifs by entree_id (take the latest one per entree_id based on created_at)
   // Since we ordered by created_at DESC, the first one we encounter is the latest
@@ -244,11 +232,6 @@ export const getSessionModificationStatuses = async (
     }
   });
   
-  // Debug: log which modifs we're checking
-  console.log(`[getSessionModificationStatuses] Checking ${modifsByEntree.size} unique entree_ids with modifs`);
-  modifsByEntree.forEach((modif, entree_id) => {
-    console.log(`[getSessionModificationStatuses] entree_id: ${entree_id}, modif_id: ${modif.id}`);
-  });
 
   // Create validation lookup map - ensure we handle the case where validations might be null/undefined
   type ValidationType = { modif_id: string; approuve: boolean; commentaire: string | null; validated_at: string };
@@ -263,14 +246,10 @@ export const getSessionModificationStatuses = async (
           ...validation,
           validator_comment: validation.commentaire
         });
-        console.log(`[getSessionModificationStatuses] Added validation to map: modif_id=${modifId}, approuve=${validation.approuve}`);
       }
     });
   }
   
-  // Debug: show all validation modif_ids
-  console.log(`[getSessionModificationStatuses] Validation map contains ${validationsByModif.size} entries`);
-  console.log(`[getSessionModificationStatuses] Validation modif_ids:`, Array.from(validationsByModif.keys()));
 
   // Check which sessions come from approved oubli badgeage
   // Batch fetch all entry badges to check comments
@@ -308,9 +287,6 @@ export const getSessionModificationStatuses = async (
     if (!validation) {
       // No validation found - check if this is because of an error or truly pending
       // If we had an error fetching validations, we can't be sure, so mark as pending
-      console.log(`[getSessionModificationStatuses] No validation found for modif ${modifIdStr} (entree_id: ${entree_id})`);
-      console.log(`[getSessionModificationStatuses] Available validation modif_ids:`, Array.from(validationsByModif.keys()));
-      console.log(`[getSessionModificationStatuses] Looking for modif_id: "${modifIdStr}"`);
       statusMap.set(entree_id, {
         modif_id: modif.id,
         status: 'pending',
@@ -327,8 +303,6 @@ export const getSessionModificationStatuses = async (
     // Ensure approuve is treated as a boolean (handle string "true"/"false" or boolean)
     const approuveValue = validation.approuve;
     const isApproved = approuveValue === true || approuveValue === 'true' || approuveValue === 1;
-    
-    console.log(`[getSessionModificationStatuses] Session ${entree_id}, modif ${modif.id}: validation found, approuve=${approuveValue} (${typeof approuveValue}), isApproved=${isApproved}, status=${isApproved ? 'approved' : 'rejected'}`);
     
     statusMap.set(entree_id, {
       modif_id: modif.id,
@@ -497,8 +471,6 @@ export const validateModificationRequest = async (
   } else {
     insertData.commentaire = null;
   }
-
-  console.log('Inserting validation:', insertData);
 
   const { data, error } = await supabase
     .from('appbadge_session_modif_validations')
