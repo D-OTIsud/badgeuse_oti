@@ -76,11 +76,17 @@ const UserPortal: React.FC<Props> = ({ utilisateur, onClose, onLogout }) => {
         setCurrentPageStartDate(null);
       }
 
-      // Fetch modification statuses for all sessions (can be done in parallel with session fetching)
+      // Fetch modification statuses for all sessions
+      // This can run in parallel with the session fetching, but we need the session IDs first
+      // So we do it after, but it's still fast since it's a single optimized query
       if (limitedSessions.length > 0) {
         const entreeIds = limitedSessions.map(s => s.entree_id);
-        const statuses = await getSessionModificationStatuses(entreeIds);
-        setModificationStatuses(statuses);
+        // Run status fetch in parallel with any other operations if possible
+        getSessionModificationStatuses(entreeIds).then(statuses => {
+          setModificationStatuses(statuses);
+        }).catch(error => {
+          console.error('Error fetching modification statuses:', error);
+        });
       } else {
         setModificationStatuses(new Map());
       }

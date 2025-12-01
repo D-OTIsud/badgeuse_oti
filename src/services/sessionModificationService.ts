@@ -186,12 +186,23 @@ export const getSessionModificationStatuses = async (
     return statusMap;
   }
 
-  // Fetch all modification requests for these entree_ids
-  const { data: modifs, error: modifError } = await supabase
-    .from('appbadge_session_modifs')
-    .select('id, entree_id, proposed_entree_ts, proposed_sortie_ts, pause_delta_minutes, motif, commentaire, created_at')
-    .in('entree_id', entree_ids)
-    .order('created_at', { ascending: false });
+  // Fetch all data in parallel: modifs, validations (if modifs exist), and entry badges
+  // We'll fetch modifs first to see if we need validations, but we can optimize by fetching entry badges in parallel
+  const [modifsResult, entryBadgesResult] = await Promise.all([
+    supabase
+      .from('appbadge_session_modifs')
+      .select('id, entree_id, proposed_entree_ts, proposed_sortie_ts, pause_delta_minutes, motif, commentaire, created_at')
+      .in('entree_id', entree_ids)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('appbadge_badgeages')
+      .select('id, commentaire')
+      .eq('type_action', 'entrée')
+      .in('id', entree_ids)
+  ]);
+
+  const { data: modifs, error: modifError } = modifsResult;
+  const { data: entryBadges, error: badgeError } = entryBadgesResult;
 
   if (modifError) {
     console.error('Error fetching modification requests:', modifError);
@@ -208,8 +219,7 @@ export const getSessionModificationStatuses = async (
   // Get modif_ids for validation lookup
   const modifIds = modifs.map(m => m.id);
 
-  // Fetch validations - ensure we get all validations even if there are errors
-  // Note: Supabase doesn't support SQL aliases in select, so we'll fetch commentaire and map it
+  // Fetch validations in parallel with processing (we already have modifs and entry badges)
   const { data: validations, error: validationError } = await supabase
     .from('appbadge_session_modif_validations')
     .select('modif_id, approuve, commentaire, validated_at')
@@ -219,7 +229,6 @@ export const getSessionModificationStatuses = async (
     console.error('Error fetching validations:', validationError);
     // Don't return early - we'll treat all as pending if we can't fetch validations
   }
-
 
   // Group modifs by entree_id (take the latest one per entree_id based on created_at)
   // Since we ordered by created_at DESC, the first one we encounter is the latest
@@ -249,15 +258,6 @@ export const getSessionModificationStatuses = async (
       }
     });
   }
-  
-
-  // Check which sessions come from approved oubli badgeage
-  // Batch fetch all entry badges to check comments
-  const { data: entryBadges, error: badgeError } = await supabase
-    .from('appbadge_badgeages')
-    .select('id, commentaire')
-    .eq('type_action', 'entrée')
-    .in('id', entree_ids);
 
   const oubliBadgeageMap = new Map<string, boolean>();
   if (entryBadges) {

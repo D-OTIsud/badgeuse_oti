@@ -82,12 +82,13 @@ export const formatDate = (dateString: string): string => {
 export const fetchSessionsWithModifications = async (
   utilisateurId: string
 ): Promise<UserSession[]> => {
-  // Get all modifications with their IDs
+  // Get all modifications with their IDs (limit to prevent fetching too many)
   const { data: modifs, error: modifError } = await supabase
     .from('appbadge_session_modifs')
     .select('id, entree_id')
     .eq('utilisateur_id', utilisateurId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100); // Limit to prevent fetching too many modifications
 
   if (modifError) {
     console.error('Error fetching sessions with modifications:', modifError);
@@ -100,6 +101,8 @@ export const fetchSessionsWithModifications = async (
 
   // Get modif_ids to check validations
   const modifIds = modifs.map(m => m.id);
+  
+  // Fetch validations for these specific modifs
   const { data: validations } = await supabase
     .from('appbadge_session_modif_validations')
     .select('modif_id, approuve')
@@ -124,13 +127,14 @@ export const fetchSessionsWithModifications = async (
     return [];
   }
 
-  // Fetch sessions for these entree_ids
+  // Fetch sessions for these entree_ids (limit to prevent fetching too many)
   const { data: sessionsData, error: sessionsError } = await supabase
     .from('appbadge_v_sessions')
     .select('*')
     .eq('utilisateur_id', utilisateurId)
     .in('entree_id', relevantEntreeIds)
-    .order('jour_local', { ascending: false });
+    .order('jour_local', { ascending: false })
+    .limit(50); // Limit sessions to prevent fetching too many
 
   if (sessionsError) {
     console.error('Error fetching modified sessions:', sessionsError);
