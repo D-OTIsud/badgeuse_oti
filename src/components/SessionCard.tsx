@@ -77,6 +77,38 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
 
   const displayTimes = getDisplayTimes();
 
+  // Calculate the display duration based on modification status
+  const getDisplayDuration = (): number => {
+    // If there's an approved or pending modification, recalculate duration from proposed times
+    if (modificationStatus && (modificationStatus.status === 'approved' || modificationStatus.status === 'pending')) {
+      const proposedEntree = modificationStatus.proposed_entree_ts || session.entree_ts;
+      const proposedSortie = modificationStatus.proposed_sortie_ts || session.sortie_ts;
+      
+      // Calculate total time span for proposed times
+      const proposedSpanMinutes = Math.round(
+        (new Date(proposedSortie).getTime() - new Date(proposedEntree).getTime()) / 60000
+      );
+      
+      // Calculate original time span to determine original pause time
+      const originalSpanMinutes = Math.round(
+        (new Date(session.sortie_ts).getTime() - new Date(session.entree_ts).getTime()) / 60000
+      );
+      
+      // Original pause = original_span - original_work_duration
+      // (because duree_minutes = span - pause)
+      const originalPauseMinutes = originalSpanMinutes - session.duree_minutes;
+      
+      // Adjusted pause = original_pause + pause_delta
+      const adjustedPauseMinutes = originalPauseMinutes + (modificationStatus.pause_delta_minutes || 0);
+      
+      // New work duration = new_span - adjusted_pause
+      return Math.max(0, proposedSpanMinutes - adjustedPauseMinutes);
+    }
+    
+    // No modification: use original duration
+    return session.duree_minutes;
+  };
+
   const getStatusBadge = () => {
     if (status === 'none') return null;
     
@@ -284,7 +316,7 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, modificationStatus, 
             fontWeight: 700,
             color: '#1976d2'
           }}>
-            {formatDuration(session.duree_minutes)}
+            {formatDuration(getDisplayDuration())}
           </div>
         </div>
         
