@@ -268,7 +268,6 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         utilisateur_id: utilisateur.id,
         badge_id: activeBadgeId,
         user_email: utilisateur.email,
-        }),
       });
       setResendMessage('Code renvoyé.');
     } catch (e) {

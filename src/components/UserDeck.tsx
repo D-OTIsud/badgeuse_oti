@@ -570,11 +570,10 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                              platform: navigator.platform,
                              language: navigator.language
                            }
-                         })
-                       });
-                     } catch (webhookError) {
-                       console.error('Erreur webhook GPS:', webhookError);
-                     }
+                         });
+                       } catch (webhookError) {
+                         console.error('Erreur webhook GPS:', webhookError);
+                       }
                    }
                    
                    const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
@@ -615,11 +614,10 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                              platform: navigator.platform,
                              language: navigator.language
                            }
-                         })
-                       });
-                     } catch (webhookError) {
-                       console.error('Erreur webhook GPS:', webhookError);
-                     }
+                         });
+                       } catch (webhookError) {
+                         console.error('Erreur webhook GPS:', webhookError);
+                       }
                    }
                    
                    const gpsStatus = hasGpsData ? 'avec GPS' : 'sans GPS (webhook notifié)';
