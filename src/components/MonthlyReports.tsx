@@ -42,12 +42,12 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
       setUserService(service);
       setCanAccessAllServices(canAccessAll);
 
-      // If manager, restrict to their service
+      // If manager, restrict to their service and lock it
       if (manager && service) {
         setSelectedService(service);
       }
 
-      // Load available services for admins
+      // Load available services for admins only
       if (canAccessAll) {
         const services = await getAvailableServices();
         setAvailableServices(services);
@@ -55,6 +55,13 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
     };
     initPermissions();
   }, []);
+
+  // Ensure managers cannot change their service
+  useEffect(() => {
+    if (isManager && userService && selectedService !== userService) {
+      setSelectedService(userService);
+    }
+  }, [isManager, userService, selectedService]);
 
   // Fetch monthly stats
   useEffect(() => {
@@ -281,6 +288,11 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
           <div style={{ padding: '8px 12px', background: '#f3e5f5', borderRadius: 8, fontSize: 14, color: '#9c27b0', fontWeight: 600 }}>
             Service: {userService}
           </div>
+        )}
+        
+        {/* Ensure managers cannot change service - hide dropdown completely */}
+        {isManager && !canAccessAllServices && (
+          <input type="hidden" value={userService || ''} />
         )}
       </div>
 
