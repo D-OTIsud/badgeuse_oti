@@ -179,85 +179,85 @@ const MonthlyReports: React.FC<MonthlyReportsProps> = ({ onBack }) => {
         </div>
 
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        {!useDateRange ? (
-          <>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Mois:</label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #ddd',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                {monthNames.map((name, index) => (
-                  <option key={index + 1} value={index + 1}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {!useDateRange ? (
+            <>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Mois:</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #ddd',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {monthNames.map((name, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Année:</label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #ddd',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                {generateYearOptions().map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Date de début:</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #ddd',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              />
-            </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Année:</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #ddd',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {generateYearOptions().map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Date de début:</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #ddd',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Date de fin:</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #ddd',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              />
-            </div>
-          </>
-        )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <label style={{ fontWeight: 600, color: '#666', fontSize: 14 }}>Date de fin:</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #ddd',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+            </>
+          )}
 
         {canAccessAllServices && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
