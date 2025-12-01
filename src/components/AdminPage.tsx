@@ -41,6 +41,7 @@ const UnifiedValidationSection: React.FC<{
   const [validatingId, setValidatingId] = useState<string | null>(null);
   const [validatorComment, setValidatorComment] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -72,17 +73,38 @@ const UnifiedValidationSection: React.FC<{
 
     setValidatingId(modifId);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const comment = validatorComment[modifId] || null;
       await validateModificationRequest(modifId, adminUser.id, approuve, comment);
-      onSuccess(approuve ? 'Demande de modification approuvée avec succès !' : 'Demande de modification refusée.');
-      setModificationRequests(prev => prev.filter(r => r.id !== modifId));
+      
+      const successMsg = approuve ? 'Demande de modification approuvée avec succès !' : 'Demande de modification refusée.';
+      setSuccessMessage(successMsg);
+      
+      // Remove the request and check if there are remaining requests
+      setModificationRequests(prev => {
+        const remaining = prev.filter(r => r.id !== modifId);
+        const totalRemaining = remaining.length + oubliRequests.length;
+        
+        // Only redirect if no more requests remain
+        if (totalRemaining === 0) {
+          setTimeout(() => {
+            onSuccess(successMsg);
+          }, 2000);
+        }
+        
+        return remaining;
+      });
+      
       setValidatorComment(prev => {
         const next = { ...prev };
         delete next[modifId];
         return next;
       });
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Error validating modification request:', err);
       setError(err.message || 'Erreur lors de la validation de la demande.');
@@ -99,17 +121,38 @@ const UnifiedValidationSection: React.FC<{
 
     setValidatingId(requestId);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const comment = validatorComment[requestId] || null;
       await validateOubliRequest(requestId, adminUser.id, approuve, comment);
-      onSuccess(approuve ? 'Demande d\'oubli de badgeage approuvée avec succès !' : 'Demande d\'oubli de badgeage refusée.');
-      setOubliRequests(prev => prev.filter(r => r.id !== requestId));
+      
+      const successMsg = approuve ? 'Demande d\'oubli de badgeage approuvée avec succès !' : 'Demande d\'oubli de badgeage refusée.';
+      setSuccessMessage(successMsg);
+      
+      // Remove the request and check if there are remaining requests
+      setOubliRequests(prev => {
+        const remaining = prev.filter(r => r.id !== requestId);
+        const totalRemaining = modificationRequests.length + remaining.length;
+        
+        // Only redirect if no more requests remain
+        if (totalRemaining === 0) {
+          setTimeout(() => {
+            onSuccess(successMsg);
+          }, 2000);
+        }
+        
+        return remaining;
+      });
+      
       setValidatorComment(prev => {
         const next = { ...prev };
         delete next[requestId];
         return next;
       });
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error('Error validating oubli request:', err);
       setError(err.message || 'Erreur lors de la validation de la demande.');
@@ -139,6 +182,12 @@ const UnifiedValidationSection: React.FC<{
       {error && (
         <div style={{ background: '#f8d7da', color: '#721c24', padding: 12, borderRadius: 8, marginBottom: 20, border: '1px solid #f5c6cb' }}>
           ⚠ {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: 12, borderRadius: 8, marginBottom: 20, border: '1px solid #c3e6cb' }}>
+          ✓ {successMessage}
         </div>
       )}
 
