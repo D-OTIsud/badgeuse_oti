@@ -124,326 +124,583 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
   };
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, padding: 24, maxWidth: 800, margin: '0 auto' }}>
-      <h2 style={{ marginTop: 0, marginBottom: 24, color: '#1976d2', fontWeight: 700 }}>
-        {isEditMode ? 'Modifier l\'utilisateur' : 'Ajouter un nouvel utilisateur'}
-      </h2>
+    <div style={{ 
+      background: '#fff', 
+      borderRadius: 16, 
+      padding: 0, 
+      maxWidth: 900, 
+      margin: '0 auto',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px 32px',
+        color: '#fff'
+      }}>
+        <h2 style={{ margin: 0, fontWeight: 700, fontSize: 24, letterSpacing: 0.5 }}>
+          {isEditMode ? '✏️ Modifier l\'utilisateur' : '➕ Ajouter un nouvel utilisateur'}
+        </h2>
+        <p style={{ margin: '8px 0 0 0', opacity: 0.9, fontSize: 14 }}>
+          {isEditMode ? 'Modifiez les informations de l\'utilisateur' : 'Remplissez les informations pour créer un nouvel utilisateur'}
+        </p>
+      </div>
 
-      {error && (
-        <div style={{ background: '#f8d7da', color: '#721c24', padding: 12, borderRadius: 8, marginBottom: 20, border: '1px solid #f5c6cb' }}>
-          ⚠ {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-          {/* Email */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Email <span style={{ color: '#d32f2f' }}>*</span>
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              required
-              disabled={loading || validatingEmail}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: emailError ? '2px solid #d32f2f' : '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading || validatingEmail ? 0.6 : 1
-              }}
-            />
-            {validatingEmail && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Vérification...</div>}
-            {emailError && <div style={{ fontSize: 12, color: '#d32f2f', marginTop: 4 }}>{emailError}</div>}
+      <div style={{ padding: '32px' }}>
+        {error && (
+          <div style={{ 
+            background: '#fff3cd', 
+            color: '#856404', 
+            padding: '14px 16px', 
+            borderRadius: 10, 
+            marginBottom: 24, 
+            border: '1px solid #ffeaa7',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 14
+          }}>
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <span>{error}</span>
           </div>
+        )}
 
-          {/* Role */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Rôle
-            </label>
-            <select
-              value={formData.role || ''}
-              onChange={(e) => handleChange('role', e.target.value || null)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              <option value="">Sélectionner un rôle</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-              <option value="A-E">A-E</option>
-            </select>
-            {formData.role && !['Admin', 'Manager', 'A-E'].includes(formData.role) && (
-              <input
-                type="text"
-                value={formData.role}
-                onChange={(e) => handleChange('role', e.target.value)}
-                placeholder="Autre rôle"
-                style={{
-                  width: '100%',
-                  padding: 10,
-                  borderRadius: 6,
-                  border: '1px solid #ddd',
-                  fontSize: 14,
-                  marginTop: 8
-                }}
-              />
-            )}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-          {/* Nom */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Nom <span style={{ color: '#d32f2f' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.nom}
-              onChange={(e) => handleChange('nom', e.target.value)}
-              required
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-          </div>
-
-          {/* Prénom */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Prénom <span style={{ color: '#d32f2f' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.prenom}
-              onChange={(e) => handleChange('prenom', e.target.value)}
-              required
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-          {/* Service */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Service
-            </label>
-            <input
-              type="text"
-              value={formData.service || ''}
-              onChange={(e) => handleChange('service', e.target.value || null)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-          </div>
-
-          {/* Lieux */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Lieu
-            </label>
-            <input
-              type="text"
-              value={formData.lieux || ''}
-              onChange={(e) => handleChange('lieux', e.target.value || null)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-          {/* Heures contractuelles */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Heures contractuelles par semaine
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="60"
-              step="0.5"
-              value={formData.heures_contractuelles_semaine || 35}
-              onChange={(e) => handleChange('heures_contractuelles_semaine', parseFloat(e.target.value) || 35)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-            <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Valeur entre 0 et 60 heures</div>
-          </div>
-
-          {/* Telegram ID */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Telegram ID
-            </label>
-            <input
-              type="text"
-              value={formData.telegramID || ''}
-              onChange={(e) => handleChange('telegramID', e.target.value || null)}
-              disabled={loading}
-              placeholder="ID Telegram (ex: @username ou 123456789)"
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                fontFamily: 'monospace',
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-          {/* Avatar */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Lien de l'avatar
-            </label>
-            <input
-              type="url"
-              value={formData.avatar || ''}
-              onChange={(e) => handleChange('avatar', e.target.value || null)}
-              disabled={loading}
-              placeholder="https://example.com/avatar.jpg"
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                fontSize: 14,
-                opacity: loading ? 0.6 : 1
-              }}
-            />
-            {formData.avatar && (
-              <div style={{ marginTop: 8 }}>
-                <img
-                  src={formData.avatar}
-                  alt="Avatar preview"
+        <form onSubmit={handleSubmit}>
+          {/* Section: Informations de base */}
+          <div style={{ 
+            background: '#f8f9fa', 
+            borderRadius: 12, 
+            padding: '24px', 
+            marginBottom: 24,
+            border: '1px solid #e9ecef'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 20px 0', 
+              color: '#495057', 
+              fontSize: 16, 
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <span>👤</span> Informations de base
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Email */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Email <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  required
+                  disabled={loading || validatingEmail}
+                  placeholder="exemple@email.com"
                   style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: '2px solid #e0e0e0'
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: emailError ? '2px solid #dc3545' : '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading || validatingEmail ? 0.6 : 1,
+                    transition: 'all 0.2s',
+                    background: '#fff'
                   }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
+                  onFocus={(e) => {
+                    if (!emailError) e.currentTarget.style.borderColor = '#667eea';
+                  }}
+                  onBlur={(e) => {
+                    if (!emailError) e.currentTarget.style.borderColor = '#ced4da';
                   }}
                 />
+                {validatingEmail && <div style={{ fontSize: 12, color: '#6c757d', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span>⏳</span> Vérification...
+                </div>}
+                {emailError && <div style={{ fontSize: 12, color: '#dc3545', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span>❌</span> {emailError}
+                </div>}
               </div>
-            )}
-          </div>
 
-          {/* Actif */}
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, color: '#666', fontSize: 14, marginBottom: 8 }}>
-              Statut
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-              <input
-                type="checkbox"
-                checked={formData.actif}
-                onChange={(e) => handleChange('actif', e.target.checked)}
-                disabled={loading}
-                style={{ cursor: 'pointer', width: 18, height: 18 }}
-              />
-              <span>Utilisateur actif</span>
-            </label>
-            <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-              {formData.actif ? 'L\'utilisateur peut se connecter et utiliser l\'application' : 'L\'utilisateur est désactivé et ne peut pas se connecter'}
+              {/* Role */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Rôle
+                </label>
+                <select
+                  value={formData.role || ''}
+                  onChange={(e) => handleChange('role', e.target.value || null)}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                >
+                  <option value="">Sélectionner un rôle</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Manager">Manager</option>
+                  <option value="A-E">A-E</option>
+                </select>
+                {formData.role && !['Admin', 'Manager', 'A-E'].includes(formData.role) && (
+                  <input
+                    type="text"
+                    value={formData.role}
+                    onChange={(e) => handleChange('role', e.target.value)}
+                    placeholder="Autre rôle"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      border: '1px solid #ced4da',
+                      fontSize: 14,
+                      marginTop: 8,
+                      background: '#fff',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                  />
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 32, paddingTop: 24, borderTop: '1px solid #e0e0e0' }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            style={{
-              background: '#f5f5f5',
-              color: '#666',
-              border: '1px solid #ddd',
-              borderRadius: 8,
-              padding: '10px 20px',
-              fontSize: 14,
+          {/* Section: Identité */}
+          <div style={{ 
+            background: '#f8f9fa', 
+            borderRadius: 12, 
+            padding: '24px', 
+            marginBottom: 24,
+            border: '1px solid #e9ecef'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 20px 0', 
+              color: '#495057', 
+              fontSize: 16, 
               fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1
-            }}
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            disabled={loading || !!emailError || validatingEmail}
-            style={{
-              background: loading || emailError || validatingEmail ? '#ccc' : '#4caf50',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 20px',
-              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <span>📝</span> Identité
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Nom */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Nom <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.nom}
+                  onChange={(e) => handleChange('nom', e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Nom de famille"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+              </div>
+
+              {/* Prénom */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Prénom <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.prenom}
+                  onChange={(e) => handleChange('prenom', e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Prénom"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Organisation */}
+          <div style={{ 
+            background: '#f8f9fa', 
+            borderRadius: 12, 
+            padding: '24px', 
+            marginBottom: 24,
+            border: '1px solid #e9ecef'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 20px 0', 
+              color: '#495057', 
+              fontSize: 16, 
               fontWeight: 600,
-              cursor: loading || emailError || validatingEmail ? 'not-allowed' : 'pointer',
-              opacity: loading || emailError || validatingEmail ? 0.6 : 1
-            }}
-          >
-            {loading ? 'Enregistrement...' : isEditMode ? 'Enregistrer les modifications' : 'Créer l\'utilisateur'}
-          </button>
-        </div>
-      </form>
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <span>🏢</span> Organisation
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Service */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Service
+                </label>
+                <input
+                  type="text"
+                  value={formData.service || ''}
+                  onChange={(e) => handleChange('service', e.target.value || null)}
+                  disabled={loading}
+                  placeholder="Service ou département"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+              </div>
+
+              {/* Lieux */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Lieu
+                </label>
+                <input
+                  type="text"
+                  value={formData.lieux || ''}
+                  onChange={(e) => handleChange('lieux', e.target.value || null)}
+                  disabled={loading}
+                  placeholder="Lieu de travail"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Paramètres */}
+          <div style={{ 
+            background: '#f8f9fa', 
+            borderRadius: 12, 
+            padding: '24px', 
+            marginBottom: 24,
+            border: '1px solid #e9ecef'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 20px 0', 
+              color: '#495057', 
+              fontSize: 16, 
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <span>⚙️</span> Paramètres
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Heures contractuelles */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Heures contractuelles par semaine
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  step="0.5"
+                  value={formData.heures_contractuelles_semaine || 35}
+                  onChange={(e) => handleChange('heures_contractuelles_semaine', parseFloat(e.target.value) || 35)}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+                <div style={{ fontSize: 12, color: '#6c757d', marginTop: 6 }}>💡 Valeur entre 0 et 60 heures</div>
+              </div>
+
+              {/* Telegram ID */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Telegram ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.telegramID || ''}
+                  onChange={(e) => handleChange('telegramID', e.target.value || null)}
+                  disabled={loading}
+                  placeholder="@username ou 123456789"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    fontFamily: 'monospace',
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Profil */}
+          <div style={{ 
+            background: '#f8f9fa', 
+            borderRadius: 12, 
+            padding: '24px', 
+            marginBottom: 24,
+            border: '1px solid #e9ecef'
+          }}>
+            <h3 style={{ 
+              margin: '0 0 20px 0', 
+              color: '#495057', 
+              fontSize: 16, 
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <span>🖼️</span> Profil
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Avatar */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Lien de l'avatar
+                </label>
+                <input
+                  type="url"
+                  value={formData.avatar || ''}
+                  onChange={(e) => handleChange('avatar', e.target.value || null)}
+                  disabled={loading}
+                  placeholder="https://example.com/avatar.jpg"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ced4da',
+                    fontSize: 14,
+                    opacity: loading ? 0.6 : 1,
+                    background: '#fff',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#ced4da'}
+                />
+                {formData.avatar && (
+                  <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <img
+                      src={formData.avatar}
+                      alt="Avatar preview"
+                      style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '3px solid #667eea',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <span style={{ fontSize: 12, color: '#6c757d' }}>Aperçu</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actif */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, color: '#495057', fontSize: 13, marginBottom: 8 }}>
+                  Statut
+                </label>
+                <div style={{
+                  background: '#fff',
+                  border: '1px solid #ced4da',
+                  borderRadius: 8,
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12
+                }}>
+                  <label style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 12, 
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: 14,
+                    fontWeight: 500
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.actif}
+                      onChange={(e) => handleChange('actif', e.target.checked)}
+                      disabled={loading}
+                      style={{ 
+                        cursor: loading ? 'not-allowed' : 'pointer', 
+                        width: 20, 
+                        height: 20,
+                        accentColor: formData.actif ? '#28a745' : '#6c757d'
+                      }}
+                    />
+                    <span style={{ color: formData.actif ? '#28a745' : '#6c757d', fontWeight: 600 }}>
+                      {formData.actif ? '✓ Utilisateur actif' : '✗ Utilisateur inactif'}
+                    </span>
+                  </label>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: '#6c757d', 
+                    paddingLeft: 32,
+                    lineHeight: 1.5
+                  }}>
+                    {formData.actif 
+                      ? '✅ L\'utilisateur peut se connecter et utiliser l\'application' 
+                      : '❌ L\'utilisateur est désactivé et ne peut pas se connecter'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ 
+            display: 'flex', 
+            gap: 12, 
+            justifyContent: 'flex-end', 
+            marginTop: 8,
+            paddingTop: 24, 
+            borderTop: '2px solid #e9ecef'
+          }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              style={{
+                background: '#fff',
+                color: '#6c757d',
+                border: '2px solid #dee2e6',
+                borderRadius: 10,
+                padding: '12px 24px',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#f8f9fa';
+                  e.currentTarget.style.borderColor = '#adb5bd';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = '#fff';
+                  e.currentTarget.style.borderColor = '#dee2e6';
+                }
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !!emailError || validatingEmail}
+              style={{
+                background: loading || emailError || validatingEmail 
+                  ? '#adb5bd' 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                padding: '12px 32px',
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: loading || emailError || validatingEmail ? 'not-allowed' : 'pointer',
+                opacity: loading || emailError || validatingEmail ? 0.6 : 1,
+                boxShadow: loading || emailError || validatingEmail 
+                  ? 'none' 
+                  : '0 4px 12px rgba(102, 126, 234, 0.4)',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && !emailError && !validatingEmail) {
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading && !emailError && !validatingEmail) {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
+            >
+              {loading ? '⏳ Enregistrement...' : isEditMode ? '💾 Enregistrer les modifications' : '✨ Créer l\'utilisateur'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

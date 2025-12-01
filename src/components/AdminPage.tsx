@@ -1164,10 +1164,12 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <div style={{ background: '#fff', borderRadius: 20, maxWidth: 1200, margin: '40px auto', padding: 36, boxShadow: '0 6px 32px rgba(25,118,210,0.10)' }}>
         {showSuccess && <SuccessPopup message={successMessage} onClose={() => setShowSuccess(false)} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2 style={{ margin: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>
-            {userFormMode === 'list' ? 'Gestion des utilisateurs' : userFormMode === 'add' ? 'Ajouter un utilisateur' : 'Modifier l\'utilisateur'}
-          </h2>
-          <div style={{ display: 'flex', gap: 8 }}>
+          {userFormMode !== 'list' && (
+            <h2 style={{ margin: 0, color: '#1976d2', fontWeight: 700, letterSpacing: 1 }}>
+              {userFormMode === 'add' ? 'Ajouter un utilisateur' : 'Modifier l\'utilisateur'}
+            </h2>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
             {userFormMode !== 'list' && (
               <button
                 onClick={() => {
