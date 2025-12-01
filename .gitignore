@@ -10,6 +10,16 @@
 .env.test
 supabase_config.env
 
+# Fichiers de nettoyage de sécurité (peuvent contenir des patterns sensibles)
+sensitive-data.txt
+sensitive-replacements.txt
+
+# Scripts de vérification (peuvent contenir des patterns)
+check-sensitivity.ps1
+
+# Documentation de sécurité (peut contenir des exemples)
+SECRETS_TO_CHANGE.md
+
 # Fichiers de configuration avec clés
 config/keys.ts
 config/keys.js

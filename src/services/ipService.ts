@@ -7,16 +7,29 @@ export interface LocationInfo {
 }
 
 // Fonction pour obtenir l'IP de l'utilisateur
-export const getUserIP = async (): Promise<string> => {
+export const getUserIP = async (): Promise<string | null> => {
   try {
     // Utiliser un service externe pour obtenir l'IP publique
-    const response = await fetch('https://api.ipify.org?format=json');
+    // Ajouter un timeout pour éviter les blocages
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes max
+    
+    const response = await fetch('https://api.ipify.org?format=json', {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const data = await response.json();
     return data.ip;
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'IP:', error);
-    // Fallback: utiliser une IP locale pour les tests
-    return '127.0.0.1';
+    // Ne pas retourner d'IP par défaut - l'appelant doit gérer l'erreur
+    return null;
   }
 };
 
@@ -72,45 +85,79 @@ const getAuthorizedIPs = async (): Promise<{ip: string, lieu: string, latitude?:
 };
 
 // Fonction pour vérifier si l'IP est autorisée et retourner l'info de localisation
+// IMPORTANT: Ne jamais autoriser par défaut en cas d'erreur (principe de moindre privilège)
 export const checkIPAuthorization = async (): Promise<{
   isAuthorized: boolean;
   locationName?: string;
   userIP: string;
   latitude?: string;
   longitude?: string;
+  error?: string;
 }> => {
-  const userIP = await getUserIP();
-  const authorizedIPs = await getAuthorizedIPs();
-  
-  // Vérifier si l'IP exacte est dans la liste
-  const exactMatch = authorizedIPs.find(item => item.ip === userIP);
-  if (exactMatch) {
-    return {
-      isAuthorized: true,
-      locationName: exactMatch.lieu,
-      userIP,
-      latitude: exactMatch.latitude,
-      longitude: exactMatch.longitude
-    };
-  }
-  
-  // Vérifier si l'IP est dans une plage autorisée
-  for (const authorizedIP of authorizedIPs) {
-    if (isIPInRange(userIP, authorizedIP.ip)) {
+  try {
+    const userIP = await getUserIP();
+    
+    // Si on ne peut pas récupérer l'IP, refuser l'accès par défaut
+    if (!userIP) {
+      console.warn('Impossible de récupérer l\'IP utilisateur - accès refusé par sécurité');
       return {
-        isAuthorized: true,
-        locationName: authorizedIP.lieu,
-        userIP,
-        latitude: authorizedIP.latitude,
-        longitude: authorizedIP.longitude
+        isAuthorized: false,
+        userIP: 'unknown',
+        error: 'Impossible de vérifier l\'adresse IP'
       };
     }
+    
+    const authorizedIPs = await getAuthorizedIPs();
+    
+    // Si aucune IP autorisée n'est configurée, refuser l'accès
+    if (authorizedIPs.length === 0) {
+      console.warn('Aucune IP autorisée configurée - accès refusé par sécurité');
+      return {
+        isAuthorized: false,
+        userIP,
+        error: 'Aucune configuration IP disponible'
+      };
+    }
+    
+    // Vérifier si l'IP exacte est dans la liste
+    const exactMatch = authorizedIPs.find(item => item.ip === userIP);
+    if (exactMatch) {
+      return {
+        isAuthorized: true,
+        locationName: exactMatch.lieu,
+        userIP,
+        latitude: exactMatch.latitude,
+        longitude: exactMatch.longitude
+      };
+    }
+    
+    // Vérifier si l'IP est dans une plage autorisée
+    for (const authorizedIP of authorizedIPs) {
+      if (isIPInRange(userIP, authorizedIP.ip)) {
+        return {
+          isAuthorized: true,
+          locationName: authorizedIP.lieu,
+          userIP,
+          latitude: authorizedIP.latitude,
+          longitude: authorizedIP.longitude
+        };
+      }
+    }
+    
+    // IP non autorisée
+    return {
+      isAuthorized: false,
+      userIP
+    };
+  } catch (error) {
+    console.error('Erreur lors de la vérification IP:', error);
+    // En cas d'erreur, refuser l'accès par défaut (principe de moindre privilège)
+    return {
+      isAuthorized: false,
+      userIP: 'unknown',
+      error: 'Erreur lors de la vérification IP'
+    };
   }
-  
-  return {
-    isAuthorized: false,
-    userIP
-  };
 };
 
 // Fonction pour obtenir le message de bienvenue basé sur la localisation

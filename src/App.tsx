@@ -68,9 +68,7 @@ function App() {
   const [showAdminPage, setShowAdminPage] = useState(false);
   const [showPortalFor, setShowPortalFor] = useState<Utilisateur | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-
-  // MOCK : à remplacer par la vraie logique d'authentification/autorisation
-  const isAdmin = true;
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const handleSelectUser = useCallback(async (user: Utilisateur) => {
     setLoading(true);
@@ -110,15 +108,13 @@ function App() {
     const badgeId = badges[0].id;
     
     // Appel webhook une fois lors du clic sur carte pour envoyer le code
+    // Utiliser le service webhook sécurisé avec rate limiting
     try {
-      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          utilisateur_id: user.id,
-          badge_id: badgeId,
-          user_email: user.email,
-        }),
+      const { callWebhook } = await import('./services/webhookService');
+      await callWebhook('badge_code', {
+        utilisateur_id: user.id,
+        badge_id: badgeId,
+        user_email: user.email,
       });
     } catch (e) {
       setWebhookError("Erreur lors de l'appel au webhook. Veuillez réessayer.");
@@ -139,10 +135,11 @@ function App() {
         setIpCheck(result);
       } catch (error) {
         console.error('Erreur lors de la vérification IP:', error);
-        // En cas d'erreur, on autorise l'accès par défaut
+        // En cas d'erreur, refuser l'accès par défaut (principe de moindre privilège)
         setIpCheck({
-          isAuthorized: true,
-          userIP: '127.0.0.1'
+          isAuthorized: false,
+          userIP: 'unknown',
+          error: 'Erreur lors de la vérification IP'
         });
       } finally {
         setIpCheckLoading(false);
@@ -154,8 +151,17 @@ function App() {
 
   // Check Supabase session on mount and listen for auth changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      
+      // Vérifier le rôle admin si une session existe
+      if (session) {
+        const adminStatus = await checkIsAdmin();
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
+      
       // If we have a session (OAuth completed in a popup or redirect), restore portal user and close popup
       try {
         if (session && !showPortalFor) {

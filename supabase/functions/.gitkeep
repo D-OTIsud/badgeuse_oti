@@ -1,0 +1,3 @@
+# Ce dossier est conservé pour de futures Edge Functions si nécessaire
+# Actuellement, les webhooks utilisent des fonctions RPC PostgreSQL (voir supabase_rpc_webhooks.sql)
+

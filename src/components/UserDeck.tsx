@@ -497,12 +497,8 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                      // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
                      if (!hasGpsData) {
                        try {
-                         await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
-                           method: 'POST',
-                           headers: {
-                             'Content-Type': 'application/json',
-                           },
-                           body: JSON.stringify({
+                         const { callWebhook } = await import('../services/webhookService');
+                         await callWebhook('gps', {
                              user_email: user.email,
                              user_name: `${user.prenom} ${user.nom}`,
                              user_role: user.role,
@@ -516,8 +512,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                                platform: navigator.platform,
                                language: navigator.language
                              }
-                           })
-                         });
+                           });
                        } catch (webhookError) {
                          console.error('Erreur webhook GPS:', webhookError);
                        }
@@ -557,15 +552,11 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                  setNfcLoading(false);
                  
                  if (!insertError) {
-                   // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
-                   if (!hasGpsData) {
-                     try {
-                       await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
-                         method: 'POST',
-                         headers: {
-                           'Content-Type': 'application/json',
-                         },
-                         body: JSON.stringify({
+                     // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
+                     if (!hasGpsData) {
+                       try {
+                         const { callWebhook } = await import('../services/webhookService');
+                         await callWebhook('gps', {
                            user_email: user.email,
                            user_name: `${user.prenom} ${user.nom}`,
                            user_role: user.role,
@@ -606,15 +597,11 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                  setNfcLoading(false);
                  
                  if (!insertError) {
-                   // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
-                   if (!hasGpsData) {
-                     try {
-                       await fetch('https://n8n.otisud.re/webhook/09c6d45a-fe1a-46ea-a951-1fb833065b55', {
-                         method: 'POST',
-                         headers: {
-                           'Content-Type': 'application/json',
-                         },
-                         body: JSON.stringify({
+                     // Appeler le webhook GPS seulement si pas de données GPS ET insertion réussie
+                     if (!hasGpsData) {
+                       try {
+                         const { callWebhook } = await import('../services/webhookService');
+                         await callWebhook('gps', {
                            user_email: user.email,
                            user_name: `${user.prenom} ${user.nom}`,
                            user_role: user.role,

@@ -50,8 +50,31 @@ Application de badgeage pour l'OTI du SUD avec support NFC et géolocalisation.
 
 ```bash
 npm install
-npm run dev
 ```
+
+### Configuration des Variables d'Environnement
+
+**⚠️ IMPORTANT** : Avant de lancer l'application, configurez les variables d'environnement.
+
+1. Copiez le fichier `.env.example` vers `.env` :
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Remplissez les valeurs dans `.env` :
+   - `VITE_SUPABASE_URL` : URL de votre projet Supabase
+   - `VITE_SUPABASE_ANON_KEY` : Clé anon de Supabase
+   - `VITE_WEBHOOK_*_URL` : URLs des webhooks n8n (optionnel, pour compatibilité legacy)
+
+3. Configurez les webhooks dans Supabase (pour les fonctions RPC) :
+   - Voir `ENV_SETUP.md` pour les instructions détaillées
+
+4. Lancez l'application :
+   ```bash
+   npm run dev
+   ```
+
+Pour plus de détails, consultez `ENV_SETUP.md`.
 
 ## Dépendances
 

@@ -209,13 +209,9 @@ const SessionEditForm: React.FC<SessionEditFormProps> = ({ session, utilisateur,
         };
 
         // Send POST request to n8n webhook (fire and forget)
-        fetch('https://n8n.otisud.re/webhook/c76763d6-d579-4d20-975f-b70939b82c59', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
-        }).catch(err => {
+        // Utiliser le service webhook sécurisé avec rate limiting
+        const { callWebhook } = await import('../services/webhookService');
+        await callWebhook('oubli_badgeage', requestData).catch(err => {
           console.error('Error sending to n8n webhook:', err);
           // Don't fail the request if n8n fails
         });

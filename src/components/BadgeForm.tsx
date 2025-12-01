@@ -263,13 +263,11 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
         return;
       }
       const activeBadgeId = badges[0].id as string;
-      await fetch('https://n8n.otisud.re/webhook/a83f4c49-f3a5-4573-9dfd-4ab52fed6874', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          utilisateur_id: utilisateur.id,
-          badge_id: activeBadgeId,
-          user_email: utilisateur.email,
+      const { callWebhook } = await import('../services/webhookService');
+      await callWebhook('badge_code', {
+        utilisateur_id: utilisateur.id,
+        badge_id: activeBadgeId,
+        user_email: utilisateur.email,
         }),
       });
       setResendMessage('Code renvoyé.');
