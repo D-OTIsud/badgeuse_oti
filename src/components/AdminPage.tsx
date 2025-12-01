@@ -611,7 +611,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   });
 
   // Filtrer les administrateurs pour l'authentification
-  const adminUsers = users.filter(u => u.role === 'Admin');
+  const adminUsers = users.filter(u => u.role === 'Admin' || u.role === 'Manager');
   const filteredAdminUsers = adminUsers.filter(u => {
     const q = userSearch.trim().toLowerCase();
     return (

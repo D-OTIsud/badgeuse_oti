@@ -66,32 +66,32 @@ BEGIN
   ),
   service_agg AS (
     SELECT 
-      service,
-      SUM(total_travail_net_minutes)::numeric / 60.0 AS total_hours,
-      AVG(total_travail_net_minutes)::numeric / 60.0 AS avg_hours_per_user,
-      SUM(total_retard_minutes) AS total_delays_minutes,
-      COUNT(*) FILTER (WHERE jours_presents = 0) AS absences_count,
+      md.service,
+      SUM(md.total_travail_net_minutes)::numeric / 60.0 AS total_hours,
+      AVG(md.total_travail_net_minutes)::numeric / 60.0 AS avg_hours_per_user,
+      COALESCE(SUM(md.total_retard_minutes), 0)::bigint AS total_delays_minutes,
+      COALESCE(COUNT(*) FILTER (WHERE md.jours_presents = 0), 0)::bigint AS absences_count,
       jsonb_agg(
         jsonb_build_object(
-          'utilisateur_id', utilisateur_id,
-          'nom', nom,
-          'prenom', prenom,
-          'email', email,
-          'total_hours', ROUND((total_travail_net_minutes::numeric / 60.0)::numeric, 2),
+          'utilisateur_id', md.utilisateur_id,
+          'nom', md.nom,
+          'prenom', md.prenom,
+          'email', md.email,
+          'total_hours', ROUND((md.total_travail_net_minutes::numeric / 60.0)::numeric, 2),
           'avg_hours_per_day', CASE 
-            WHEN jours_travailles > 0 
-            THEN ROUND((total_travail_net_minutes::numeric / 60.0 / jours_travailles)::numeric, 2)
+            WHEN md.jours_travailles > 0 
+            THEN ROUND((md.total_travail_net_minutes::numeric / 60.0 / md.jours_travailles)::numeric, 2)
             ELSE 0
           END,
-          'total_delays_minutes', total_retard_minutes,
-          'jours_travailles', jours_travailles,
-          'is_absent', (jours_presents = 0)
+          'total_delays_minutes', md.total_retard_minutes,
+          'jours_travailles', md.jours_travailles,
+          'is_absent', (md.jours_presents = 0)
         )
-        ORDER BY nom, prenom
+        ORDER BY md.nom, md.prenom
       ) AS users
-    FROM month_data
-    WHERE service IS NOT NULL
-    GROUP BY service
+    FROM month_data md
+    WHERE md.service IS NOT NULL
+    GROUP BY md.service
   )
   SELECT 
     sa.service,
