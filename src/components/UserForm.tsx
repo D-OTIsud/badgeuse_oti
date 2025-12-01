@@ -241,9 +241,10 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
                   <option value="">Sélectionner un rôle</option>
                   <option value="Admin">Admin</option>
                   <option value="Manager">Manager</option>
+                  <option value="User-Tele">User-Tele</option>
                   <option value="A-E">A-E</option>
                 </select>
-                {formData.role && !['Admin', 'Manager', 'A-E'].includes(formData.role) && (
+                {formData.role && !['Admin', 'Manager', 'User-Tele', 'A-E'].includes(formData.role) && (
                   <input
                     type="text"
                     value={formData.role}

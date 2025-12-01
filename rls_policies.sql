@@ -90,10 +90,10 @@ USING (
 );
 
 -- Policy: All authenticated users can read active users list (for user selection)
-CREATE POLICY "Users can read active users list"
+CREATE POLICY "Public can read active users list"
 ON public.appbadge_utilisateurs
 FOR SELECT
-TO authenticated
+TO public
 USING (actif = true);
 
 -- Policy: Admins can read all users
@@ -200,6 +200,13 @@ ON public.appbadge_badges
 FOR SELECT
 TO authenticated
 USING (public.is_admin() = true);
+
+-- Policy: Public can read active badges (needed before authentication)
+CREATE POLICY "Public can read active badges"
+ON public.appbadge_badges
+FOR SELECT
+TO public
+USING (actif = true);
 
 -- Policy: Admins can insert badges
 CREATE POLICY "Admins can insert badges"

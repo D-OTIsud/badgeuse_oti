@@ -210,8 +210,8 @@ const UserManagementList: React.FC<UserManagementListProps> = ({ onSelectUser, o
                         borderRadius: 4,
                         fontSize: 12,
                         fontWeight: 600,
-                        background: user.role === 'Admin' ? '#e3f2fd' : user.role === 'Manager' ? '#f3e5f5' : user.role === 'A-E' ? '#fff3e0' : '#f5f5f5',
-                        color: user.role === 'Admin' ? '#1976d2' : user.role === 'Manager' ? '#9c27b0' : user.role === 'A-E' ? '#ff9800' : '#666'
+                        background: user.role === 'Admin' ? '#e3f2fd' : user.role === 'Manager' ? '#f3e5f5' : user.role === 'User-Tele' ? '#e8f5e9' : user.role === 'A-E' ? '#fff3e0' : '#f5f5f5',
+                        color: user.role === 'Admin' ? '#1976d2' : user.role === 'Manager' ? '#9c27b0' : user.role === 'User-Tele' ? '#4caf50' : user.role === 'A-E' ? '#ff9800' : '#666'
                       }}>
                         {formatRole(user.role)}
                       </span>

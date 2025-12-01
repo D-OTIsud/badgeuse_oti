@@ -7,6 +7,7 @@ import { fetchAdminValidationRequests } from '../services/adminValidationService
 import { formatTime, formatDate, formatDuration } from '../services/sessionService';
 import UserManagementList from './UserManagementList';
 import UserForm from './UserForm';
+import MonthlyReports from './MonthlyReports';
 import type { User } from '../services/userManagementService';
 
 // Composant popup de succès
@@ -1035,6 +1036,7 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
           <button onClick={() => setAdminSection('dashboard')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #3ba27c', background: '#f0f8f4', color: '#3ba27c', fontWeight: 600, cursor: 'pointer' }}>📊 Tableau de bord</button>
           <button onClick={() => setAdminSection('valider-modifications')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #ff9800', background: '#fff3e0', color: '#ff9800', fontWeight: 600, cursor: 'pointer' }}>✅ Valider les modifications de temps</button>
+          <button onClick={() => setAdminSection('rapports-mensuels')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #00acc1', background: '#e0f7fa', color: '#00acc1', fontWeight: 600, cursor: 'pointer' }}>📈 Rapports Mensuels</button>
           <button onClick={() => setAdminSection('gestion-utilisateurs')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #9c27b0', background: '#f3e5f5', color: '#9c27b0', fontWeight: 600, cursor: 'pointer' }}>👥 Gestion des utilisateurs</button>
           <button onClick={() => setAdminSection('associer-tag')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Associer un nouveau tag</button>
           <button onClick={() => setAdminSection('ajouter-lieu')} style={{ fontSize: 18, padding: 16, borderRadius: 8, border: '1px solid #1976d2', background: '#f4f6fa', color: '#1976d2', fontWeight: 600, cursor: 'pointer' }}>Ajouter un nouveau lieu</button>
@@ -1156,6 +1158,11 @@ const AdminPage: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       onBack={() => setAdminSection(null)} 
       onSuccess={(msg) => showSuccessAndReturn(msg)}
     />;
+  }
+
+  // Section de rapports mensuels
+  if (adminSection === 'rapports-mensuels') {
+    return <MonthlyReports onBack={() => setAdminSection(null)} />;
   }
 
   // Section de gestion des utilisateurs

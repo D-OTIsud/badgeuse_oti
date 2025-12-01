@@ -475,7 +475,7 @@ const UserDeck: React.FC<Props> = ({ onSelect, isIPAuthorized = true, locationNa
                 // Pas besoin de l'appeler ici, on l'appellera après l'insertion réussie
                
                // Logique selon l'autorisation IP
-               const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin';
+               const isManagerOrAdmin = user.role === 'Manager' || user.role === 'Admin' || user.role === 'User-Tele';
                const isAE = user.role === 'A-E';
                const isFirstBadgeAE = isAE && !user.lieux;
 

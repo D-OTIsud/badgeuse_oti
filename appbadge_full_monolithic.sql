@@ -1704,6 +1704,23 @@ AS $function$
   );
 $function$;
 
+/* is_manager_or_tele() */
+DROP FUNCTION IF EXISTS public.is_manager_or_tele() CASCADE;
+CREATE OR REPLACE FUNCTION public.is_manager_or_tele()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+  select exists (
+    select 1
+    from public.appbadge_utilisateurs u
+    where u.id = auth.uid()
+      and u.actif = true
+      and u.role in ('Admin','Manager','User-Tele')
+  );
+$function$;
+
 /* notifier_mise_a_jour_utilisateur() */
 DROP FUNCTION IF EXISTS public.notifier_mise_a_jour_utilisateur() CASCADE;
 CREATE OR REPLACE FUNCTION public.notifier_mise_a_jour_utilisateur()

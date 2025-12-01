@@ -66,12 +66,12 @@ const BadgeForm: React.FC<BadgeFormProps> = ({ utilisateur, badgeId, heure, onBa
   const [resendHover, setResendHover] = useState(false);
 
   // Détection des rôles
-  const isManagerOrAdmin = utilisateur.role === 'Manager' || utilisateur.role === 'Admin';
+  const isManagerOrAdmin = utilisateur.role === 'Manager' || utilisateur.role === 'Admin' || utilisateur.role === 'User-Tele';
   const isAE = utilisateur.role === 'A-E';
   const isFirstBadgeAE = isAE && !utilisateur.lieux;
 
   // Détection des utilisateurs avec précision GPS réduite
-  const isReducedPrecision = isAE || utilisateur.role === 'Manager';
+  const isReducedPrecision = isAE || utilisateur.role === 'Manager' || utilisateur.role === 'User-Tele';
 
   // GPS options selon le rôle
   const gpsOptions = isReducedPrecision ? { enableHighAccuracy: false, timeout: 10000 } : { enableHighAccuracy: true, timeout: 10000 };

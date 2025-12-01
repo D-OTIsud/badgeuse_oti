@@ -99,7 +99,15 @@ You should see policies for all tables:
 
 ## Testing RLS Policies
 
-### Test 1: Regular User Can Read Own Data
+### Test 1: Public (Unauthenticated) Access
+
+1. Open the app without signing in
+2. Verify that the list of active users is visible
+3. Click a user card and confirm the badge lookup works (Supabase logs show reads on `appbadge_utilisateurs` and `appbadge_badges` with `role=anon`)
+
+These policies intentionally allow read-only access to active users/badges so the pre-authentication UX keeps working.
+
+### Test 2: Regular User Can Read Own Data
 
 1. Authenticate as a regular user (not Admin/Manager)
 2. Try to read your own badgeages:
@@ -117,7 +125,7 @@ You should see policies for all tables:
    ```
    ❌ Should return empty (or error if RLS is strict)
 
-### Test 2: Regular User Can Insert Own Data
+### Test 3: Regular User Can Insert Own Data
 
 1. Authenticate as a regular user
 2. Try to insert a badgeage for yourself:
@@ -134,7 +142,7 @@ You should see policies for all tables:
    ```
    ❌ Should fail with permission error
 
-### Test 3: Admin Can Access All Data
+### Test 4: Admin Can Access All Data
 
 1. Authenticate as an Admin or Manager
 2. Try to read all badgeages:
@@ -151,16 +159,16 @@ You should see policies for all tables:
    ```
    ✅ Should succeed
 
-### Test 4: Unauthenticated Users Are Blocked
+### Test 5: Unauthenticated Users Are Blocked (Other Tables)
 
 1. Sign out or use an unauthenticated session
-2. Try to read any data:
+2. Try to read a restricted table (e.g., modification requests):
    ```sql
-   SELECT * FROM appbadge_utilisateurs;
+   SELECT * FROM appbadge_session_modifs;
    ```
    ❌ Should return empty or error
 
-### Test 5: Public Data (Schedules, Locations)
+### Test 6: Public Data (Schedules, Locations)
 
 1. Authenticate as any user (regular or admin)
 2. Try to read schedules:
